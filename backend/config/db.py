@@ -6,5 +6,5 @@ def get_connection():
         host="localhost",
         database="drowsiness_safety_db",
         user="postgres",
-        password="your_password"
+        password="your_password" # Replace with your actual database password
     )
