@@ -75,7 +75,7 @@ export function MonitoringView() {
         </div>
 
         {/* Right column: metric tiles */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="flex flex-col gap-4">
           <MetricCard
             label="EAR"
             value={snap.ear.toFixed(2)}

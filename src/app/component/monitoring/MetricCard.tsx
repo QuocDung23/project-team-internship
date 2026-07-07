@@ -48,7 +48,7 @@ export function MetricCard({
   );
 
   return (
-    <div className="panel flex flex-col gap-3 px-4 py-3.5">
+    <div className="panel flex flex-col gap-2 px-4 py-3.5 ">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
           {label}
