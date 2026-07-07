@@ -2,6 +2,7 @@
 // Glassmorphism panel pinned on the left, the rest of the viewport is the
 // content area rendered through React Router.
 
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Gauge,
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
 } from "@phosphor-icons/react";
 import type { ReactElement } from "react";
+import { Logout } from "./Logout";
 
 interface NavItem {
   to: string;
@@ -35,92 +37,112 @@ const SECONDARY_NAV: ReadonlyArray<NavItem> = [
   { to: "/settings", label: "Cài đặt", icon: <Gear size={18} weight="duotone" /> },
 ];
 
+// Mock user data - in production, get from auth context
+const CURRENT_USER = {
+  name: "Phạm Thanh Toàn",
+  role: "Điều phối viên ca 3",
+  initials: "PT",
+};
+
 export function Sidebar() {
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   return (
-    <aside
-      className="sticky top-0 flex h-dvh w-[252px] shrink-0 flex-col border-r border-hairline bg-surface/80 px-4 py-5 backdrop-blur-xl"
-      aria-label="Sidebar điều hướng chính"
-    >
-      {/* Brand block */}
-      <div className="flex items-center gap-2.5 px-2 pb-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-emerald-400/20 to-emerald-500/5 ring-1 ring-emerald-500/30">
-          <ShieldCheck size={20} weight="duotone" className="text-emerald-400" />
-        </div>
-        <div className="leading-tight">
-          <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
-            Sentinel Fleet
-          </p>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-            Operations Console
-          </p>
-        </div>
-      </div>
-
-      {/* Workspace switcher */}
-      <button
-        type="button"
-        className="group mb-5 flex items-center gap-3 rounded-lg border border-hairline bg-surface-2/60 px-3 py-2.5 text-left transition hover:border-zinc-700"
+    <>
+      <aside
+        className="sticky top-0 flex h-dvh w-[252px] shrink-0 flex-col border-r border-hairline bg-surface/80 px-4 py-5 backdrop-blur-xl"
+        aria-label="Sidebar điều hướng chính"
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-800 text-[10px] font-bold text-zinc-300 ring-1 ring-zinc-700">
-          KV1
-        </div>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-[12px] font-medium text-zinc-200">
-            Khu vực 1
-          </p>
-          <p className="truncate text-[10px] text-zinc-500">12 xe đang hoạt động</p>
-        </div>
-        <CaretRight
-          size={12}
-          className="text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-zinc-400"
-        />
-      </button>
-
-      {/* Primary navigation */}
-      <nav className="flex flex-1 flex-col gap-7 overflow-y-auto">
-        <SidebarSection label="Vận hành">
-          {PRIMARY_NAV.map((item) => (
-            <SidebarLink key={item.to} item={item} />
-          ))}
-        </SidebarSection>
-
-        <SidebarSection label="Hệ thống">
-          {SECONDARY_NAV.map((item) => (
-            <SidebarLink key={item.to} item={item} />
-          ))}
-        </SidebarSection>
-      </nav>
-
-      {/* Operator identity + connection state */}
-      <div className="mt-4 border-t border-hairline pt-4">
-        <div className="mb-3 flex items-center gap-2 px-2 text-[10px] uppercase tracking-wider text-zinc-500">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/60" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          </span>
-          <span>Central backend · live</span>
+        {/* Brand block */}
+        <div className="flex items-center gap-2.5 px-2 pb-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-emerald-400/20 to-emerald-500/5 ring-1 ring-emerald-500/30">
+            <ShieldCheck size={20} weight="duotone" className="text-emerald-400" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
+              Sentinel Fleet
+            </p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+              Operations Console
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2/50">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-amber-400/20 to-amber-500/5 text-[11px] font-semibold text-amber-300 ring-1 ring-amber-500/30">
-            PT
+        {/* Workspace switcher */}
+        <button
+          type="button"
+          className="group mb-5 flex items-center gap-3 rounded-lg border border-hairline bg-surface-2/60 px-3 py-2.5 text-left transition hover:border-zinc-700"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-800 text-[10px] font-bold text-zinc-300 ring-1 ring-zinc-700">
+            KV1
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-[12px] font-medium text-zinc-200">
-              Phạm Thanh Toàn
+              Khu vực 1
             </p>
-            <p className="truncate text-[10px] text-zinc-500">Điều phối viên ca 3</p>
+            <p className="truncate text-[10px] text-zinc-500">12 xe đang hoạt động</p>
           </div>
-          <button
-            type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
-            aria-label="Đăng xuất"
-          >
-            <SignOut size={14} />
-          </button>
+          <CaretRight
+            size={12}
+            className="text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-zinc-400"
+          />
+        </button>
+
+        {/* Primary navigation */}
+        <nav className="flex flex-1 flex-col gap-7 overflow-y-auto">
+          <SidebarSection label="Vận hành">
+            {PRIMARY_NAV.map((item) => (
+              <SidebarLink key={item.to} item={item} />
+            ))}
+          </SidebarSection>
+
+          <SidebarSection label="Hệ thống">
+            {SECONDARY_NAV.map((item) => (
+              <SidebarLink key={item.to} item={item} />
+            ))}
+          </SidebarSection>
+        </nav>
+
+        {/* Operator identity + connection state */}
+        <div className="mt-4 border-t border-hairline pt-4">
+          <div className="mb-3 flex items-center gap-2 px-2 text-[10px] uppercase tracking-wider text-zinc-500">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            <span>Central backend · live</span>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2/50">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-amber-400/20 to-amber-500/5 text-[11px] font-semibold text-amber-300 ring-1 ring-amber-500/30">
+              {CURRENT_USER.initials}
+            </div>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-[12px] font-medium text-zinc-200">
+                {CURRENT_USER.name}
+              </p>
+              <p className="truncate text-[10px] text-zinc-500">{CURRENT_USER.role}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowLogoutModal(true)}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+              aria-label="Đăng xuất"
+            >
+              <SignOut size={14} />
+            </button>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* Logout confirmation modal */}
+      <Logout
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        userName={CURRENT_USER.name}
+        userRole={CURRENT_USER.role}
+      />
+    </>
   );
 }
 
