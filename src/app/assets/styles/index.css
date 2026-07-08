@@ -1,17 +1,7 @@
 @import "tailwindcss";
+@import "./theme.css";
 
 @theme {
-  --color-canvas: #0a0e14;
-  --color-surface: #11161d;
-  --color-surface-2: #161c25;
-  --color-hairline: #1f2630;
-  --color-text-primary: #e4e7ec;
-  --color-text-secondary: #7d8590;
-  --color-text-tertiary: #5a626d;
-  --color-accent-active: #10b981;
-  --color-accent-warn: #f59e0b;
-  --color-accent-critical: #ef4444;
-  --color-accent-mesh: #facc15;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 }
 
@@ -31,20 +21,20 @@
     overflow-x: hidden;
   }
 
-  /* Thin, dark-themed scrollbars so the console does not flash a default OS bar. */
+  /* Thin, themed scrollbars */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--color-canvas);
+    background: var(--scrollbar-track);
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-hairline);
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #2a3340;
+    background: var(--scrollbar-thumb-hover);
   }
 }
 

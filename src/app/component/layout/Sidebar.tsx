@@ -27,14 +27,31 @@ interface NavItem {
 
 const PRIMARY_NAV: ReadonlyArray<NavItem> = [
   { to: "/", label: "Dashboard", icon: <Gauge size={18} weight="duotone" /> },
-  { to: "/monitoring", label: "Giám sát lái xe", icon: <VideoCamera size={18} weight="duotone" /> },
-  { to: "/drivers", label: "Tài xế", icon: <Users size={18} weight="duotone" /> },
+  {
+    to: "/monitoring",
+    label: "Giám sát lái xe",
+    icon: <VideoCamera size={18} weight="duotone" />,
+  },
+  {
+    to: "/drivers",
+    label: "Tài xế",
+    icon: <Users size={18} weight="duotone" />,
+  },
   { to: "/fleet", label: "Đội xe", icon: <Truck size={18} weight="duotone" /> },
-  { to: "/alerts", label: "Cảnh báo", icon: <Warning size={18} weight="duotone" />, badge: "3" },
+  {
+    to: "/alerts",
+    label: "Cảnh báo",
+    icon: <Warning size={18} weight="duotone" />,
+    badge: "3",
+  },
 ];
 
 const SECONDARY_NAV: ReadonlyArray<NavItem> = [
-  { to: "/settings", label: "Cài đặt", icon: <Gear size={18} weight="duotone" /> },
+  {
+    to: "/settings",
+    label: "Cài đặt",
+    icon: <Gear size={18} weight="duotone" />,
+  },
 ];
 
 // Mock user data - in production, get from auth context
@@ -50,19 +67,39 @@ export function Sidebar() {
   return (
     <>
       <aside
-        className="sticky top-0 flex h-dvh w-[252px] shrink-0 flex-col border-r border-hairline bg-surface/80 px-4 py-5 backdrop-blur-xl"
+        className="sticky top-0 flex h-dvh w-[252px] shrink-0 flex-col px-4 py-5 backdrop-blur-xl transition-colors duration-300"
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderRight: '1px solid var(--color-hairline)',
+        }}
         aria-label="Sidebar điều hướng chính"
       >
         {/* Brand block */}
         <div className="flex items-center gap-2.5 px-2 pb-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-emerald-400/20 to-emerald-500/5 ring-1 ring-emerald-500/30">
-            <ShieldCheck size={20} weight="duotone" className="text-emerald-400" />
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-lg"
+            style={{
+              background: `linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.05) 100%)`,
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+            }}
+          >
+            <ShieldCheck
+              size={20}
+              weight="duotone"
+              style={{ color: 'var(--color-accent-active)' }}
+            />
           </div>
           <div className="leading-tight">
-            <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
+            <p
+              className="text-[13px] font-semibold tracking-tight"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
               Sentinel Fleet
             </p>
-            <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+            <p
+              className="text-[10px] uppercase tracking-[0.16em]"
+              style={{ color: 'var(--color-text-tertiary)' }}
+            >
               Operations Console
             </p>
           </div>
@@ -71,20 +108,40 @@ export function Sidebar() {
         {/* Workspace switcher */}
         <button
           type="button"
-          className="group mb-5 flex items-center gap-3 rounded-lg border border-hairline bg-surface-2/60 px-3 py-2.5 text-left transition hover:border-zinc-700"
+          className="group mb-5 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-300 hover:border-opacity-60"
+          style={{
+            borderColor: 'var(--color-hairline)',
+            backgroundColor: 'rgba(var(--color-surface-2), 0.6)',
+          }}
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-800 text-[10px] font-bold text-zinc-300 ring-1 ring-zinc-700">
+          <div
+            className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold"
+            style={{
+              backgroundColor: 'var(--color-surface-2)',
+              color: 'var(--color-text-secondary)',
+              border: '1px solid var(--color-hairline)',
+            }}
+          >
             KV1
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-[12px] font-medium text-zinc-200">
+            <p
+              className="truncate text-[12px] font-medium"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
               Khu vực 1
             </p>
-            <p className="truncate text-[10px] text-zinc-500">12 xe đang hoạt động</p>
+            <p
+              className="truncate text-[10px]"
+              style={{ color: 'var(--color-text-tertiary)' }}
+            >
+              12 xe đang hoạt động
+            </p>
           </div>
           <CaretRight
             size={12}
-            className="text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-zinc-400"
+            className="transition-transform group-hover:translate-x-0.5"
+            style={{ color: 'var(--color-text-tertiary)' }}
           />
         </button>
 
@@ -104,29 +161,60 @@ export function Sidebar() {
         </nav>
 
         {/* Operator identity + connection state */}
-        <div className="mt-4 border-t border-hairline pt-4">
-          <div className="mb-3 flex items-center gap-2 px-2 text-[10px] uppercase tracking-wider text-zinc-500">
+        <div
+          className="mt-4 pt-4"
+          style={{ borderTop: '1px solid var(--color-hairline)' }}
+        >
+          <div
+            className="mb-3 flex items-center gap-2 px-2 text-[10px] uppercase tracking-wider"
+            style={{ color: 'var(--color-text-tertiary)' }}
+          >
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/60" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span
+                className="absolute inset-0 animate-ping rounded-full"
+                style={{ backgroundColor: 'rgba(16, 185, 129, 0.6)' }}
+              />
+              <span
+                className="relative inline-flex h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: 'var(--color-accent-active)' }}
+              />
             </span>
             <span>Central backend · live</span>
           </div>
 
-          <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2/50">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-amber-400/20 to-amber-500/5 text-[11px] font-semibold text-amber-300 ring-1 ring-amber-500/30">
+          <div
+            className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors"
+            style={{ backgroundColor: 'transparent' }}
+          >
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-semibold"
+              style={{
+                background: `linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%)`,
+                color: 'var(--color-accent-warn)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+              }}
+            >
               {CURRENT_USER.initials}
             </div>
             <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-[12px] font-medium text-zinc-200">
+              <p
+                className="truncate text-[12px] font-medium"
+                style={{ color: 'var(--color-text-primary)' }}
+              >
                 {CURRENT_USER.name}
               </p>
-              <p className="truncate text-[10px] text-zinc-500">{CURRENT_USER.role}</p>
+              <p
+                className="truncate text-[10px]"
+                style={{ color: 'var(--color-text-tertiary)' }}
+              >
+                {CURRENT_USER.role}
+              </p>
             </div>
             <button
               type="button"
               onClick={() => setShowLogoutModal(true)}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+              className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+              style={{ color: 'var(--color-text-tertiary)' }}
               aria-label="Đăng xuất"
             >
               <SignOut size={14} />
@@ -154,7 +242,10 @@ interface SidebarSectionProps {
 function SidebarSection({ label, children }: SidebarSectionProps) {
   return (
     <div>
-      <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+      <p
+        className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.16em]"
+        style={{ color: 'var(--color-text-tertiary)' }}
+      >
         {label}
       </p>
       <ul className="flex flex-col gap-0.5">{children}</ul>
@@ -174,27 +265,52 @@ function SidebarLink({ item }: SidebarLinkProps) {
         end={item.to === "/"}
         className={({ isActive }) =>
           [
-            "group flex items-center gap-3 rounded-md px-2.5 py-2 text-[12.5px] font-medium transition",
+            "group flex items-center gap-3 rounded-md px-2.5 py-2 text-[12.5px] font-medium transition-all duration-200",
             isActive
-              ? "bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/25"
-              : "text-zinc-400 hover:bg-surface-2/70 hover:text-zinc-100",
+              ? "ring-1"
+              : "",
           ].join(" ")
+        }
+        style={({ isActive }) =>
+          isActive
+            ? {
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                color: 'var(--color-accent-active)',
+                ringColor: 'rgba(16, 185, 129, 0.25)',
+              }
+            : {
+                color: 'var(--color-text-secondary)',
+              }
         }
       >
         {({ isActive }) => (
           <>
             <span
-              className={`flex h-7 w-7 items-center justify-center rounded-md transition ${
+              className="flex h-7 w-7 items-center justify-center rounded-md transition-all duration-200"
+              style={
                 isActive
-                  ? "bg-emerald-500/15 text-emerald-300"
-                  : "bg-transparent text-zinc-500 group-hover:text-zinc-300"
-              }`}
+                  ? {
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                      color: 'var(--color-accent-active)',
+                    }
+                  : {
+                      backgroundColor: 'transparent',
+                      color: 'var(--color-text-tertiary)',
+                    }
+              }
             >
               {item.icon}
             </span>
             <span className="flex-1 truncate">{item.label}</span>
             {item.badge && (
-              <span className="ml-auto rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-rose-300 ring-1 ring-rose-500/25">
+              <span
+                className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  color: 'var(--color-accent-critical)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                }}
+              >
                 {item.badge}
               </span>
             )}

@@ -11,31 +11,62 @@ export default function DashboardHeader({
   connected,
 }: DashboardHeaderProps) {
   return (
-    <header className="panel flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+    <header
+      className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 rounded-2xl border"
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderColor: 'var(--color-hairline)',
+      }}
+    >
       <div>
-        <h1 className="text-base font-semibold tracking-tight text-zinc-100">
+        <h1
+          className="text-base font-semibold tracking-tight"
+          style={{ color: 'var(--color-text-primary)' }}
+        >
           Tổng quan đội xe
         </h1>
-        <p className="mt-0.5 text-[12px] text-zinc-400">
+        <p
+          className="mt-0.5 text-[12px]"
+          style={{ color: 'var(--color-text-secondary)' }}
+        >
           Ca trực đang chạy · 3 khu vực · cập nhật liên tục từ central backend
         </p>
       </div>
       <div className="flex items-center gap-3 text-[11px]">
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-surface-2 px-2.5 py-1.5 text-zinc-400">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5"
+          style={{
+            borderColor: 'var(--color-hairline)',
+            backgroundColor: 'var(--color-surface-2)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
           <ClockClockwise size={12} />
           <span className="font-mono-num">{formatTime(now)}</span>
         </span>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 ring-1 ${
+          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 ring-1`}
+          style={
             connected
-              ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/25"
-              : "bg-zinc-500/10 text-zinc-300 ring-zinc-500/25"
-          }`}
+              ? {
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  color: 'var(--color-accent-active)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                }
+              : {
+                  backgroundColor: 'rgba(113, 113, 122, 0.1)',
+                  color: 'var(--color-text-secondary)',
+                  border: '1px solid rgba(113, 113, 122, 0.25)',
+                }
+          }
         >
           <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              connected ? "bg-emerald-400" : "bg-zinc-400"
-            }`}
+            className="h-1.5 w-1.5 rounded-full"
+            style={{
+              backgroundColor: connected
+                ? 'var(--color-accent-active)'
+                : 'var(--color-text-tertiary)',
+            }}
           />
           {connected ? "Live" : "Connecting"}
         </span>
