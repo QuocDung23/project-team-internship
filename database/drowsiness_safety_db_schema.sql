@@ -21,7 +21,6 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";   -- cho gen_random_uuid()
 -- ============================================================================
 
 CREATE TYPE driver_status AS ENUM ('active', 'inactive', 'suspended');
-CREATE TYPE gender_type AS ENUM ('male', 'female', 'other');
 
 CREATE TYPE trip_status AS ENUM (
     'scheduled',
@@ -72,10 +71,6 @@ CREATE TABLE drivers (
     license_number      VARCHAR(50) UNIQUE NOT NULL,
     phone               VARCHAR(20),
     email               VARCHAR(150),
-    date_of_birth       DATE,
-    gender              gender_type,
-    profile_photo_path  TEXT,            -- ảnh khuôn mặt chuẩn (dùng làm tham chiếu/calibration)
-    baseline_ear        NUMERIC(5,3),    -- EAR trung bình khi mắt mở bình thường của tài xế (calibration)
     status               driver_status NOT NULL DEFAULT 'active',
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -87,8 +82,7 @@ CREATE TRIGGER trg_drivers_updated_at
 
 CREATE INDEX idx_drivers_status ON drivers(status);
 
-COMMENT ON TABLE drivers IS 'Thông tin tài xế và thông số hiệu chỉnh (calibration) cho phát hiện buồn ngủ';
-COMMENT ON COLUMN drivers.baseline_ear IS 'EAR nền tham chiếu khi mắt mở bình thường, dùng để cá nhân hoá ngưỡng cảnh báo';
+COMMENT ON TABLE drivers IS 'Thông tin tài xế';
 
 -- ============================================================================
 -- BẢNG: trips (chuyến đi)
@@ -150,15 +144,7 @@ CREATE TABLE alerts (
     cnn_confidence                     NUMERIC(5,4),  -- độ tin cậy phân loại (0-1)
     cnn_label                            VARCHAR(20), -- ví dụ: 'drowsy' / 'alert'
 
-    captured_frame_path                  TEXT,        -- đường dẫn ảnh chụp tại thời điểm cảnh báo
-    latitude                              NUMERIC(9,6),
-    longitude                              NUMERIC(9,6),
-
     alarm_triggered                         BOOLEAN NOT NULL DEFAULT false,  -- có phát âm thanh cảnh báo (audio/) không
-    alarm_audio_file                          VARCHAR(100),
-
-    acknowledged                               BOOLEAN NOT NULL DEFAULT false, -- tài xế/hệ thống đã xác nhận
-    acknowledged_at                             TIMESTAMPTZ,
 
     occurred_at                                   TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at                                     TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -302,14 +288,17 @@ GROUP BY t.trip_id, t.driver_id, dr.full_name, t.status, t.start_time, t.end_tim
 -- ============================================================================
 -- GHI CHÚ THIẾT KẾ
 -- ============================================================================
--- 1. drivers.baseline_ear cho phép cá nhân hoá ngưỡng EAR thay vì dùng hằng số
---    cứng như trong drowsiness_detect.py gốc.
--- 2. alerts tách riêng cột cho 2 phương pháp phát hiện (EAR vs CNN) để không
+-- 1. alerts tách riêng cột cho 2 phương pháp phát hiện (EAR vs CNN) để không
 --    phải dùng JSONB cho dữ liệu có cấu trúc rõ ràng, nhưng vẫn có extra_config
 --    JSONB ở settings cho các tham số mở rộng trong tương lai (vd: MAR ngáp,
 --    head-pose, camera thứ 2...).
--- 3. Trigger bump_trip_alert_counters giữ trips luôn có số liệu tổng hợp cập
+-- 2. Trigger bump_trip_alert_counters giữ trips luôn có số liệu tổng hợp cập
 --    nhật realtime mà không cần tính lại COUNT() mỗi lần truy vấn dashboard.
--- 4. Có thể mở rộng thêm bảng vehicles, users/admin (giám sát viên), và bảng
+-- 3. Có thể mở rộng thêm bảng vehicles, users/admin (giám sát viên), và bảng
 --    audit_log nếu cần phân quyền/kiểm toán chi tiết hơn.
+-- 4. drivers/alerts đã được rút gọn (bỏ date_of_birth, gender, profile_photo_path,
+--    baseline_ear, captured_frame_path, latitude, longitude, alarm_audio_file,
+--    acknowledged, acknowledged_at) vì chưa có API nào dùng tới; trips (GPS,
+--    notes, avg_drowsiness_score) và settings vẫn được giữ nguyên để dành cho
+--    tính năng sau này.
 -- ============================================================================
