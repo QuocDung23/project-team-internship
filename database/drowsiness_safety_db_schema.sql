@@ -2,14 +2,9 @@
 -- CƠ SỞ DỮ LIỆU: Hệ thống Phát hiện Buồn ngủ & Quản lý An toàn Chuyến đi
 -- (Real-time Driver Drowsiness Detection & Trip Safety Management)
 --
--- Thiết kế bám theo pipeline nhận dạng trong repo ngochoai0810/ML
--- (dựa trên Driver-Drowsiness-Detector của mohitwildbeast), gồm 2 phương pháp
--- phát hiện song song:
---   1) EAR (Eye Aspect Ratio) qua dlib 68-landmark + Haar cascades
---      -> face_and_eye_detector_*.py, drowsiness_detect.py
---      -> ngưỡng EAR + số khung hình liên tiếp mắt nhắm -> phát âm báo động (audio/)
---   2) CNN phân loại mắt mở/nhắm (collect_data.py -> train_cnn.py -> integrate_cnn.py)
---      -> trả về nhãn (drowsy/alert) kèm độ tin cậy (confidence)
+-- Schema for the production detector/backend/frontend data flow.
+-- integrate_cnn.py publishes realtime monitoring snapshots, frame streams,
+-- and persisted trip alerts through the FastAPI backend.
 --
 -- PostgreSQL 14+
 -- ============================================================================
@@ -33,7 +28,7 @@ CREATE TYPE trip_status AS ENUM (
 
 CREATE TYPE detection_method AS ENUM (
     'ear_dlib',        -- Eye Aspect Ratio (dlib landmarks / Haar cascade)
-    'cnn_classifier',  -- CNN train_cnn.py / integrate_cnn.py
+    'cnn_classifier',  -- CNN classifier in integrate_cnn.py
     'manual'           -- tài xế/giám sát viên tự báo cáo
 );
 
@@ -142,7 +137,7 @@ CREATE TABLE alerts (
     severity                      alert_severity NOT NULL DEFAULT 'warning',
     detection_method               detection_method NOT NULL,
 
-    -- Thông số riêng cho phương pháp EAR (drowsiness_detect.py)
+    -- Thông số riêng cho phương pháp EAR
     ear_value                        NUMERIC(5,3),   -- giá trị EAR đo được tại thời điểm cảnh báo
     consecutive_frame_count           INTEGER,        -- số khung hình liên tiếp mắt nhắm vượt ngưỡng
 
@@ -200,7 +195,7 @@ CREATE TABLE settings (
     scope                       settings_scope NOT NULL DEFAULT 'global',
     driver_id                     UUID REFERENCES drivers(driver_id) ON DELETE CASCADE,  -- NULL nếu scope = global
 
-    -- Ngưỡng EAR (tương đương EYE_ASPECT_RATIO_THRESHOLD trong drowsiness_detect.py)
+    -- Ngưỡng EAR cho detector realtime
     ear_threshold                    NUMERIC(5,3) NOT NULL DEFAULT 0.30,
     ear_consec_frames                  INTEGER NOT NULL DEFAULT 15,  -- EYE_ASPECT_RATIO_CONSEC_FRAMES
 
@@ -303,7 +298,7 @@ GROUP BY t.trip_id, t.driver_id, dr.full_name, t.status, t.start_time, t.end_tim
 -- GHI CHÚ THIẾT KẾ
 -- ============================================================================
 -- 1. drivers.baseline_ear cho phép cá nhân hoá ngưỡng EAR thay vì dùng hằng số
---    cứng như trong drowsiness_detect.py gốc.
+--    cứng trong detector.
 -- 2. alerts tách riêng cột cho 2 phương pháp phát hiện (EAR vs CNN) để không
 --    phải dùng JSONB cho dữ liệu có cấu trúc rõ ràng, nhưng vẫn có extra_config
 --    JSONB ở settings cho các tham số mở rộng trong tương lai (vd: MAR ngáp,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from services.alert_service import *
 from models.schemas import AlertCreate
 
@@ -12,14 +12,27 @@ def save_alert(
     alert:AlertCreate
 ):
 
-    event=create_alert(
-        alert.trip_id,
-        alert.alert_type,
-        alert.method
-    )
+    try:
+        event=create_alert(
+            trip_id=alert.trip_id,
+            alert_type=alert.alert_type,
+            detection_method=alert.detection_method,
+            severity=alert.severity,
+            ear_value=alert.ear_value,
+            consecutive_frame_count=alert.consecutive_frame_count,
+            cnn_confidence=alert.cnn_confidence,
+            cnn_label=alert.cnn_label,
+            alarm_triggered=alert.alarm_triggered,
+            captured_frame_path=alert.captured_frame_path,
+            latitude=alert.latitude,
+            longitude=alert.longitude,
+            alarm_audio_file=alert.alarm_audio_file
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     return {
-        "event_id":event
+        "alert_id":event
     }
 
 

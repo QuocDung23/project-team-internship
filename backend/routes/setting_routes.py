@@ -1,6 +1,6 @@
-from fastapi import APIRouter
-from config.db import get_connection
+from fastapi import APIRouter, HTTPException
 from models.schemas import SettingUpdate
+from services.setting_service import get_global_settings, update_global_settings
 
 router=APIRouter(
     tags=["Settings"]
@@ -9,46 +9,15 @@ router=APIRouter(
 
 @router.get("/settings")
 def get_settings():
-
-    conn=get_connection()
-    cur=conn.cursor()
-
-    cur.execute("""
-        SELECT *
-        FROM detection_settings
-        LIMIT 1
-    """)
-
-    data=cur.fetchone()
-
-    conn.close()
-
-    return data
+    settings=get_global_settings()
+    if settings is None:
+        raise HTTPException(status_code=404, detail="global settings not found")
+    return settings
 
 
 @router.put("/settings")
-def update_settings(
-    setting:SettingUpdate
-):
-
-    conn=get_connection()
-    cur=conn.cursor()
-
-    cur.execute("""
-        UPDATE detection_settings
-        SET
-        ear_threshold=%s,
-        mar_threshold=%s,
-        frame_threshold=%s
-    """,(
-        setting.ear_threshold,
-        setting.mar_threshold,
-        setting.frame_threshold
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return {
-        "success":True
-    }
+def update_settings(setting:SettingUpdate):
+    try:
+        return update_global_settings(setting.dict(exclude_unset=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))

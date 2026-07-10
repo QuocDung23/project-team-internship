@@ -1,10 +1,13 @@
+import os
+
 import psycopg2
 
 def get_connection():
 
     return psycopg2.connect(
-        host="localhost",
-        database="drowsiness_safety_db",
-        user="postgres",
-        password="your_password" # Replace with your actual database password
+        host=os.environ.get("DROWSINESS_DB_HOST", "localhost"),
+        database=os.environ.get("DROWSINESS_DB_NAME", "drowsiness_safety_db"),
+        user=os.environ.get("DROWSINESS_DB_USER", "postgres"),
+        password=os.environ.get("DROWSINESS_DB_PASSWORD", ""),
+        port=int(os.environ.get("DROWSINESS_DB_PORT", "5432")),
     )
