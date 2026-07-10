@@ -1,12 +1,12 @@
 # Real-Time Driver Drowsiness Detection and Trip Safety Management
 
-Production-focused full-stack system for detecting driver drowsiness in real time, publishing detector telemetry to a FastAPI backend, and displaying trip safety status in a React operations console.
+Production-focused trip safety system. This repository now includes a phase-1 FastAPI backend foundation, the validated PostgreSQL schema, the realtime detector runtime, and the frontend shell.
 
 ## Runtime Components
 
 - `integrate_cnn.py`: realtime detector and single runtime entrypoint.
 - `detector_backend.py`: HTTP client for posting detector snapshots, frames, alerts, settings fetches, and queued alert retries.
-- `backend/`: FastAPI service for drivers, trips, alerts, settings, and live monitoring stream endpoints.
+- `backend/`: FastAPI backend foundation with configuration, logging, PostgreSQL connection setup, schema bootstrap support, and health endpoints.
 - `frontend/`: React/Vite operations console backed only by live backend data.
 - `database/drowsiness_safety_db_schema.sql`: PostgreSQL schema.
 - `best_model_v2.h5` and `class_indices_v2.json`: production CNN model and label mapping.
@@ -38,46 +38,42 @@ Production-focused full-stack system for detecting driver drowsiness in real tim
    DROWSINESS_DB_PORT=5432
    ```
 
+   Optional settings are documented in `backend/.env.example`.
+
 ## Run
 
-Start the backend:
+Start the backend from the project root:
 
 ```bash
-cd backend
-uvicorn app:app --reload
+python -m uvicorn backend.app:app --reload
 ```
 
-Create a driver and active trip:
+Open the API docs:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/drivers \
-  -H "Content-Type: application/json" \
-  -d "{\"full_name\":\"Driver\",\"license_number\":\"LICENSE-1\",\"status\":\"active\"}"
-
-curl -X POST http://127.0.0.1:8000/trips/start \
-  -H "Content-Type: application/json" \
-  -d "{\"driver_id\":\"<driver_id>\",\"vehicle_plate\":\"51H-123.45\"}"
+http://127.0.0.1:8000/docs
 ```
 
-Start the frontend:
+Check service health:
 
 ```bash
-cd frontend
-npm install
-VITE_ACTIVE_TRIP_ID=<trip_id> npm run dev
+curl http://127.0.0.1:8000/health
 ```
 
-Start realtime detection:
+Check database connectivity:
 
 ```bash
-python integrate_cnn.py \
-  --trip-id <trip_id> \
-  --backend-url http://127.0.0.1:8000 \
-  --sync-settings \
-  --alert-frame-dir alert_frames
+curl http://127.0.0.1:8000/health/db
 ```
 
-The detector defaults to `best_model_v2.h5` and `class_indices_v2.json`.
+Initialize or validate the schema:
+
+```bash
+python -m backend.db.schema init
+python -m backend.db.schema validate
+```
+
+The schema utility reads `database/drowsiness_safety_db_schema.sql` and does not modify it.
 
 ## Data Flow
 
@@ -96,6 +92,7 @@ Backend and detector:
 ```bash
 python -m unittest discover -s tests
 python -m py_compile integrate_cnn.py detector_backend.py backend/models/schemas.py backend/services/*.py backend/routes/*.py
+python -m py_compile backend/app.py backend/core/*.py backend/db/*.py backend/api/routes/*.py
 ```
 
 Frontend:
