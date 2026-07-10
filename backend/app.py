@@ -2,6 +2,8 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from backend.api.routes.auth import router as auth_router
+from backend.api.routes.drivers import router as drivers_router
 from backend.api.routes.system import router as system_router
 from backend.core.exceptions import register_exception_handlers
 from backend.core.logging import configure_logging
@@ -30,5 +32,7 @@ app.add_middleware(
 
 register_exception_handlers(app)
 app.include_router(system_router)
+app.include_router(auth_router, prefix=settings.api_prefix)
+app.include_router(drivers_router, prefix=settings.api_prefix)
 
 logger.debug("FastAPI application initialized")
