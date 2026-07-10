@@ -1,52 +1,138 @@
 -- ============================================================================
--- CƠ SỞ DỮ LIỆU: Hệ thống Phát hiện Buồn ngủ & Quản lý An toàn Chuyến đi
--- (Real-time Driver Drowsiness Detection & Trip Safety Management)
+-- AI-Powered Real-Time Trip Safety Management System
+-- PostgreSQL schema for a production-oriented modular monolith.
 --
--- Schema for the production detector/backend/frontend data flow.
--- integrate_cnn.py publishes realtime monitoring snapshots, frame streams,
--- and persisted trip alerts through the FastAPI backend.
+-- Design principles:
+-- - FastAPI backend owns all database writes.
+-- - AI detector runtime writes only through backend APIs.
+-- - Live frames/snapshots are operational state, not permanent database rows.
+-- - SafetyEvent is an immutable detected fact.
+-- - Alert is an actionable notification with lifecycle state.
+-- - SafetyScore is explainable and rule-based, not ML-generated.
 --
 -- PostgreSQL 14+
 -- ============================================================================
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";   -- cho gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================================================
 -- ENUM TYPES
 -- ============================================================================
 
-CREATE TYPE driver_status AS ENUM ('active', 'inactive', 'suspended');
-CREATE TYPE gender_type AS ENUM ('male', 'female', 'other');
+CREATE TYPE user_role AS ENUM (
+    'admin',
+    'operator',
+    'viewer'
+);
+
+CREATE TYPE user_status AS ENUM (
+    'active',
+    'inactive'
+);
+
+CREATE TYPE driver_status AS ENUM (
+    'active',
+    'inactive',
+    'suspended'
+);
+
+CREATE TYPE driver_session_status AS ENUM (
+    'active',
+    'ended',
+    'expired'
+);
+
+CREATE TYPE vehicle_status AS ENUM (
+    'available',
+    'assigned',
+    'maintenance',
+    'inactive'
+);
 
 CREATE TYPE trip_status AS ENUM (
+    'draft',
     'scheduled',
+    'assigned',
     'in_progress',
     'completed',
     'cancelled',
-    'emergency_stopped'   -- dừng khẩn do cảnh báo buồn ngủ nghiêm trọng liên tục
+    'aborted'
+);
+
+CREATE TYPE assignment_status AS ENUM (
+    'assigned',
+    'in_progress',
+    'completed',
+    'cancelled',
+    'released'
+);
+
+CREATE TYPE monitoring_status AS ENUM (
+    'active',
+    'ended',
+    'failed'
+);
+
+CREATE TYPE safety_event_type AS ENUM (
+    'drowsiness_detected',
+    'eyes_closed',
+    'yawning',
+    'no_face_detected',
+    'head_nod',
+    'distraction',
+    'camera_blocked'
 );
 
 CREATE TYPE detection_method AS ENUM (
-    'ear_dlib',        -- Eye Aspect Ratio (dlib landmarks / Haar cascade)
-    'cnn_classifier',  -- CNN classifier in integrate_cnn.py
-    'manual'           -- tài xế/giám sát viên tự báo cáo
+    'ear_dlib',
+    'mar_dlib',
+    'head_pose',
+    'cnn_classifier',
+    'combined',
+    'manual'
+);
+
+CREATE TYPE event_severity AS ENUM (
+    'info',
+    'warning',
+    'critical'
 );
 
 CREATE TYPE alert_type AS ENUM (
-    'eyes_closed',        -- EAR dưới ngưỡng đủ số khung hình liên tiếp
-    'drowsy_cnn',          -- CNN phân loại "drowsy"
-    'no_face_detected',    -- không phát hiện khuôn mặt (camera che, tài xế quay đi)
-    'yawning',              -- ngáp (mở rộng, nếu bật)
-    'head_nod',              -- gật đầu / mất tư thế đầu (mở rộng)
-    'distraction'            -- mất tập trung (mở rộng)
+    'drowsiness',
+    'driver_inattention',
+    'camera_issue',
+    'manual_review',
+    'system'
 );
 
-CREATE TYPE alert_severity AS ENUM ('info', 'warning', 'critical');
+CREATE TYPE alert_status AS ENUM (
+    'open',
+    'acknowledged',
+    'escalated',
+    'resolved',
+    'ignored'
+);
 
-CREATE TYPE settings_scope AS ENUM ('global', 'driver');
+CREATE TYPE alert_severity AS ENUM (
+    'info',
+    'warning',
+    'critical'
+);
+
+CREATE TYPE safety_grade AS ENUM (
+    'A',
+    'B',
+    'C'
+);
+
+CREATE TYPE settings_scope AS ENUM (
+    'global',
+    'driver'
+);
 
 -- ============================================================================
--- FUNCTION dùng chung: tự động cập nhật cột updated_at
+-- SHARED FUNCTIONS
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION set_updated_at()
@@ -57,254 +143,572 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION prevent_safety_event_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'safety_events are immutable after creation';
+END;
+$$ LANGUAGE plpgsql;
+
 -- ============================================================================
--- BẢNG: drivers (tài xế)
+-- USERS
+-- ============================================================================
+
+CREATE TABLE users (
+    user_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name     VARCHAR(150) NOT NULL,
+    email         VARCHAR(150) NOT NULL UNIQUE,
+    role          user_role NOT NULL DEFAULT 'operator',
+    status        user_status NOT NULL DEFAULT 'active',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+COMMENT ON TABLE users IS 'Dashboard users such as admins, operators, and viewers.';
+
+-- ============================================================================
+-- DRIVERS
 -- ============================================================================
 
 CREATE TABLE drivers (
-    driver_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    full_name           VARCHAR(150) NOT NULL,
-    license_number      VARCHAR(50) UNIQUE NOT NULL,
-    phone               VARCHAR(20),
-    email               VARCHAR(150),
-    date_of_birth       DATE,
-    gender              gender_type,
-    profile_photo_path  TEXT,            -- ảnh khuôn mặt chuẩn (dùng làm tham chiếu/calibration)
-    baseline_ear        NUMERIC(5,3),    -- EAR trung bình khi mắt mở bình thường của tài xế (calibration)
-    status               driver_status NOT NULL DEFAULT 'active',
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+    driver_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name       VARCHAR(150) NOT NULL,
+    license_number  VARCHAR(50) NOT NULL UNIQUE,
+    phone           VARCHAR(30),
+    email           VARCHAR(150),
+    status          driver_status NOT NULL DEFAULT 'active',
+    baseline_ear    NUMERIC(5,3),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_drivers_baseline_ear
+        CHECK (baseline_ear IS NULL OR baseline_ear >= 0)
 );
 
 CREATE TRIGGER trg_drivers_updated_at
     BEFORE UPDATE ON drivers
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-CREATE INDEX idx_drivers_status ON drivers(status);
-
-COMMENT ON TABLE drivers IS 'Thông tin tài xế và thông số hiệu chỉnh (calibration) cho phát hiện buồn ngủ';
-COMMENT ON COLUMN drivers.baseline_ear IS 'EAR nền tham chiếu khi mắt mở bình thường, dùng để cá nhân hoá ngưỡng cảnh báo';
+COMMENT ON TABLE drivers IS 'Driver profile and calibration data.';
+COMMENT ON COLUMN drivers.baseline_ear IS 'Optional calibrated eye aspect ratio baseline for this driver.';
 
 -- ============================================================================
--- BẢNG: trips (chuyến đi)
+-- DRIVER SESSIONS
+-- ============================================================================
+
+CREATE TABLE driver_sessions (
+    driver_session_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    driver_id          UUID NOT NULL REFERENCES drivers(driver_id) ON DELETE RESTRICT,
+    status             driver_session_status NOT NULL DEFAULT 'active',
+    started_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ended_at           TIMESTAMPTZ,
+    device_label       VARCHAR(100),
+    notes              TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_driver_sessions_time
+        CHECK (ended_at IS NULL OR ended_at >= started_at),
+    CONSTRAINT chk_driver_sessions_end_state
+        CHECK (
+            (status = 'active' AND ended_at IS NULL)
+            OR (status IN ('ended', 'expired') AND ended_at IS NOT NULL)
+        )
+);
+
+CREATE UNIQUE INDEX uq_active_driver_session
+    ON driver_sessions(driver_id)
+    WHERE status = 'active';
+
+COMMENT ON TABLE driver_sessions IS 'Operational session for a driver using the detector or dashboard workflow.';
+
+-- ============================================================================
+-- VEHICLES
+-- ============================================================================
+
+CREATE TABLE vehicles (
+    vehicle_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plate_number  VARCHAR(30) NOT NULL UNIQUE,
+    vehicle_type  VARCHAR(50),
+    status        vehicle_status NOT NULL DEFAULT 'available',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_vehicles_updated_at
+    BEFORE UPDATE ON vehicles
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+COMMENT ON TABLE vehicles IS 'Vehicle master data.';
+
+-- ============================================================================
+-- TRIPS
 -- ============================================================================
 
 CREATE TABLE trips (
-    trip_id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    driver_id               UUID NOT NULL REFERENCES drivers(driver_id) ON DELETE RESTRICT,
-    vehicle_plate           VARCHAR(20),
-    start_time               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    end_time                 TIMESTAMPTZ,
-    start_latitude           NUMERIC(9,6),
-    start_longitude          NUMERIC(9,6),
-    end_latitude              NUMERIC(9,6),
-    end_longitude              NUMERIC(9,6),
-    distance_km                NUMERIC(8,2),
-    status                       trip_status NOT NULL DEFAULT 'scheduled',
-    total_alerts_count            INTEGER NOT NULL DEFAULT 0,
-    critical_alerts_count         INTEGER NOT NULL DEFAULT 0,
-    avg_drowsiness_score          NUMERIC(5,2), -- điểm buồn ngủ trung bình toàn chuyến (0-100)
-    safety_score                    NUMERIC(5,2), -- điểm an toàn 0-100, tính khi kết thúc chuyến (xem API tính điểm)
-    safety_grade                     CHAR(1),      -- xếp hạng 'A' / 'B' / 'C' suy ra từ safety_score
-    notes                          TEXT,
-    created_at                       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at                       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    trip_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code               VARCHAR(50) UNIQUE,
+    status             trip_status NOT NULL DEFAULT 'draft',
+    planned_start_at   TIMESTAMPTZ,
+    planned_end_at     TIMESTAMPTZ,
+    actual_start_at    TIMESTAMPTZ,
+    actual_end_at      TIMESTAMPTZ,
+    origin             TEXT,
+    destination        TEXT,
+    cancelled_reason   TEXT,
+    aborted_reason     TEXT,
+    created_by         UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    CONSTRAINT chk_trip_time CHECK (end_time IS NULL OR end_time >= start_time),
-    CONSTRAINT chk_trip_safety_grade CHECK (safety_grade IS NULL OR safety_grade IN ('A','B','C'))
+    CONSTRAINT chk_trips_planned_time
+        CHECK (planned_end_at IS NULL OR planned_start_at IS NULL OR planned_end_at >= planned_start_at),
+    CONSTRAINT chk_trips_actual_time
+        CHECK (actual_end_at IS NULL OR actual_start_at IS NULL OR actual_end_at >= actual_start_at),
+    CONSTRAINT chk_trips_cancelled_reason
+        CHECK (status <> 'cancelled' OR cancelled_reason IS NOT NULL),
+    CONSTRAINT chk_trips_aborted_reason
+        CHECK (status <> 'aborted' OR aborted_reason IS NOT NULL)
 );
 
 CREATE TRIGGER trg_trips_updated_at
     BEFORE UPDATE ON trips
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-CREATE INDEX idx_trips_driver_id ON trips(driver_id);
-CREATE INDEX idx_trips_status ON trips(status);
-CREATE INDEX idx_trips_start_time ON trips(start_time);
-
-COMMENT ON TABLE trips IS 'Mỗi chuyến đi của một tài xế, tổng hợp số liệu an toàn theo thời gian thực';
+COMMENT ON TABLE trips IS 'Trip lifecycle record: draft, scheduled, assigned, in progress, completed, cancelled, or aborted.';
 
 -- ============================================================================
--- BẢNG: alerts (cảnh báo) - log từng sự kiện phát hiện buồn ngủ/bất thường
+-- TRIP ASSIGNMENTS
+-- ============================================================================
+
+CREATE TABLE trip_assignments (
+    trip_assignment_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id             UUID NOT NULL REFERENCES trips(trip_id) ON DELETE CASCADE,
+    driver_id           UUID NOT NULL REFERENCES drivers(driver_id) ON DELETE RESTRICT,
+    vehicle_id          UUID NOT NULL REFERENCES vehicles(vehicle_id) ON DELETE RESTRICT,
+    status              assignment_status NOT NULL DEFAULT 'assigned',
+    assigned_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    unassigned_at       TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_trip_assignments_time
+        CHECK (unassigned_at IS NULL OR unassigned_at >= assigned_at),
+    CONSTRAINT chk_trip_assignments_end_state
+        CHECK (
+            (status IN ('assigned', 'in_progress') AND unassigned_at IS NULL)
+            OR (status IN ('completed', 'cancelled', 'released') AND unassigned_at IS NOT NULL)
+        )
+);
+
+CREATE UNIQUE INDEX uq_active_trip_assignment
+    ON trip_assignments(trip_id)
+    WHERE status IN ('assigned', 'in_progress');
+
+CREATE UNIQUE INDEX uq_active_driver_assignment
+    ON trip_assignments(driver_id)
+    WHERE status IN ('assigned', 'in_progress');
+
+CREATE UNIQUE INDEX uq_active_vehicle_assignment
+    ON trip_assignments(vehicle_id)
+    WHERE status IN ('assigned', 'in_progress');
+
+COMMENT ON TABLE trip_assignments IS 'Connects one trip to the active driver and vehicle assignment.';
+
+-- ============================================================================
+-- MONITORING SESSIONS
+-- ============================================================================
+
+CREATE TABLE monitoring_sessions (
+    monitoring_session_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id                UUID NOT NULL REFERENCES trips(trip_id) ON DELETE CASCADE,
+    driver_session_id      UUID REFERENCES driver_sessions(driver_session_id) ON DELETE SET NULL,
+    status                 monitoring_status NOT NULL DEFAULT 'active',
+    detector_instance_id   VARCHAR(100),
+    camera_index           INTEGER,
+    started_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ended_at               TIMESTAMPTZ,
+    last_snapshot_at       TIMESTAMPTZ,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_monitoring_sessions_time
+        CHECK (ended_at IS NULL OR ended_at >= started_at),
+    CONSTRAINT chk_monitoring_sessions_end_state
+        CHECK (
+            (status = 'active' AND ended_at IS NULL)
+            OR (status IN ('ended', 'failed') AND ended_at IS NOT NULL)
+        ),
+    CONSTRAINT chk_monitoring_sessions_camera_index
+        CHECK (camera_index IS NULL OR camera_index >= 0),
+    CONSTRAINT uq_monitoring_sessions_id_trip
+        UNIQUE (monitoring_session_id, trip_id)
+);
+
+CREATE UNIQUE INDEX uq_active_monitoring_session_per_trip
+    ON monitoring_sessions(trip_id)
+    WHERE status = 'active';
+
+COMMENT ON TABLE monitoring_sessions IS 'One detector monitoring run for a trip. Latest snapshots/frames stay in backend memory, not in this table.';
+
+-- ============================================================================
+-- SAFETY EVENTS
+-- ============================================================================
+
+CREATE TABLE safety_events (
+    safety_event_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    monitoring_session_id UUID NOT NULL,
+    trip_id               UUID NOT NULL,
+    event_type            safety_event_type NOT NULL,
+    severity              event_severity NOT NULL DEFAULT 'warning',
+    detection_method      detection_method NOT NULL,
+    occurred_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    ear_value             NUMERIC(5,3),
+    mar_value             NUMERIC(5,3),
+    pitch_value           NUMERIC(6,2),
+    drowsiness_score      NUMERIC(5,2),
+    cnn_label             VARCHAR(50),
+    cnn_confidence        NUMERIC(5,4),
+
+    evidence_frame_path   TEXT,
+    snapshot_ref          TEXT,
+    metadata              JSONB NOT NULL DEFAULT '{}'::jsonb,
+
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_safety_events_ear
+        CHECK (ear_value IS NULL OR ear_value >= 0),
+    CONSTRAINT chk_safety_events_mar
+        CHECK (mar_value IS NULL OR mar_value >= 0),
+    CONSTRAINT chk_safety_events_drowsiness_score
+        CHECK (drowsiness_score IS NULL OR drowsiness_score BETWEEN 0 AND 100),
+    CONSTRAINT chk_safety_events_cnn_confidence
+        CHECK (cnn_confidence IS NULL OR cnn_confidence BETWEEN 0 AND 1),
+    CONSTRAINT fk_safety_events_monitoring_session_trip
+        FOREIGN KEY (monitoring_session_id, trip_id)
+        REFERENCES monitoring_sessions(monitoring_session_id, trip_id)
+        ON DELETE CASCADE
+);
+
+CREATE TRIGGER trg_safety_events_immutable
+    BEFORE UPDATE ON safety_events
+    FOR EACH ROW EXECUTE FUNCTION prevent_safety_event_update();
+
+COMMENT ON TABLE safety_events IS 'Immutable AI/business safety facts detected during monitoring.';
+COMMENT ON COLUMN safety_events.evidence_frame_path IS 'Path to selected evidence frame only. Do not store every camera frame in PostgreSQL.';
+COMMENT ON COLUMN safety_events.snapshot_ref IS 'Optional reference to a captured metrics snapshot or object storage record.';
+
+-- ============================================================================
+-- ALERTS
 -- ============================================================================
 
 CREATE TABLE alerts (
-    alert_id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    trip_id                   UUID NOT NULL REFERENCES trips(trip_id) ON DELETE CASCADE,
-    driver_id                  UUID NOT NULL REFERENCES drivers(driver_id) ON DELETE RESTRICT,
+    alert_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id           UUID NOT NULL REFERENCES trips(trip_id) ON DELETE CASCADE,
+    status            alert_status NOT NULL DEFAULT 'open',
+    severity          alert_severity NOT NULL DEFAULT 'warning',
+    alert_type        alert_type NOT NULL,
+    title             VARCHAR(200) NOT NULL,
+    message           TEXT,
 
-    alert_type                   alert_type NOT NULL,
-    severity                      alert_severity NOT NULL DEFAULT 'warning',
-    detection_method               detection_method NOT NULL,
+    opened_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    acknowledged_at   TIMESTAMPTZ,
+    acknowledged_by   UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    resolved_at       TIMESTAMPTZ,
+    resolved_by       UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    escalated_at      TIMESTAMPTZ,
+    ignored_at        TIMESTAMPTZ,
+    lifecycle_note    TEXT,
 
-    -- Thông số riêng cho phương pháp EAR
-    ear_value                        NUMERIC(5,3),   -- giá trị EAR đo được tại thời điểm cảnh báo
-    consecutive_frame_count           INTEGER,        -- số khung hình liên tiếp mắt nhắm vượt ngưỡng
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    -- Thông số riêng cho phương pháp CNN (integrate_cnn.py)
-    cnn_confidence                     NUMERIC(5,4),  -- độ tin cậy phân loại (0-1)
-    cnn_label                            VARCHAR(20), -- ví dụ: 'drowsy' / 'alert'
-
-    captured_frame_path                  TEXT,        -- đường dẫn ảnh chụp tại thời điểm cảnh báo
-    latitude                              NUMERIC(9,6),
-    longitude                              NUMERIC(9,6),
-
-    alarm_triggered                         BOOLEAN NOT NULL DEFAULT false,  -- có phát âm thanh cảnh báo (audio/) không
-    alarm_audio_file                          VARCHAR(100),
-
-    acknowledged                               BOOLEAN NOT NULL DEFAULT false, -- tài xế/hệ thống đã xác nhận
-    acknowledged_at                             TIMESTAMPTZ,
-
-    occurred_at                                   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_at                                     TIMESTAMPTZ NOT NULL DEFAULT now()
+    CONSTRAINT chk_alerts_acknowledged_fields
+        CHECK (
+            (status <> 'acknowledged')
+            OR acknowledged_at IS NOT NULL
+        ),
+    CONSTRAINT chk_alerts_resolved_fields
+        CHECK (
+            (status <> 'resolved')
+            OR resolved_at IS NOT NULL
+        ),
+    CONSTRAINT chk_alerts_ignored_fields
+        CHECK (
+            (status <> 'ignored')
+            OR ignored_at IS NOT NULL
+        ),
+    CONSTRAINT chk_alerts_escalated_fields
+        CHECK (
+            (status <> 'escalated')
+            OR escalated_at IS NOT NULL
+        )
 );
 
-CREATE INDEX idx_alerts_trip_id ON alerts(trip_id);
-CREATE INDEX idx_alerts_driver_id ON alerts(driver_id);
-CREATE INDEX idx_alerts_type ON alerts(alert_type);
-CREATE INDEX idx_alerts_severity ON alerts(severity);
-CREATE INDEX idx_alerts_occurred_at ON alerts(occurred_at);
+CREATE TRIGGER trg_alerts_updated_at
+    BEFORE UPDATE ON alerts
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-COMMENT ON TABLE alerts IS 'Log từng sự kiện cảnh báo buồn ngủ/mất an toàn, gắn với phương pháp phát hiện cụ thể (EAR hoặc CNN)';
-COMMENT ON COLUMN alerts.ear_value IS 'Chỉ có giá trị khi detection_method = ear_dlib';
-COMMENT ON COLUMN alerts.cnn_confidence IS 'Chỉ có giá trị khi detection_method = cnn_classifier';
+COMMENT ON TABLE alerts IS 'Actionable notification generated from one or more safety events.';
 
--- Trigger: tự động tăng bộ đếm cảnh báo trên bảng trips khi có alert mới
-CREATE OR REPLACE FUNCTION bump_trip_alert_counters()
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE trips
-    SET total_alerts_count = total_alerts_count + 1,
-        critical_alerts_count = critical_alerts_count + CASE WHEN NEW.severity = 'critical' THEN 1 ELSE 0 END,
-        updated_at = now()
-    WHERE trip_id = NEW.trip_id;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Link table because one alert can summarize multiple raw safety events.
+CREATE TABLE alert_safety_events (
+    alert_id        UUID NOT NULL REFERENCES alerts(alert_id) ON DELETE CASCADE,
+    safety_event_id UUID NOT NULL REFERENCES safety_events(safety_event_id) ON DELETE CASCADE,
+    PRIMARY KEY (alert_id, safety_event_id)
+);
 
-CREATE TRIGGER trg_alerts_bump_counters
-    AFTER INSERT ON alerts
-    FOR EACH ROW EXECUTE FUNCTION bump_trip_alert_counters();
+COMMENT ON TABLE alert_safety_events IS 'Many-to-many link between actionable alerts and immutable safety events.';
 
 -- ============================================================================
--- BẢNG: settings (cài đặt) - tham số hệ thống, có thể global hoặc theo tài xế
+-- SAFETY SCORES
 -- ============================================================================
+
+CREATE TABLE safety_scores (
+    safety_score_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id             UUID NOT NULL UNIQUE REFERENCES trips(trip_id) ON DELETE CASCADE,
+    score               NUMERIC(5,2) NOT NULL,
+    grade               safety_grade NOT NULL,
+    total_events        INTEGER NOT NULL DEFAULT 0,
+    warning_events      INTEGER NOT NULL DEFAULT 0,
+    critical_events     INTEGER NOT NULL DEFAULT 0,
+    alert_count         INTEGER NOT NULL DEFAULT 0,
+    calculation_version VARCHAR(30) NOT NULL DEFAULT 'v1',
+    explanation         JSONB NOT NULL,
+    calculated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT chk_safety_scores_score
+        CHECK (score BETWEEN 0 AND 100),
+    CONSTRAINT chk_safety_scores_counts
+        CHECK (
+            total_events >= 0
+            AND warning_events >= 0
+            AND critical_events >= 0
+            AND alert_count >= 0
+            AND warning_events + critical_events <= total_events
+        )
+);
+
+COMMENT ON TABLE safety_scores IS 'Explainable rule-based safety score calculated when a trip completes.';
+COMMENT ON COLUMN safety_scores.explanation IS 'JSON explanation such as base score, penalties, event counts, and final score.';
+
+-- ============================================================================
+-- DETECTOR SETTINGS
+-- ============================================================================
+-- Supporting table for the existing architecture. It is intentionally simple and
+-- can be used by the backend to return effective detector settings to the AI
+-- runtime. This is not live telemetry storage.
 
 CREATE TABLE settings (
-    setting_id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    scope                       settings_scope NOT NULL DEFAULT 'global',
-    driver_id                     UUID REFERENCES drivers(driver_id) ON DELETE CASCADE,  -- NULL nếu scope = global
+    setting_id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scope                      settings_scope NOT NULL DEFAULT 'global',
+    driver_id                  UUID REFERENCES drivers(driver_id) ON DELETE CASCADE,
 
-    -- Ngưỡng EAR cho detector realtime
-    ear_threshold                    NUMERIC(5,3) NOT NULL DEFAULT 0.30,
-    ear_consec_frames                  INTEGER NOT NULL DEFAULT 15,  -- EYE_ASPECT_RATIO_CONSEC_FRAMES
+    ear_threshold              NUMERIC(5,3) NOT NULL DEFAULT 0.30,
+    ear_consec_frames          INTEGER NOT NULL DEFAULT 15,
+    cnn_confidence_threshold   NUMERIC(5,4) NOT NULL DEFAULT 0.80,
+    preferred_detection_method detection_method NOT NULL DEFAULT 'combined',
+    alarm_audio_file           VARCHAR(100) NOT NULL DEFAULT 'alarm.wav',
+    alert_cooldown_seconds     INTEGER NOT NULL DEFAULT 10,
+    enable_no_face_alert       BOOLEAN NOT NULL DEFAULT true,
+    no_face_timeout_seconds    INTEGER NOT NULL DEFAULT 5,
+    camera_index               INTEGER NOT NULL DEFAULT 0,
+    frame_width                INTEGER NOT NULL DEFAULT 640,
+    frame_height               INTEGER NOT NULL DEFAULT 480,
+    warning_alert_penalty      NUMERIC(5,2) NOT NULL DEFAULT 3,
+    critical_alert_penalty     NUMERIC(5,2) NOT NULL DEFAULT 8,
+    safety_grade_a_min_score   NUMERIC(5,2) NOT NULL DEFAULT 85,
+    safety_grade_b_min_score   NUMERIC(5,2) NOT NULL DEFAULT 60,
+    extra_config               JSONB NOT NULL DEFAULT '{}'::jsonb,
 
-    -- Cấu hình CNN
-    cnn_confidence_threshold             NUMERIC(5,4) NOT NULL DEFAULT 0.80,
+    created_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                 TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    preferred_detection_method             detection_method NOT NULL DEFAULT 'ear_dlib',
-
-    -- Cảnh báo & âm thanh
-    alarm_audio_file                          VARCHAR(100) NOT NULL DEFAULT 'alarm.wav', -- file trong thư mục audio/
-    alert_cooldown_seconds                      INTEGER NOT NULL DEFAULT 10,  -- tránh spam cảnh báo liên tục
-    enable_no_face_alert                          BOOLEAN NOT NULL DEFAULT true,
-    no_face_timeout_seconds                        INTEGER NOT NULL DEFAULT 5,
-
-    -- Cấu hình camera / thiết bị
-    camera_index                                     INTEGER NOT NULL DEFAULT 0,
-    frame_width                                        INTEGER NOT NULL DEFAULT 640,
-    frame_height                                        INTEGER NOT NULL DEFAULT 480,
-
-    -- Cấu hình tính điểm an toàn A/B/C khi kết thúc chuyến đi (xem API trips/end)
-    warning_alert_penalty                                     NUMERIC(5,2) NOT NULL DEFAULT 3,   -- điểm trừ / cảnh báo mức warning
-    critical_alert_penalty                                     NUMERIC(5,2) NOT NULL DEFAULT 8,  -- điểm trừ / cảnh báo mức critical
-    safety_grade_a_min_score                                    NUMERIC(5,2) NOT NULL DEFAULT 85, -- score >= 85 -> A
-    safety_grade_b_min_score                                    NUMERIC(5,2) NOT NULL DEFAULT 60, -- 60 <= score < 85 -> B, < 60 -> C
-
-    -- Cấu hình mở rộng linh hoạt, không cần đổi schema khi thêm tham số mới
-    extra_config                                          JSONB NOT NULL DEFAULT '{}'::jsonb,
-
-    created_at                                               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at                                               TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    CONSTRAINT chk_settings_scope CHECK (
-        (scope = 'global' AND driver_id IS NULL) OR
-        (scope = 'driver' AND driver_id IS NOT NULL)
-    ),
-    CONSTRAINT uq_settings_driver UNIQUE (driver_id)  -- mỗi tài xế chỉ có 1 bộ cài đặt riêng
+    CONSTRAINT chk_settings_scope
+        CHECK (
+            (scope = 'global' AND driver_id IS NULL)
+            OR (scope = 'driver' AND driver_id IS NOT NULL)
+        ),
+    CONSTRAINT chk_settings_thresholds
+        CHECK (
+            ear_threshold >= 0
+            AND ear_consec_frames > 0
+            AND cnn_confidence_threshold BETWEEN 0 AND 1
+            AND alert_cooldown_seconds >= 0
+            AND no_face_timeout_seconds >= 0
+            AND camera_index >= 0
+            AND frame_width > 0
+            AND frame_height > 0
+            AND warning_alert_penalty >= 0
+            AND critical_alert_penalty >= 0
+            AND safety_grade_a_min_score BETWEEN 0 AND 100
+            AND safety_grade_b_min_score BETWEEN 0 AND 100
+            AND safety_grade_a_min_score >= safety_grade_b_min_score
+        ),
+    CONSTRAINT uq_settings_driver UNIQUE (driver_id)
 );
+
+CREATE UNIQUE INDEX uq_settings_single_global
+    ON settings ((scope = 'global'))
+    WHERE scope = 'global';
 
 CREATE TRIGGER trg_settings_updated_at
     BEFORE UPDATE ON settings
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- Đảm bảo chỉ có duy nhất 1 bản ghi settings scope = global
-CREATE UNIQUE INDEX uq_settings_single_global
-    ON settings ((scope = 'global'))
-    WHERE scope = 'global';
-
-CREATE INDEX idx_settings_driver_id ON settings(driver_id);
-
-COMMENT ON TABLE settings IS 'Tham số cấu hình phát hiện buồn ngủ; scope=global là mặc định hệ thống, scope=driver ghi đè riêng cho từng tài xế';
-
--- Seed: cài đặt mặc định toàn hệ thống
-INSERT INTO settings (scope, ear_threshold, ear_consec_frames, alarm_audio_file)
-VALUES ('global', 0.30, 15, 'alarm.wav');
-
--- ============================================================================
--- VIEW tiện ích: cài đặt hiệu lực cho từng tài xế (ưu tiên settings riêng,
--- fallback về global nếu tài xế chưa có cài đặt riêng)
--- ============================================================================
-
 CREATE VIEW effective_driver_settings AS
 SELECT
     d.driver_id,
-    COALESCE(ds.ear_threshold, g.ear_threshold)               AS ear_threshold,
-    COALESCE(ds.ear_consec_frames, g.ear_consec_frames)         AS ear_consec_frames,
+    COALESCE(ds.ear_threshold, g.ear_threshold) AS ear_threshold,
+    COALESCE(ds.ear_consec_frames, g.ear_consec_frames) AS ear_consec_frames,
     COALESCE(ds.cnn_confidence_threshold, g.cnn_confidence_threshold) AS cnn_confidence_threshold,
     COALESCE(ds.preferred_detection_method, g.preferred_detection_method) AS preferred_detection_method,
-    COALESCE(ds.alarm_audio_file, g.alarm_audio_file)           AS alarm_audio_file,
-    COALESCE(ds.alert_cooldown_seconds, g.alert_cooldown_seconds) AS alert_cooldown_seconds
+    COALESCE(ds.alarm_audio_file, g.alarm_audio_file) AS alarm_audio_file,
+    COALESCE(ds.alert_cooldown_seconds, g.alert_cooldown_seconds) AS alert_cooldown_seconds,
+    COALESCE(ds.enable_no_face_alert, g.enable_no_face_alert) AS enable_no_face_alert,
+    COALESCE(ds.no_face_timeout_seconds, g.no_face_timeout_seconds) AS no_face_timeout_seconds,
+    COALESCE(ds.camera_index, g.camera_index) AS camera_index,
+    COALESCE(ds.frame_width, g.frame_width) AS frame_width,
+    COALESCE(ds.frame_height, g.frame_height) AS frame_height,
+    COALESCE(ds.warning_alert_penalty, g.warning_alert_penalty) AS warning_alert_penalty,
+    COALESCE(ds.critical_alert_penalty, g.critical_alert_penalty) AS critical_alert_penalty,
+    COALESCE(ds.safety_grade_a_min_score, g.safety_grade_a_min_score) AS safety_grade_a_min_score,
+    COALESCE(ds.safety_grade_b_min_score, g.safety_grade_b_min_score) AS safety_grade_b_min_score,
+    COALESCE(ds.extra_config, g.extra_config) AS extra_config
 FROM drivers d
-LEFT JOIN settings ds ON ds.driver_id = d.driver_id AND ds.scope = 'driver'
+LEFT JOIN settings ds
+    ON ds.driver_id = d.driver_id
+    AND ds.scope = 'driver'
 CROSS JOIN LATERAL (
-    SELECT * FROM settings WHERE scope = 'global' LIMIT 1
+    SELECT *
+    FROM settings
+    WHERE scope = 'global'
+    LIMIT 1
 ) g;
 
--- ============================================================================
--- VIEW tiện ích: tổng quan an toàn theo chuyến đi
--- ============================================================================
-
-CREATE VIEW trip_safety_summary AS
-SELECT
-    t.trip_id,
-    t.driver_id,
-    dr.full_name,
-    t.status,
-    t.start_time,
-    t.end_time,
-    t.total_alerts_count,
-    t.critical_alerts_count,
-    t.avg_drowsiness_score,
-    COUNT(a.alert_id) FILTER (WHERE a.alert_type = 'eyes_closed')     AS eyes_closed_events,
-    COUNT(a.alert_id) FILTER (WHERE a.alert_type = 'no_face_detected') AS no_face_events
-FROM trips t
-JOIN drivers dr ON dr.driver_id = t.driver_id
-LEFT JOIN alerts a ON a.trip_id = t.trip_id
-GROUP BY t.trip_id, t.driver_id, dr.full_name, t.status, t.start_time, t.end_time,
-         t.total_alerts_count, t.critical_alerts_count, t.avg_drowsiness_score;
+COMMENT ON TABLE settings IS 'Detector and scoring settings consumed through backend APIs by the AI runtime.';
 
 -- ============================================================================
--- GHI CHÚ THIẾT KẾ
+-- INDEXES
 -- ============================================================================
--- 1. drivers.baseline_ear cho phép cá nhân hoá ngưỡng EAR thay vì dùng hằng số
---    cứng trong detector.
--- 2. alerts tách riêng cột cho 2 phương pháp phát hiện (EAR vs CNN) để không
---    phải dùng JSONB cho dữ liệu có cấu trúc rõ ràng, nhưng vẫn có extra_config
---    JSONB ở settings cho các tham số mở rộng trong tương lai (vd: MAR ngáp,
---    head-pose, camera thứ 2...).
--- 3. Trigger bump_trip_alert_counters giữ trips luôn có số liệu tổng hợp cập
---    nhật realtime mà không cần tính lại COUNT() mỗi lần truy vấn dashboard.
--- 4. Có thể mở rộng thêm bảng vehicles, users/admin (giám sát viên), và bảng
---    audit_log nếu cần phân quyền/kiểm toán chi tiết hơn.
+
+CREATE INDEX idx_users_status
+    ON users(status);
+
+CREATE INDEX idx_drivers_status
+    ON drivers(status);
+
+CREATE INDEX idx_driver_sessions_driver_status
+    ON driver_sessions(driver_id, status);
+
+CREATE INDEX idx_vehicles_status
+    ON vehicles(status);
+
+CREATE INDEX idx_trips_status
+    ON trips(status);
+
+CREATE INDEX idx_trips_created_by
+    ON trips(created_by);
+
+CREATE INDEX idx_trips_planned_start
+    ON trips(planned_start_at);
+
+CREATE INDEX idx_trip_assignments_trip
+    ON trip_assignments(trip_id);
+
+CREATE INDEX idx_trip_assignments_driver
+    ON trip_assignments(driver_id);
+
+CREATE INDEX idx_trip_assignments_vehicle
+    ON trip_assignments(vehicle_id);
+
+CREATE INDEX idx_monitoring_sessions_trip
+    ON monitoring_sessions(trip_id);
+
+CREATE INDEX idx_monitoring_sessions_driver_session
+    ON monitoring_sessions(driver_session_id);
+
+CREATE INDEX idx_safety_events_monitoring_session
+    ON safety_events(monitoring_session_id);
+
+CREATE INDEX idx_safety_events_trip_time
+    ON safety_events(trip_id, occurred_at DESC);
+
+CREATE INDEX idx_safety_events_type_time
+    ON safety_events(event_type, occurred_at DESC);
+
+CREATE INDEX idx_safety_events_severity_time
+    ON safety_events(severity, occurred_at DESC);
+
+CREATE INDEX idx_safety_events_metadata_gin
+    ON safety_events USING GIN (metadata);
+
+CREATE INDEX idx_alerts_trip_status
+    ON alerts(trip_id, status);
+
+CREATE INDEX idx_alerts_status_severity
+    ON alerts(status, severity);
+
+CREATE INDEX idx_alerts_opened_at
+    ON alerts(opened_at DESC);
+
+CREATE INDEX idx_alerts_acknowledged_by
+    ON alerts(acknowledged_by);
+
+CREATE INDEX idx_alerts_resolved_by
+    ON alerts(resolved_by);
+
+CREATE INDEX idx_alert_safety_events_safety_event
+    ON alert_safety_events(safety_event_id);
+
+CREATE INDEX idx_settings_driver_id
+    ON settings(driver_id);
+
+-- ============================================================================
+-- DEMO SEED DATA
+-- ============================================================================
+
+INSERT INTO users (full_name, email, role)
+VALUES ('Demo Operator', 'operator@example.com', 'operator')
+ON CONFLICT (email) DO NOTHING;
+
+INSERT INTO settings (scope)
+VALUES ('global')
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- STATE TRANSITION NOTES
+-- ============================================================================
+-- Trip:
+--   draft -> scheduled -> assigned -> in_progress -> completed
+--   draft/scheduled/assigned -> cancelled
+--   in_progress -> aborted
+--
+-- DriverSession:
+--   active -> ended
+--   active -> expired
+--
+-- TripAssignment:
+--   assigned -> in_progress -> completed
+--   assigned -> cancelled/released
+--   in_progress -> released
+--
+-- MonitoringSession:
+--   active -> ended
+--   active -> failed
+--
+-- SafetyEvent:
+--   insert only; immutable after creation
+--
+-- Alert:
+--   open -> acknowledged/escalated/resolved/ignored
+--   acknowledged -> escalated/resolved/ignored
+--   escalated -> acknowledged/resolved
+--   resolved and ignored are terminal states
+--
+-- Enforce complex transition order in the backend service layer. The database
+-- enforces structural validity, ownership, uniqueness, and simple lifecycle
+-- consistency.
 -- ============================================================================
