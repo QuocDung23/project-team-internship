@@ -9,8 +9,8 @@ Các fix so với phiên bản cũ:
   [FIX-5] XOA frame.copy() thừa trong draw_dashboard
 
 Yêu cầu file (cùng thư mục project):
-  - best_model_v2.h5
-  - class_indices_v2.json
+  - best_model.h5
+  - class_indices.json
   - shape_predictor_68_face_landmarks.dat
   - audio/alert.wav
 
@@ -26,7 +26,17 @@ import sys
 import threading
 import time
 
-import detector_backend
+import cv2
+import dlib
+import numpy as np
+import pygame
+from imutils import face_utils
+from scipy.spatial import distance
+
+try:
+    import tensorflow as tf
+except ModuleNotFoundError:
+    tf = None
 
 
 def _parse_args() -> argparse.Namespace:
@@ -94,77 +104,16 @@ def _parse_args() -> argparse.Namespace:
             "Recommended for USB webcams on Windows (default: true)."
         ),
     )
-    parser.add_argument("--model", default="best_model_v2.h5", help="Keras .h5 model path")
+    parser.add_argument("--model", default="best_model.h5", help="Keras .h5 model path")
     parser.add_argument(
         "--class-json",
-        default="class_indices_v2.json",
-        help="JSON mapping index->class name (default: class_indices_v2.json)",
-    )
-    parser.add_argument(
-        "--trip-id",
-        default="",
-        help="Active backend trip_id. When omitted, backend alert posting is disabled.",
-    )
-    parser.add_argument(
-        "--backend-url",
-        default=os.environ.get("DROWSINESS_API_URL", "http://127.0.0.1:8000"),
-        help="FastAPI backend URL for alert posting (default: DROWSINESS_API_URL or http://127.0.0.1:8000).",
-    )
-    parser.add_argument(
-        "--api-timeout",
-        type=float,
-        default=2.0,
-        help="Backend alert post timeout in seconds (default: 2.0).",
-    )
-    parser.add_argument(
-        "--sync-settings",
-        action="store_true",
-        help="Fetch trip-specific detector settings from the backend once at startup.",
-    )
-    parser.add_argument(
-        "--alert-frame-dir",
-        default="",
-        help="Directory for saving local alert frame images before posting metadata.",
-    )
-    parser.add_argument(
-        "--alert-outbox",
-        default=".detector_alert_outbox.jsonl",
-        help="JSONL outbox for retrying failed backend alert posts.",
-    )
-    parser.add_argument(
-        "--monitoring-post-interval",
-        type=float,
-        default=1.0,
-        help="Seconds between lightweight monitoring metric posts to the backend (default: 1.0).",
-    )
-    parser.add_argument(
-        "--monitoring-frame-interval",
-        type=float,
-        default=0.08,
-        help="Seconds between live monitoring frame posts to the backend (default: 0.08, about 12.5 FPS).",
-    )
-    parser.add_argument(
-        "--monitoring-frame-quality",
-        type=int,
-        default=55,
-        help="JPEG quality for live monitoring frames posted to the backend (default: 55).",
+        default="class_indices.json",
+        help="JSON mapping index->class name (default: class_indices.json)",
     )
     return parser.parse_args()
 
 
 ARGS = _parse_args()
-
-import cv2
-import dlib
-import numpy as np
-import pygame
-from imutils import face_utils
-from scipy.spatial import distance
-
-try:
-    import tensorflow as tf
-except ModuleNotFoundError:
-    tf = None
 
 # Avoid UnicodeEncodeError on some Windows terminals (e.g., Git Bash piping).
 try:
@@ -202,7 +151,7 @@ CLASS_JSON = ARGS.class_json
 USE_CNN = False
 cnn_model = None
 idx_to_class = None
-CLOSED_IDX = 0  # default theo class_indices_v2.json: {"0":"closed","1":"open","2":"yawn"}
+CLOSED_IDX = 0  # default theo class_indices.json: {"0":"closed","1":"open","2":"yawn"}
 
 if not os.path.exists(MODEL_PATH):
     print(f"⚠️  Không tìm thấy '{MODEL_PATH}'. Dùng EAR fallback.")
@@ -280,23 +229,6 @@ ALERT_BEEP_MS = 700          # độ dài beep (ms)
 ALERT_COOLDOWN_SEC = 1.6     # tối thiểu bao lâu mới beep lại
 _alert_last_play_ts = 0.0
 
-
-def _apply_backend_settings(settings: dict):
-    global EAR_THRESHOLD, EAR_CONSEC_FRAMES, CNN_CLOSED_THRESHOLD, ALERT_COOLDOWN_SEC
-    global EAR_PERSONAL_THRESHOLD
-
-    if "ear_threshold" in settings and settings["ear_threshold"] is not None:
-        EAR_THRESHOLD = float(settings["ear_threshold"])
-        if not calibrated:
-            EAR_PERSONAL_THRESHOLD = EAR_THRESHOLD
-    if "ear_consec_frames" in settings and settings["ear_consec_frames"] is not None:
-        EAR_CONSEC_FRAMES = int(settings["ear_consec_frames"])
-    if "cnn_confidence_threshold" in settings and settings["cnn_confidence_threshold"] is not None:
-        CNN_CLOSED_THRESHOLD = float(settings["cnn_confidence_threshold"])
-    if "alert_cooldown_seconds" in settings and settings["alert_cooldown_seconds"] is not None:
-        ALERT_COOLDOWN_SEC = float(settings["alert_cooldown_seconds"])
-
-
 _alert_sound = pygame.mixer.Sound("audio/alert.wav")
 _alert_channel = pygame.mixer.Channel(0)
 
@@ -316,21 +248,6 @@ FACE_MISS_FRAMES = 0
 ear_samples = []
 calibrated = False
 EAR_PERSONAL_THRESHOLD = EAR_THRESHOLD
-
-if ARGS.sync_settings:
-    if not ARGS.trip_id:
-        print("⚠️  --sync-settings requires --trip-id; keeping local detector thresholds.")
-    else:
-        try:
-            backend_settings = detector_backend.fetch_trip_settings(
-                ARGS.backend_url,
-                ARGS.trip_id,
-                timeout=ARGS.api_timeout,
-            )
-            _apply_backend_settings(backend_settings)
-            print("✅ Synced detector settings from backend.")
-        except Exception as exc:
-            print(f"⚠️  Backend settings sync failed: {exc}")
 
 _last_valid_ear = 0.35
 _last_valid_mar = 0.0
@@ -616,129 +533,6 @@ def stop_alarm():
             pass
 
 
-def post_alert(
-    alert_type: str,
-    detection_method: str,
-    severity: str = "warning",
-    ear_value: float | None = None,
-    consecutive_frame_count: int | None = None,
-    cnn_confidence: float | None = None,
-    cnn_label: str | None = None,
-    alarm_triggered: bool = False,
-    captured_frame_path: str | None = None,
-):
-    if not ARGS.trip_id:
-        return
-
-    payload = {
-        "trip_id": ARGS.trip_id,
-        "alert_type": alert_type,
-        "detection_method": detection_method,
-        "severity": severity,
-        "ear_value": ear_value,
-        "consecutive_frame_count": consecutive_frame_count,
-        "cnn_confidence": cnn_confidence,
-        "cnn_label": cnn_label,
-        "alarm_triggered": alarm_triggered,
-        "captured_frame_path": captured_frame_path,
-    }
-    payload = {key: value for key, value in payload.items() if value is not None}
-    posted = detector_backend.post_alert_or_queue(
-        ARGS.backend_url,
-        payload,
-        timeout=ARGS.api_timeout,
-        outbox_path=ARGS.alert_outbox,
-    )
-    if not posted:
-        print(f"⚠️  Backend alert post failed; queued in {ARGS.alert_outbox}")
-
-
-def save_alert_frame(alert_type: str, frame):
-    path = detector_backend.build_alert_frame_path(ARGS.alert_frame_dir, alert_type)
-    if not path:
-        return None
-    try:
-        if cv2.imwrite(path, frame):
-            return path
-    except Exception:
-        pass
-    return None
-
-
-_last_monitoring_post_ts = 0.0
-_last_monitoring_frame_ts = 0.0
-
-
-def detector_dws_score(ear_alert: bool, mar_alert: bool, pose_alert: bool) -> int:
-    return int(ear_alert) * 50 + int(mar_alert) * 30 + int(pose_alert) * 20
-
-
-def post_monitoring_frame(frame):
-    global _last_monitoring_frame_ts
-
-    interval = max(0.02, float(ARGS.monitoring_frame_interval))
-    now_ts = time.time()
-    if now_ts - _last_monitoring_frame_ts < interval:
-        return
-    _last_monitoring_frame_ts = now_ts
-
-    try:
-        quality = max(1, min(100, int(ARGS.monitoring_frame_quality)))
-        ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
-        if not ok:
-            return
-        detector_backend.post_monitoring_frame(
-            ARGS.backend_url,
-            encoded.tobytes(),
-            timeout=min(float(ARGS.api_timeout), 0.25),
-        )
-    except Exception:
-        pass
-
-
-def post_monitoring_snapshot(ear: float, mar: float, pitch: float, fps: float, ear_alert: bool, mar_alert: bool, pose_alert: bool):
-    global _last_monitoring_post_ts
-
-    interval = max(0.05, float(ARGS.monitoring_post_interval))
-    now_ts = time.time()
-    if now_ts - _last_monitoring_post_ts < interval:
-        return
-    _last_monitoring_post_ts = now_ts
-
-    payload = {
-        "trip_id": ARGS.trip_id or None,
-        "timestamp": now_ts,
-        "fps": float(fps),
-        "ear": float(ear),
-        "mar": float(mar),
-        "pitch": float(pitch),
-        "dws_score": detector_dws_score(ear_alert, mar_alert, pose_alert),
-        "eyes_open": not bool(ear_alert),
-        "mouth_closed": not bool(mar_alert),
-        "face_detected": FACE_MISS_FRAMES <= MAX_FACE_MISS,
-        "ear_alert": bool(ear_alert),
-        "mar_alert": bool(mar_alert),
-        "pose_alert": bool(pose_alert),
-        "alarm_on": bool(_alarm_on),
-        "ear_counter": int(EAR_COUNTER),
-        "mar_counter": int(MAR_COUNTER),
-        "pose_counter": int(POSE_COUNTER),
-        "ear_threshold": float(EAR_PERSONAL_THRESHOLD if not USE_CNN and calibrated else EAR_THRESHOLD),
-        "mar_threshold": float(MAR_THRESHOLD),
-        "pitch_delta_threshold": float(_pose_delta_threshold),
-        "cnn_confidence": (float(_ema_cnn_conf) if USE_CNN else None),
-        "cnn_enabled": bool(USE_CNN),
-    }
-    try:
-        detector_backend.post_monitoring_snapshot(
-            ARGS.backend_url,
-            payload,
-            timeout=min(float(ARGS.api_timeout), 0.75),
-        )
-    except Exception:
-        pass
-
-
 def put_text_outline(
     frame,
     text: str,
@@ -848,54 +642,6 @@ def _open_camera(index: int, backend: str) -> cv2.VideoCapture:
     return cv2.VideoCapture(index)
 
 
-def _camera_backend_name(backend_id: int) -> str:
-    try:
-        return cv2.videoio_registry.getBackendName(backend_id)
-    except Exception:
-        return str(backend_id)
-
-
-def _candidate_camera_indexes(preferred_index: int, limit: int = 5) -> list[int]:
-    indexes = [int(preferred_index)]
-    indexes.extend(i for i in range(limit + 1) if i != int(preferred_index))
-    return indexes
-
-
-def _open_first_available_camera(preferred_index: int, backend: str) -> tuple[cv2.VideoCapture, int, str]:
-    """Open the requested camera, then probe common indexes/backends on failure."""
-
-    backend_order = [backend]
-    if os.name == "nt":
-        for candidate in ("dshow", "msmf", "any"):
-            if candidate not in backend_order:
-                backend_order.append(candidate)
-    elif "any" not in backend_order:
-        backend_order.append("any")
-
-    first_cap = None
-    first_index = int(preferred_index)
-    first_backend = backend_order[0]
-
-    for candidate_backend in backend_order:
-        for candidate_index in _candidate_camera_indexes(preferred_index):
-            print(f"🎥 Trying camera index={candidate_index} backend={candidate_backend}")
-            cap_candidate = _open_camera(candidate_index, candidate_backend)
-            if first_cap is None:
-                first_cap = cap_candidate
-                first_index = candidate_index
-                first_backend = candidate_backend
-            elif cap_candidate.isOpened():
-                first_cap.release()
-                return cap_candidate, candidate_index, candidate_backend
-            else:
-                cap_candidate.release()
-
-            if first_cap is not None and first_cap.isOpened():
-                return first_cap, first_index, first_backend
-
-    return first_cap if first_cap is not None else _open_camera(preferred_index, backend), first_index, first_backend
-
-
 def _open_camera_by_name_dshow(device_name: str) -> cv2.VideoCapture:
     # OpenCV on Windows (CAP_DSHOW) supports "video=<friendly name>".
     return cv2.VideoCapture(f"video={device_name}", cv2.CAP_DSHOW)
@@ -973,10 +719,8 @@ if ARGS.device_name:
     print(f"🎥 Opening camera device-name='{ARGS.device_name}' backend={requested_backend}")
     cap = _open_camera_by_name_dshow(ARGS.device_name)
 else:
-    cap, opened_index, requested_backend = _open_first_available_camera(ARGS.camera, requested_backend)
-    if cap.isOpened():
-        backend_name = _camera_backend_name(int(cap.get(cv2.CAP_PROP_BACKEND)))
-        print(f"✅ Opened camera index={opened_index} backend={requested_backend} ({backend_name})")
+    print(f"🎥 Opening camera index={ARGS.camera} backend={requested_backend}")
+    cap = _open_camera(ARGS.camera, requested_backend)
 
 if not cap.isOpened():
     print("❌ Không mở được camera!")
@@ -1010,12 +754,6 @@ if bool(ARGS.threaded_capture):
         print("ℹ️  --drop-frames is ignored when --threaded-capture is enabled.")
 
 prev_time = time.time()
-prev_eye_alert = False
-prev_mar_alert = False
-prev_pose_alert = False
-
-if ARGS.trip_id:
-    print(f"🔗 Backend alert posting enabled: {ARGS.backend_url.rstrip('/')}/alerts trip_id={ARGS.trip_id}")
 
 try:
     while True:
@@ -1300,50 +1038,6 @@ try:
             )
 
         draw_dashboard(frame, ear, mar, pitch, ear_alert, mar_alert, pose_alert)
-        post_monitoring_frame(frame)
-        post_monitoring_snapshot(ear, mar, pitch, fps, ear_alert, mar_alert, pose_alert)
-
-        if ear_alert and not prev_eye_alert:
-            alert_type = "drowsy_cnn" if USE_CNN else "eyes_closed"
-            post_alert(
-                alert_type=alert_type,
-                detection_method=("cnn_classifier" if USE_CNN else "ear_dlib"),
-                severity="critical",
-                ear_value=float(ear),
-                consecutive_frame_count=int(EAR_COUNTER),
-                cnn_confidence=(float(_ema_cnn_conf) if USE_CNN else None),
-                cnn_label=("closed" if USE_CNN else None),
-                alarm_triggered=True,
-                captured_frame_path=save_alert_frame(alert_type, frame),
-            )
-        if mar_alert and not prev_mar_alert:
-            post_alert(
-                alert_type="yawning",
-                detection_method=("cnn_classifier" if USE_CNN else "ear_dlib"),
-                severity="warning",
-                ear_value=float(ear),
-                consecutive_frame_count=int(MAR_COUNTER),
-                cnn_confidence=(float(_ema_cnn_conf) if USE_CNN else None),
-                cnn_label=("closed" if USE_CNN else None),
-                alarm_triggered=False,
-                captured_frame_path=save_alert_frame("yawning", frame),
-            )
-        if pose_alert and not prev_pose_alert:
-            post_alert(
-                alert_type="head_nod",
-                detection_method=("cnn_classifier" if USE_CNN else "ear_dlib"),
-                severity="warning",
-                ear_value=float(ear),
-                consecutive_frame_count=int(POSE_COUNTER),
-                cnn_confidence=(float(_ema_cnn_conf) if USE_CNN else None),
-                cnn_label=("closed" if USE_CNN else None),
-                alarm_triggered=False,
-                captured_frame_path=save_alert_frame("head_nod", frame),
-            )
-
-        prev_eye_alert = ear_alert
-        prev_mar_alert = mar_alert
-        prev_pose_alert = pose_alert
 
         cv2.imshow("Driver Drowsiness Detector", frame)
 
