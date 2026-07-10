@@ -39,6 +39,7 @@ def register_exception_handlers(app) -> None:
             content={
                 "detail": exc.detail,
             },
+            headers=exc.headers,
         )
 
     @app.exception_handler(Exception)

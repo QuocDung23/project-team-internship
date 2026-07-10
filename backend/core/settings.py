@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     db_host: str = "localhost"
-    db_name: str = "drowsiness_safety_db"
+    db_name: str = "drowsiness_safety_phase1"
     db_user: str = "postgres"
     db_password: str = ""
     db_port: int = 5432
@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
     log_file: str | None = None
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
     schema_path: Path = Field(
         default=BASE_DIR / "database" / "drowsiness_safety_db_schema.sql",
     )

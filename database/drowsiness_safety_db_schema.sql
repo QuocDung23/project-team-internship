@@ -21,8 +21,8 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TYPE user_role AS ENUM (
     'admin',
-    'operator',
-    'viewer'
+    'dispatcher',
+    'driver'
 );
 
 CREATE TYPE user_status AS ENUM (
@@ -158,7 +158,8 @@ CREATE TABLE users (
     user_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     full_name     VARCHAR(150) NOT NULL,
     email         VARCHAR(150) NOT NULL UNIQUE,
-    role          user_role NOT NULL DEFAULT 'operator',
+    password_hash TEXT,
+    role          user_role NOT NULL DEFAULT 'dispatcher',
     status        user_status NOT NULL DEFAULT 'active',
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -168,7 +169,7 @@ CREATE TRIGGER trg_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-COMMENT ON TABLE users IS 'Dashboard users such as admins, operators, and viewers.';
+COMMENT ON TABLE users IS 'System users such as admins, dispatchers, and drivers.';
 
 -- ============================================================================
 -- DRIVERS
@@ -671,7 +672,7 @@ CREATE INDEX idx_settings_driver_id
 -- ============================================================================
 
 INSERT INTO users (full_name, email, role)
-VALUES ('Demo Operator', 'operator@example.com', 'operator')
+VALUES ('Demo Dispatcher', 'dispatcher@example.com', 'dispatcher')
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO settings (scope)

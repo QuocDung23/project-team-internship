@@ -22,7 +22,7 @@ Production-focused trip safety system. This repository now includes a phase-1 Fa
    pip install -r requirements.txt -r backend/requirements.txt
    ```
 
-3. Create PostgreSQL database `drowsiness_safety_db` and apply:
+3. Create PostgreSQL database `drowsiness_safety_phase1` and apply:
 
    ```bash
    database/drowsiness_safety_db_schema.sql
@@ -32,10 +32,12 @@ Production-focused trip safety system. This repository now includes a phase-1 Fa
 
    ```bash
    DROWSINESS_DB_HOST=localhost
-   DROWSINESS_DB_NAME=drowsiness_safety_db
+   DROWSINESS_DB_NAME=drowsiness_safety_phase1
    DROWSINESS_DB_USER=postgres
    DROWSINESS_DB_PASSWORD=<password>
    DROWSINESS_DB_PORT=5432
+   DROWSINESS_JWT_SECRET=<long-random-secret>
+   DROWSINESS_ACCESS_TOKEN_EXPIRE_MINUTES=30
    ```
 
    Optional settings are documented in `backend/.env.example`.
@@ -75,6 +77,50 @@ python -m backend.db.schema validate
 
 The schema utility reads `database/drowsiness_safety_db_schema.sql` and does not modify it.
 
+## Authentication
+
+Authentication endpoints:
+
+```bash
+POST /api/v1/auth/login
+GET /api/v1/auth/me
+```
+
+The API and PostgreSQL schema both use the same domain roles: `admin`, `dispatcher`, and `driver`.
+
+For the current demo scope, a `driver` user is linked to a driver profile by matching `users.email` to `drivers.email`. Keep this as an application-level convention; do not change the database schema for this linkage.
+
+If the database was created before authentication was added, apply the required schema fix once:
+
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TYPE user_role RENAME VALUE 'operator' TO 'dispatcher';
+ALTER TYPE user_role RENAME VALUE 'viewer' TO 'driver';
+ALTER TABLE users ALTER COLUMN role SET DEFAULT 'dispatcher'::user_role;
+```
+
+Create or update a seed admin user:
+
+```bash
+$env:DROWSINESS_SEED_ADMIN_PASSWORD = "choose-a-long-admin-password"
+python -m backend.auth.seed_admin --email admin@example.com --full-name "System Admin"
+```
+
+Manual login test:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\"email\":\"admin@example.com\",\"password\":\"choose-a-long-admin-password\"}"
+```
+
+Use the returned token:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/auth/me ^
+  -H "Authorization: Bearer <access_token>"
+```
+
 ## Data Flow
 
 `integrate_cnn.py` captures camera frames, runs landmark/CNN detection, plays local audio alerts, and publishes:
@@ -92,7 +138,7 @@ Backend and detector:
 ```bash
 python -m unittest discover -s tests
 python -m py_compile integrate_cnn.py detector_backend.py backend/models/schemas.py backend/services/*.py backend/routes/*.py
-python -m py_compile backend/app.py backend/core/*.py backend/db/*.py backend/api/routes/*.py
+python -m py_compile backend/app.py backend/core/*.py backend/db/*.py backend/auth/*.py backend/repositories/*.py backend/api/routes/*.py
 ```
 
 Frontend:
