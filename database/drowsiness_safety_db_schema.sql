@@ -77,8 +77,10 @@ CREATE TYPE safety_event_type AS ENUM (
     'drowsiness_detected',
     'eyes_closed',
     'yawning',
+    'yawning_detected',
     'no_face_detected',
     'head_nod',
+    'head_nodding_detected',
     'distraction',
     'camera_blocked'
 );
@@ -93,9 +95,9 @@ CREATE TYPE detection_method AS ENUM (
 );
 
 CREATE TYPE event_severity AS ENUM (
-    'info',
-    'warning',
-    'critical'
+    'low',
+    'medium',
+    'high'
 );
 
 CREATE TYPE alert_type AS ENUM (
@@ -359,12 +361,18 @@ COMMENT ON TABLE monitoring_sessions IS 'One detector monitoring run for a trip.
 
 CREATE TABLE safety_events (
     safety_event_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    monitoring_session_id UUID NOT NULL,
-    trip_id               UUID NOT NULL,
+    event_id              VARCHAR(100) NOT NULL UNIQUE,
+    monitoring_session_id UUID,
+    trip_id               UUID REFERENCES trips(trip_id) ON DELETE SET NULL,
+    driver_id             UUID REFERENCES drivers(driver_id) ON DELETE SET NULL,
+    vehicle_id            UUID REFERENCES vehicles(vehicle_id) ON DELETE SET NULL,
     event_type            safety_event_type NOT NULL,
-    severity              event_severity NOT NULL DEFAULT 'warning',
-    detection_method      detection_method NOT NULL,
+    severity              event_severity NOT NULL DEFAULT 'medium',
+    source                VARCHAR(100) NOT NULL DEFAULT 'ai_camera',
+    detection_method      detection_method,
     occurred_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    confidence            NUMERIC(5,4) NOT NULL,
+    duration_ms           INTEGER NOT NULL DEFAULT 0,
 
     ear_value             NUMERIC(5,3),
     mar_value             NUMERIC(5,3),
@@ -375,10 +383,15 @@ CREATE TABLE safety_events (
 
     evidence_frame_path   TEXT,
     snapshot_ref          TEXT,
+    details               JSONB NOT NULL DEFAULT '{}'::jsonb,
     metadata              JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
 
+    CONSTRAINT chk_safety_events_confidence
+        CHECK (confidence BETWEEN 0 AND 1),
+    CONSTRAINT chk_safety_events_duration_ms
+        CHECK (duration_ms >= 0),
     CONSTRAINT chk_safety_events_ear
         CHECK (ear_value IS NULL OR ear_value >= 0),
     CONSTRAINT chk_safety_events_mar
@@ -391,6 +404,7 @@ CREATE TABLE safety_events (
         FOREIGN KEY (monitoring_session_id, trip_id)
         REFERENCES monitoring_sessions(monitoring_session_id, trip_id)
         ON DELETE CASCADE
+        DEFERRABLE INITIALLY IMMEDIATE
 );
 
 CREATE TRIGGER trg_safety_events_immutable
@@ -407,7 +421,9 @@ COMMENT ON COLUMN safety_events.snapshot_ref IS 'Optional reference to a capture
 
 CREATE TABLE alerts (
     alert_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    trip_id           UUID NOT NULL REFERENCES trips(trip_id) ON DELETE CASCADE,
+    trip_id           UUID REFERENCES trips(trip_id) ON DELETE SET NULL,
+    driver_id         UUID REFERENCES drivers(driver_id) ON DELETE SET NULL,
+    vehicle_id        UUID REFERENCES vehicles(vehicle_id) ON DELETE SET NULL,
     status            alert_status NOT NULL DEFAULT 'open',
     severity          alert_severity NOT NULL DEFAULT 'warning',
     alert_type        alert_type NOT NULL,
@@ -634,8 +650,17 @@ CREATE INDEX idx_monitoring_sessions_driver_session
 CREATE INDEX idx_safety_events_monitoring_session
     ON safety_events(monitoring_session_id);
 
+CREATE INDEX idx_safety_events_event_id
+    ON safety_events(event_id);
+
 CREATE INDEX idx_safety_events_trip_time
     ON safety_events(trip_id, occurred_at DESC);
+
+CREATE INDEX idx_safety_events_driver_time
+    ON safety_events(driver_id, occurred_at DESC);
+
+CREATE INDEX idx_safety_events_vehicle_time
+    ON safety_events(vehicle_id, occurred_at DESC);
 
 CREATE INDEX idx_safety_events_type_time
     ON safety_events(event_type, occurred_at DESC);
@@ -645,6 +670,9 @@ CREATE INDEX idx_safety_events_severity_time
 
 CREATE INDEX idx_safety_events_metadata_gin
     ON safety_events USING GIN (metadata);
+
+CREATE INDEX idx_safety_events_details_gin
+    ON safety_events USING GIN (details);
 
 CREATE INDEX idx_alerts_trip_status
     ON alerts(trip_id, status);
