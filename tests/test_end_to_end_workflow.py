@@ -15,6 +15,7 @@ from backend.services.safety_service import calculate_safety_score, safety_grade
 
 
 NOW = datetime.now(timezone.utc)
+TRIP_ID = "11111111-1111-4111-8111-111111111111"
 
 
 class WorkflowState:
@@ -141,7 +142,7 @@ class EndToEndWorkflowTest(unittest.TestCase):
             "severity": "high",
             "source": "ai_camera",
             "occurred_at": NOW.isoformat(),
-            "trip_id": "trip-1",
+            "trip_id": TRIP_ID,
             "driver_id": "driver-1",
             "vehicle_id": "vehicle-1",
             "confidence": 0.94,
@@ -156,8 +157,9 @@ class EndToEndWorkflowTest(unittest.TestCase):
 
         ingested = self.client.post("/api/v1/safety-events/ingest", json=payload)
         duplicate = self.client.post("/api/v1/safety-events/ingest", json=payload)
-        alerts = self.client.get("/api/v1/trips/trip-1/alerts")
-        score = self.client.post("/api/v1/trips/trip-1/complete")
+        alerts = self.client.get(f"/api/v1/trips/{TRIP_ID}/alerts")
+        invalid_alerts = self.client.get("/api/v1/trips/trip-1/alerts")
+        score = self.client.post(f"/api/v1/trips/{TRIP_ID}/complete")
 
         self.assertEqual(ingested.status_code, 201)
         self.assertEqual(ingested.json()["event_id"], "ai-event-1")
@@ -167,6 +169,7 @@ class EndToEndWorkflowTest(unittest.TestCase):
         self.assertEqual(alerts.status_code, 200)
         self.assertEqual(alerts.json()[0]["alert_type"], "drowsiness")
         self.assertEqual(alerts.json()[0]["severity"], "critical")
+        self.assertEqual(invalid_alerts.status_code, 422)
         self.assertEqual(score.status_code, 200)
         self.assertEqual(score.json()["safety_score"]["alert_count"], 1)
         self.assertEqual(score.json()["safety_score"]["critical_events"], 1)

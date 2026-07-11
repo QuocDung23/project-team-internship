@@ -30,7 +30,10 @@ export function MyTripPage() {
   }
 
   useEffect(() => {
-    void refresh().catch((err) => setError(err instanceof Error ? err.message : "Failed to load trip"));
+    const timeoutId = window.setTimeout(() => {
+      void refresh().catch((err) => setError(err instanceof Error ? err.message : "Failed to load trip"));
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   async function run(action: () => Promise<unknown>) {

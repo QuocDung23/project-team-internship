@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException
 from backend.models.schemas import AlertCreate
 from backend.services.alert_service import create_alert, get_trip_alerts
@@ -5,6 +7,13 @@ from backend.services.alert_service import create_alert, get_trip_alerts
 router=APIRouter(
     tags=["Alerts"]
 )
+
+
+def _validate_trip_id(trip_id: str) -> str:
+    try:
+        return str(UUID(trip_id))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="trip_id must be a valid UUID") from None
 
 
 @router.post("/alerts")
@@ -40,7 +49,8 @@ def save_alert(
 def get_alerts(
     trip_id:str
 ):
+    normalized_trip_id = _validate_trip_id(trip_id)
 
     return get_trip_alerts(
-        trip_id
+        normalized_trip_id
     )

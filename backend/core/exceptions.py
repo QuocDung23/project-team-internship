@@ -5,6 +5,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+try:
+    from psycopg2 import Error as PsycopgError
+except ImportError:
+    PsycopgError = None
+
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +36,19 @@ def register_exception_handlers(app) -> None:
                 "error": detail,
             },
         )
+
+    if PsycopgError is not None:
+        @app.exception_handler(PsycopgError)
+        async def psycopg_database_exception_handler(_request: Request, exc: PsycopgError):
+            logger.exception("Database error")
+            detail = str(exc).strip().splitlines()[0] if str(exc).strip() else "database operation failed"
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Database operation failed.",
+                    "error": detail,
+                },
+            )
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(_request: Request, exc: HTTPException):
