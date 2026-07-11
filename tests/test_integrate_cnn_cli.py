@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class IntegrateCnnCliTest(unittest.TestCase):
-    def test_backend_posting_flags_are_documented_in_help(self):
+    def test_safety_event_flags_are_documented_in_integration_help(self):
         with tempfile.TemporaryDirectory() as tmp:
             stub_root = Path(tmp)
             (stub_root / "cv2.py").write_text("", encoding="utf-8")
@@ -23,9 +23,11 @@ class IntegrateCnnCliTest(unittest.TestCase):
             (stub_root / "scipy" / "__init__.py").write_text("", encoding="utf-8")
             (stub_root / "scipy" / "spatial" / "__init__.py").write_text("", encoding="utf-8")
             (stub_root / "scipy" / "spatial" / "distance.py").write_text("", encoding="utf-8")
+            (stub_root / "tensorflow").mkdir()
+            (stub_root / "tensorflow" / "__init__.py").write_text("", encoding="utf-8")
 
             result = subprocess.run(
-                [sys.executable, str(ROOT / "integrate_cnn.py"), "--help"],
+                [sys.executable, str(ROOT / "integrate_cnn_with_events.py"), "--help"],
                 cwd=ROOT,
                 text=True,
                 capture_output=True,
@@ -34,9 +36,7 @@ class IntegrateCnnCliTest(unittest.TestCase):
             )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("--trip-id", result.stdout)
-        self.assertIn("--backend-url", result.stdout)
-        self.assertIn("--api-timeout", result.stdout)
+        self.assertIn("--disable-safety-events", result.stdout)
 
 
 if __name__ == "__main__":
