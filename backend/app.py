@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routes.auth import router as auth_router
 from backend.api.routes.drivers import router as drivers_router
+from backend.api.routes.safety_events import router as safety_events_router
 from backend.api.routes.system import router as system_router
 from backend.api.routes.trips import router as trips_router
 from backend.api.routes.vehicles import router as vehicles_router
@@ -38,5 +39,6 @@ app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(drivers_router, prefix=settings.api_prefix)
 app.include_router(vehicles_router, prefix=settings.api_prefix)
 app.include_router(trips_router, prefix=settings.api_prefix)
+app.include_router(safety_events_router, prefix=settings.api_prefix)
 
 logger.debug("FastAPI application initialized")
