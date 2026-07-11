@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useBackendAlerts } from "../hook/useBackendAlerts";
-import { useBackendTrips } from "../hook/useBackendData";
-import { getActiveTripId } from "../services/backendAlerts";
+import { useAuth } from "../auth/AuthContext";
 
 import type {
   AlertsStats,
@@ -17,12 +16,18 @@ import AlertList from "../component/alerts/AlertList";
 const EMPTY_EVENTS: FleetAlertEvent[] = [];
 
 export function AlertsPage() {
-  const backendTrips = useBackendTrips(true);
-  const liveTripId = getActiveTripId() || backendTrips.trips?.[0]?.trip_id;
-  const backendAlerts = useBackendAlerts(liveTripId);
+  const { user } = useAuth();
+  const [tripIdFilter, setTripIdFilter] = useState("");
+  const [driverIdFilter, setDriverIdFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [showAcknowledged, setShowAcknowledged] = useState(true);
+  const backendAlerts = useBackendAlerts(undefined, {
+    tripId: tripIdFilter.trim() || undefined,
+    driverId: user?.role === "admin" ? driverIdFilter.trim() || undefined : undefined,
+    severity: severityFilter === "all" ? undefined : severityFilter,
+    status: "all",
+  });
   const events = backendAlerts.fleetEvents ?? EMPTY_EVENTS;
 
   const filtered = useMemo(
@@ -62,9 +67,9 @@ export function AlertsPage() {
         }}
       />
 
-      {(backendTrips.error || backendAlerts.error) && (
+      {backendAlerts.error && (
         <section className="panel border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
-          Backend unavailable: {backendTrips.error ?? backendAlerts.error}
+          Backend unavailable: {backendAlerts.error}
         </section>
       )}
 
@@ -78,6 +83,29 @@ export function AlertsPage() {
         onTypeChange={setTypeFilter}
         onToggleAcknowledged={setShowAcknowledged}
       />
+
+      <section className="panel grid gap-3 px-4 py-3 md:grid-cols-2">
+        <label className="grid gap-1 text-[11px] text-zinc-400">
+          Trip ID
+          <input
+            value={tripIdFilter}
+            onChange={(event) => setTripIdFilter(event.target.value)}
+            className="rounded-md border border-hairline bg-surface-2 px-3 py-2 text-[12px] text-zinc-100 outline-none focus:border-emerald-500/50"
+            placeholder="All authorized trips"
+          />
+        </label>
+        {user?.role === "admin" ? (
+          <label className="grid gap-1 text-[11px] text-zinc-400">
+            Driver ID
+            <input
+              value={driverIdFilter}
+              onChange={(event) => setDriverIdFilter(event.target.value)}
+              className="rounded-md border border-hairline bg-surface-2 px-3 py-2 text-[12px] text-zinc-100 outline-none focus:border-emerald-500/50"
+              placeholder="All drivers"
+            />
+          </label>
+        ) : null}
+      </section>
 
       <AlertList events={filtered} />
     </div>

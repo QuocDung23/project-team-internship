@@ -7,6 +7,7 @@ export interface BackendAlert {
   trip_id?: string;
   driver_id?: string;
   alert_type: string;
+  status?: string;
   detection_method: string;
   severity: string;
   ear_value?: number | null;
@@ -18,6 +19,14 @@ export interface BackendAlert {
 }
 
 export type BackendAlertInput = BackendAlert | unknown[];
+
+export interface AlertQuery {
+  tripId?: string;
+  driverId?: string;
+  severity?: string;
+  alertType?: string;
+  status?: string;
+}
 
 function apiEnv(name: string): string | undefined {
   return import.meta.env?.[name];
@@ -181,10 +190,19 @@ export function mapBackendAlertToMonitorAlert(
 }
 
 export async function fetchTripAlerts(tripId: string): Promise<BackendAlert[]> {
-  const response = await fetch(
-    `${apiBaseUrl()}/trips/${encodeURIComponent(tripId)}/alerts`,
-    { headers: apiHeaders() },
-  );
+  return fetchAlerts({ tripId });
+}
+
+export async function fetchAlerts(query: AlertQuery = {}): Promise<BackendAlert[]> {
+  const params = new URLSearchParams();
+  if (query.tripId) params.set("trip_id", query.tripId);
+  if (query.driverId) params.set("driver_id", query.driverId);
+  if (query.severity && query.severity !== "all") params.set("severity", query.severity);
+  if (query.alertType && query.alertType !== "all") params.set("alert_type", query.alertType);
+  if (query.status && query.status !== "all") params.set("status", query.status);
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${apiBaseUrl()}/alerts${suffix}`, { headers: apiHeaders() });
   if (!response.ok) {
     if (response.status === 401) {
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);

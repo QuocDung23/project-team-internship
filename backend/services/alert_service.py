@@ -110,14 +110,61 @@ def create_alert(
     return str(alert_id)
 
 
-def get_trip_alerts(
-    trip_id:str
-):
+def get_trip_alerts(trip_id: str):
+    return get_alerts(trip_id=trip_id)
 
+
+def get_alerts(
+    *,
+    trip_id: str | None = None,
+    driver_id: str | None = None,
+    severity: str | None = None,
+    alert_type: str | None = None,
+    status: str | None = None,
+    current_user: dict | None = None,
+):
     conn=get_connection()
     cur=conn.cursor()
 
-    cur.execute("""
+    where_clauses = []
+    params = []
+
+    if trip_id:
+        where_clauses.append("a.trip_id=%s")
+        params.append(trip_id)
+    if driver_id:
+        where_clauses.append("a.driver_id=%s")
+        params.append(driver_id)
+    if severity:
+        canonical_severity = "critical" if severity in {"critical", "high"} else "warning"
+        where_clauses.append("a.severity=%s")
+        params.append(canonical_severity)
+    if alert_type:
+        where_clauses.append("a.alert_type=%s")
+        params.append(_canonical_alert_type(alert_type))
+    if status:
+        where_clauses.append("a.status=%s")
+        params.append(status)
+
+    current_role = current_user.get("role") if current_user else None
+    current_role_value = getattr(current_role, "value", current_role)
+    if current_user and current_role_value == "driver":
+        where_clauses.append(
+            """
+            (
+                t.created_by=%s
+                OR lower(d.email)=lower(%s)
+            )
+            """
+        )
+        params.extend([
+            str(current_user.get("user_id") or ""),
+            (current_user.get("email") or "").strip(),
+        ])
+
+    where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+    cur.execute(f"""
         SELECT
             a.alert_id,
             a.trip_id,
@@ -141,9 +188,11 @@ def get_trip_alerts(
         FROM alerts a
         LEFT JOIN alert_safety_events ase ON ase.alert_id = a.alert_id
         LEFT JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
-        WHERE a.trip_id=%s
+        LEFT JOIN trips t ON t.trip_id = a.trip_id
+        LEFT JOIN drivers d ON d.driver_id = a.driver_id
+        {where_sql}
         ORDER BY COALESCE(se.occurred_at, a.opened_at) DESC
-    """,(trip_id,))
+    """, tuple(params))
 
     rows=cur.fetchall()
 

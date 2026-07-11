@@ -53,6 +53,7 @@ export interface BackendTrip {
   actual_start_at?: string | null;
   planned_start_at?: string | null;
   end_time?: string | null;
+  actual_end_at?: string | null;
   status: string;
   total_alerts_count?: number | string | null;
   critical_alerts_count?: number | string | null;
@@ -330,7 +331,7 @@ export async function updateDriver(
   },
 ): Promise<{ success: boolean }> {
   return requestJson(`/drivers/${encodeURIComponent(driverId)}`, {
-    method: "PUT",
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
 }

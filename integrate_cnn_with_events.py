@@ -148,6 +148,26 @@ def _parse_args() -> argparse.Namespace:
         help="Bearer token for SafetyEvent backend publishing (default: SAFETY_BACKEND_TOKEN).",
     )
     parser.add_argument(
+        "--trip-id",
+        default=os.environ.get("TRIP_ID", ""),
+        help="Active trip_id to attach to SafetyEvents and monitoring snapshots.",
+    )
+    parser.add_argument(
+        "--driver-id",
+        default=os.environ.get("DRIVER_ID", ""),
+        help="Optional driver_id to attach to SafetyEvents.",
+    )
+    parser.add_argument(
+        "--vehicle-id",
+        default=os.environ.get("VEHICLE_ID", ""),
+        help="Optional vehicle_id to attach to SafetyEvents.",
+    )
+    parser.add_argument(
+        "--monitoring-session-id",
+        default=os.environ.get("MONITORING_SESSION_ID", ""),
+        help="Optional monitoring_session_id to attach to SafetyEvents.",
+    )
+    parser.add_argument(
         "--monitoring-backend-url",
         default=os.environ.get("MONITORING_BACKEND_URL", "http://127.0.0.1:8000/api/v1"),
         help="Backend base URL for live monitoring frame/snapshot publishing.",
@@ -646,7 +666,7 @@ def _build_monitoring_snapshot(
     pose_alert: bool,
 ) -> dict:
     return {
-        "trip_id": None,
+        "trip_id": ARGS.trip_id or None,
         "timestamp": time.time(),
         "fps": float(fps),
         "ear": float(ear),
@@ -688,9 +708,10 @@ def build_safety_event(
         "severity": severity,
         "source": "ai_camera",
         "occurred_at": _utc_now_iso(),
-        "trip_id": None,
-        "driver_id": None,
-        "vehicle_id": None,
+        "monitoring_session_id": ARGS.monitoring_session_id or None,
+        "trip_id": ARGS.trip_id or None,
+        "driver_id": ARGS.driver_id or None,
+        "vehicle_id": ARGS.vehicle_id or None,
         "confidence": round(float(confidence), 2),
         "duration_ms": int(duration_ms),
         "details": details,
