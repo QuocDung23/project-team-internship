@@ -8,7 +8,12 @@ from typing import Any, Dict, Iterable, List, Optional
 
 
 def _url(base_url: str, path: str) -> str:
-    return base_url.rstrip("/") + path
+    cleaned = base_url.strip().rstrip("/")
+    if not cleaned:
+        raise ValueError("backend_url is required")
+    if cleaned.endswith("/api/v1"):
+        return cleaned + path
+    return cleaned + "/api/v1" + path
 
 
 def _request_json(url: str, payload: Dict[str, Any], timeout: float) -> Dict[str, Any]:

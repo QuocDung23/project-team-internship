@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
-from models.schemas import MonitoringSnapshot
-from services.monitoring_service import (
+from backend.models.schemas import MonitoringSnapshot
+from backend.services.monitoring_service import (
     get_latest_frame,
     get_monitoring_snapshot,
     iter_mjpeg_stream,

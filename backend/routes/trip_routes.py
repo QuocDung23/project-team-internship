@@ -1,8 +1,8 @@
 from typing import Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
-from models.schemas import TripStart
-from services.trip_service import (
+from backend.models.schemas import TripStart
+from backend.services.trip_service import (
     end_trip,
     get_active_trips,
     get_trip,

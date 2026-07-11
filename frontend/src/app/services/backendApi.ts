@@ -16,18 +16,62 @@ export interface BackendDriver {
   total_alerts_count?: number | string | null;
 }
 
+export const TOKEN_STORAGE_KEY = "drowsiness_access_token";
+const API_REQUEST_TIMEOUT_MS = 10_000;
+
+export interface AuthUser {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: "admin" | "driver";
+  status: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: AuthUser;
+}
+
 export interface BackendTrip {
   trip_id: string;
-  driver_id: string;
+  code?: string | null;
+  driver_id?: string | null;
   driver_name?: string | null;
   vehicle_plate?: string | null;
+  assignment?: {
+    driver_id?: string | null;
+    vehicle_id?: string | null;
+  } | null;
+  monitoring_session?: {
+    monitoring_session_id: string;
+    trip_id: string;
+    status: string;
+  } | null;
   start_time?: string | null;
+  actual_start_at?: string | null;
+  planned_start_at?: string | null;
   end_time?: string | null;
   status: string;
   total_alerts_count?: number | string | null;
   critical_alerts_count?: number | string | null;
   safety_score?: number | string | null;
   safety_grade?: string | null;
+}
+
+export interface SafetyScore {
+  safety_score_id: string;
+  trip_id: string;
+  score: number;
+  grade: string;
+  total_events: number;
+  warning_events: number;
+  critical_events: number;
+  alert_count: number;
+  calculation_version: string;
+  explanation: Record<string, unknown>;
+  calculated_at: string;
 }
 
 export interface BackendSettings {
@@ -89,7 +133,23 @@ function apiEnv(name: string): string | undefined {
 }
 
 export function apiBaseUrl(): string {
-  return apiEnv("VITE_API_BASE_URL")?.replace(/\/$/, "") || "/api";
+  return apiEnv("VITE_API_BASE_URL")?.replace(/\/$/, "") || "/api/v1";
+}
+
+export function apiAuthToken(): string {
+  const envToken = apiEnv("VITE_API_BEARER_TOKEN")?.trim();
+  if (envToken) return envToken;
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(TOKEN_STORAGE_KEY)?.trim() ?? "";
+}
+
+export function apiHeaders(headers?: Record<string, string>): Record<string, string> {
+  const token = apiAuthToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(headers ?? {}),
+  };
 }
 
 function asNumber(value: unknown, fallback = 0): number {
@@ -149,16 +209,17 @@ function tripStatusToVehicle(value: string): VehicleSnapshot["status"] {
 }
 
 export function mapBackendTripToVehicle(input: BackendTrip): VehicleSnapshot {
-  const startedAt = input.start_time ? Date.parse(input.start_time) : NaN;
+  const startedAt = input.start_time ?? input.actual_start_at ?? input.planned_start_at;
+  const startedAtMs = startedAt ? Date.parse(startedAt) : NaN;
   return {
     id: asString(input.trip_id, "trip"),
-    driverId: asString(input.driver_id, "driver"),
+    driverId: asString(input.driver_id ?? input.assignment?.driver_id, "driver"),
     driverName: asString(input.driver_name, "Unknown driver"),
     licensePlate: asString(input.vehicle_plate, "No plate"),
     team: "Active trips",
     status: tripStatusToVehicle(input.status),
-    waitMinutes: input.status === "scheduled" && Number.isFinite(startedAt)
-      ? Math.max(0, Math.round((Date.now() - startedAt) / 60_000))
+    waitMinutes: input.status === "scheduled" && Number.isFinite(startedAtMs)
+      ? Math.max(0, Math.round((Date.now() - startedAtMs) / 60_000))
       : 0,
     loadProgress: 0,
     speedKmh: 0,
@@ -198,19 +259,51 @@ interface JsonRequestInit {
 }
 
 async function requestJson<T>(path: string, init?: JsonRequestInit): Promise<T> {
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
-  });
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}${path}`, {
+      headers: apiHeaders(init?.headers),
+      signal: controller.signal,
+      ...init,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Backend request timed out. Check that the backend server is running.");
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.dispatchEvent(new Event("drowsiness:unauthorized"));
+    }
     throw new Error(`Backend request failed: ${response.status}`);
   }
   return (await response.json()) as T;
 }
 
+export async function loginUser(email: string, password: string): Promise<LoginResponse> {
+  return requestJson<LoginResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function fetchCurrentUser(): Promise<AuthUser> {
+  return requestJson<AuthUser>("/auth/me");
+}
+
 export async function fetchDrivers(): Promise<BackendDriver[]> {
   const data = await requestJson<{ drivers?: BackendDriver[] } | BackendDriver[]>("/drivers");
   return Array.isArray(data) ? data : data.drivers ?? [];
+}
+
+export async function fetchMyDriverProfile(): Promise<BackendDriver> {
+  return requestJson<BackendDriver>("/drivers/me");
 }
 
 export async function createDriver(payload: {
@@ -253,9 +346,31 @@ export async function fetchActiveTrips(): Promise<BackendTrip[]> {
   return Array.isArray(data) ? data : data.trips ?? [];
 }
 
+export async function fetchMyTrips(): Promise<BackendTrip[]> {
+  const data = await requestJson<{ trips?: BackendTrip[] } | BackendTrip[]>("/trips/my");
+  return Array.isArray(data) ? data : data.trips ?? [];
+}
+
 export async function fetchTrips(): Promise<BackendTrip[]> {
   const data = await requestJson<{ trips?: BackendTrip[] } | BackendTrip[]>("/trips");
   return Array.isArray(data) ? data : data.trips ?? [];
+}
+
+export async function startMyTrip(): Promise<BackendTrip> {
+  return requestJson<BackendTrip>("/trips/start-my-trip", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function completeTrip(tripId: string): Promise<BackendTrip> {
+  return requestJson<BackendTrip>(`/trips/${encodeURIComponent(tripId)}/complete`, {
+    method: "POST",
+  });
+}
+
+export async function fetchSafetyScore(tripId: string): Promise<SafetyScore> {
+  return requestJson<SafetyScore>(`/trips/${encodeURIComponent(tripId)}/safety-score`);
 }
 
 export async function fetchSettings(): Promise<BackendSettings> {

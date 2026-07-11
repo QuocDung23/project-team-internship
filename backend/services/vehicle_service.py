@@ -118,7 +118,7 @@ class VehicleService:
         current_user: dict[str, Any],
     ) -> None:
         role = current_user["role"]
-        if role in {UserRole.ADMIN, UserRole.DISPATCHER}:
+        if role == UserRole.ADMIN:
             return
         if role == UserRole.DRIVER:
             email = (current_user.get("email") or "").strip()

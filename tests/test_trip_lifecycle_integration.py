@@ -154,6 +154,22 @@ class WorkflowTripRepository:
     def list_trips_for_driver_email(self, driver_email, status=None):
         return []
 
+    def list_trips_for_user(self, user_id, driver_email, status=None):
+        return [self.state.trip] if self.state.trip else []
+
+    def ensure_active_monitoring_session(self, trip_id):
+        return {
+            "monitoring_session_id": "monitoring-1",
+            "trip_id": trip_id,
+            "status": "active",
+            "detector_instance_id": "demo-detector",
+            "camera_index": None,
+            "started_at": NOW,
+            "ended_at": None,
+            "last_snapshot_at": None,
+            "created_at": NOW,
+        }
+
     def find_by_id(self, trip_id):
         return self.state.trip if self.state.trip and trip_id == self.state.trip["trip_id"] else None
 
@@ -193,6 +209,9 @@ class WorkflowTripRepository:
     def driver_email_has_trip_assignment(self, trip_id, driver_email):
         return False
 
+    def driver_owns_trip(self, trip_id, user_id, driver_email):
+        return self.state.trip is not None and trip_id == self.state.trip["trip_id"]
+
     def update_trip_status(self, trip_id, status, cancelled_reason=None, aborted_reason=None):
         self.state.trip["status"] = status
         return self.state.trip
@@ -226,6 +245,23 @@ class WorkflowTripRepository:
         self.state.assignment["unassigned_at"] = NOW
         self.state.vehicle["status"] = VehicleStatus.AVAILABLE
         return self.state.trip
+
+    def complete_active_trip(self, trip_id):
+        return self.complete_trip(trip_id)
+
+    def find_safety_score(self, trip_id):
+        return None
+
+    def count_trip_safety_inputs(self, trip_id):
+        return {"total_events": 0, "warning_events": 0, "critical_events": 0, "alert_count": 0}
+
+    def create_safety_score(self, **kwargs):
+        return {
+            "safety_score_id": "score-1",
+            "calculation_version": "v1",
+            "calculated_at": NOW,
+            **kwargs,
+        }
 
     def cancel_trip(self, trip_id, reason):
         self.state.trip["status"] = TripStatus.CANCELLED
@@ -299,6 +335,7 @@ class TripLifecycleIntegrationTest(unittest.TestCase):
         self.assertEqual(completed.status_code, 200)
         self.assertEqual(completed.json()["status"], "completed")
         self.assertEqual(completed.json()["assignment"]["status"], "completed")
+        self.assertEqual(completed.json()["safety_score"]["score"], 100.0)
         self.assertEqual(self.state.vehicle["status"], VehicleStatus.AVAILABLE)
 
 

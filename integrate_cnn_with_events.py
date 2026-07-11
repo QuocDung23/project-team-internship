@@ -36,6 +36,15 @@ import pygame
 from imutils import face_utils
 from scipy.spatial import distance
 
+from ai_runtime.publishers import (
+    AsyncEventPublisher,
+    BackendApiPublisher,
+    CompositePublisher,
+    EventPublisher,
+    LocalJsonlPublisher,
+)
+from ai_runtime.monitoring_publisher import AsyncMonitoringPublisher
+
 try:
     import tensorflow as tf
 except ModuleNotFoundError:
@@ -117,6 +126,36 @@ def _parse_args() -> argparse.Namespace:
         "--disable-safety-events",
         action="store_true",
         help="Disable local SafetyEvent JSONL output.",
+    )
+    parser.add_argument(
+        "--publish-safety-events-backend",
+        "--enable-backend-publish",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="POST SafetyEvents to the backend ingest API when events occur (default: false).",
+    )
+    parser.add_argument(
+        "--safety-backend-url",
+        default=os.environ.get("SAFETY_BACKEND_URL", "http://127.0.0.1:8000"),
+        help=(
+            "Backend base URL or ingest endpoint for SafetyEvent publishing "
+            "(default: SAFETY_BACKEND_URL or http://127.0.0.1:8000)."
+        ),
+    )
+    parser.add_argument(
+        "--safety-backend-token",
+        default=os.environ.get("SAFETY_BACKEND_TOKEN", ""),
+        help="Bearer token for SafetyEvent backend publishing (default: SAFETY_BACKEND_TOKEN).",
+    )
+    parser.add_argument(
+        "--monitoring-backend-url",
+        default=os.environ.get("MONITORING_BACKEND_URL", "http://127.0.0.1:8000/api/v1"),
+        help="Backend base URL for live monitoring frame/snapshot publishing.",
+    )
+    parser.add_argument(
+        "--disable-monitoring-publish",
+        action="store_true",
+        help="Disable live monitoring frame/snapshot publishing.",
     )
     return parser.parse_args()
 
@@ -544,6 +583,78 @@ def stop_alarm():
 SAFETY_EVENT_LOG = Path("logs/ai_safety_events.jsonl")
 
 
+def _build_safety_event_publisher() -> EventPublisher | None:
+    publishers: list[EventPublisher] = []
+    if not ARGS.disable_safety_events:
+        publishers.append(LocalJsonlPublisher(SAFETY_EVENT_LOG))
+    if ARGS.publish_safety_events_backend:
+        try:
+            publishers.append(
+                BackendApiPublisher(
+                    ARGS.safety_backend_url,
+                    auth_token=ARGS.safety_backend_token,
+                    timeout=1.0,
+                )
+            )
+        except ValueError as exc:
+            print(f"Warning: SafetyEvent backend publishing disabled: {exc}", file=sys.stderr)
+    if not publishers:
+        return None
+    return AsyncEventPublisher(CompositePublisher(publishers))
+
+
+SAFETY_EVENT_PUBLISHER = _build_safety_event_publisher()
+MONITORING_PUBLISHER = (
+    None
+    if ARGS.disable_monitoring_publish
+    else AsyncMonitoringPublisher(ARGS.monitoring_backend_url)
+)
+
+
+def _dws_score() -> int:
+    eye_score = min(100.0, 100.0 * EAR_COUNTER / max(1, EAR_CONSEC_FRAMES))
+    mouth_score = min(100.0, 100.0 * MAR_COUNTER / max(1, MAR_CONSEC_FRAMES))
+    pose_score = min(100.0, 100.0 * POSE_COUNTER / max(1, POSE_CONSEC_FRAMES))
+    return int(round(max(eye_score, mouth_score, pose_score)))
+
+
+def _build_monitoring_snapshot(
+    *,
+    fps: float,
+    ear: float,
+    mar: float,
+    pitch: float,
+    face_detected: bool,
+    ear_alert: bool,
+    mar_alert: bool,
+    pose_alert: bool,
+) -> dict:
+    return {
+        "trip_id": None,
+        "timestamp": time.time(),
+        "fps": float(fps),
+        "ear": float(ear),
+        "mar": float(mar),
+        "pitch": float(pitch),
+        "dws_score": _dws_score(),
+        "eyes_open": not bool(ear_alert),
+        "mouth_closed": not bool(mar_alert),
+        "face_detected": bool(face_detected),
+        "ear_alert": bool(ear_alert),
+        "mar_alert": bool(mar_alert),
+        "pose_alert": bool(pose_alert),
+        "alarm_on": bool(_alarm_on),
+        "ear_counter": int(EAR_COUNTER),
+        "mar_counter": int(MAR_COUNTER),
+        "pose_counter": int(POSE_COUNTER),
+        "ear_threshold": float(EAR_PERSONAL_THRESHOLD),
+        "mar_threshold": float(MAR_THRESHOLD),
+        "pitch_delta_threshold": float(_pose_delta_threshold),
+        "cnn_confidence": float(_ema_cnn_conf) if USE_CNN else None,
+        "cnn_enabled": bool(USE_CNN),
+    }
+
+
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -568,17 +679,6 @@ def build_safety_event(
         "duration_ms": int(duration_ms),
         "details": details,
     }
-
-
-def write_safety_event(event: dict) -> None:
-    if ARGS.disable_safety_events:
-        return
-    try:
-        SAFETY_EVENT_LOG.parent.mkdir(parents=True, exist_ok=True)
-        with SAFETY_EVENT_LOG.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
-    except Exception:
-        pass
 
 
 def publish_safety_event(
@@ -615,7 +715,8 @@ def publish_safety_event(
         duration_ms=duration_ms,
         details={key: value for key, value in details.items() if value is not None},
     )
-    write_safety_event(event)
+    if SAFETY_EVENT_PUBLISHER is not None:
+        SAFETY_EVENT_PUBLISHER.publish(event)
 
 
 def put_text_outline(
@@ -1127,6 +1228,21 @@ try:
 
         draw_dashboard(frame, ear, mar, pitch, ear_alert, mar_alert, pose_alert)
 
+        if MONITORING_PUBLISHER is not None:
+            MONITORING_PUBLISHER.publish(
+                _build_monitoring_snapshot(
+                    fps=fps,
+                    ear=ear,
+                    mar=mar,
+                    pitch=pitch,
+                    face_detected=len(faces) > 0,
+                    ear_alert=ear_alert,
+                    mar_alert=mar_alert,
+                    pose_alert=pose_alert,
+                ),
+                frame,
+            )
+
         if ear_alert and not prev_eye_alert:
             publish_safety_event(
                 event_type="drowsiness_detected",
@@ -1191,5 +1307,15 @@ finally:
         _alert_channel.stop()
     except Exception:
         pass
+    if SAFETY_EVENT_PUBLISHER is not None and hasattr(SAFETY_EVENT_PUBLISHER, "close"):
+        try:
+            SAFETY_EVENT_PUBLISHER.close(timeout=1.0)
+        except Exception:
+            pass
+    if MONITORING_PUBLISHER is not None:
+        try:
+            MONITORING_PUBLISHER.close(timeout=1.0)
+        except Exception:
+            pass
     cv2.destroyAllWindows()
     print("👋 Đã thoát.")

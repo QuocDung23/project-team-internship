@@ -41,7 +41,7 @@ def _conflict(exc: Exception) -> HTTPException:
 @router.post("", response_model=VehicleResponse, status_code=status.HTTP_201_CREATED)
 def create_vehicle(
     payload: VehicleCreate,
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: VehicleService = Depends(get_vehicle_service),
 ) -> VehicleResponse:
     try:
@@ -53,7 +53,7 @@ def create_vehicle(
 @router.get("", response_model=VehicleListResponse)
 def list_vehicles(
     status_filter: VehicleStatus | None = Query(default=None, alias="status"),
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: VehicleService = Depends(get_vehicle_service),
 ) -> VehicleListResponse:
     return VehicleListResponse(vehicles=service.list_vehicles(status=status_filter))
@@ -77,7 +77,7 @@ def read_vehicle(
 def update_vehicle(
     vehicle_id: str,
     payload: VehicleUpdate,
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: VehicleService = Depends(get_vehicle_service),
 ) -> VehicleResponse:
     try:
@@ -92,7 +92,7 @@ def update_vehicle(
 def update_vehicle_availability(
     vehicle_id: str,
     payload: VehicleAvailabilityUpdate,
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: VehicleService = Depends(get_vehicle_service),
 ) -> VehicleResponse:
     try:
@@ -106,7 +106,7 @@ def update_vehicle_availability(
 @router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_vehicle(
     vehicle_id: str,
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: VehicleService = Depends(get_vehicle_service),
 ) -> Response:
     try:

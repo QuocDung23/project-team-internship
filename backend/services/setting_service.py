@@ -1,4 +1,4 @@
-from config.db import get_connection
+from backend.config.db import get_connection
 
 
 SETTING_COLUMNS = (

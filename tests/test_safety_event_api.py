@@ -19,7 +19,7 @@ def request_payload(**overrides):
         "severity": "high",
         "source": "ai_camera",
         "occurred_at": NOW.isoformat(),
-        "trip_id": None,
+        "trip_id": "trip-1",
         "driver_id": None,
         "vehicle_id": None,
         "confidence": 0.91,
@@ -34,8 +34,8 @@ class FakeSafetyEventService:
     def __init__(self):
         self.payloads = []
 
-    def ingest(self, payload):
-        self.payloads.append(payload)
+    def ingest(self, payload, current_user=None):
+        self.payloads.append((payload, current_user))
         return {
             **payload.model_dump(mode="json"),
             "safety_event_id": "safety-event-1",
@@ -69,8 +69,8 @@ class SafetyEventApiTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_admin_and_dispatcher_can_ingest(self):
-        for role in (UserRole.ADMIN, UserRole.DISPATCHER):
+    def test_admin_and_driver_can_ingest(self):
+        for role in (UserRole.ADMIN, UserRole.DRIVER):
             with self.subTest(role=role):
                 self.authenticate_as(role)
 
@@ -81,13 +81,6 @@ class SafetyEventApiTest(unittest.TestCase):
 
                 self.assertEqual(response.status_code, 201)
                 self.assertEqual(response.json()["safety_event_id"], "safety-event-1")
-
-    def test_driver_cannot_ingest(self):
-        self.authenticate_as(UserRole.DRIVER)
-
-        response = self.client.post("/api/v1/safety-events/ingest", json=request_payload())
-
-        self.assertEqual(response.status_code, 403)
 
     def test_invalid_payload_returns_422(self):
         self.authenticate_as(UserRole.ADMIN)

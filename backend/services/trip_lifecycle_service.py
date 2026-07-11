@@ -4,9 +4,10 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.auth.roles import UserRole
 from backend.models.driver import DriverStatus
-from backend.models.trip import TripAssignRequest, TripCreate, TripStatus
+from backend.models.trip import StartMyTripRequest, TripAssignRequest, TripCreate, TripStatus
 from backend.models.vehicle import VehicleStatus
 from backend.repositories.trip_repository import TripRepository
+from backend.services.safety_service import calculate_safety_score, safety_grade
 
 
 class TripNotFoundError(Exception):
@@ -61,17 +62,72 @@ class TripLifecycleService:
         current_user: dict[str, Any],
     ) -> list[dict[str, Any]]:
         role = current_user["role"]
-        if role in {UserRole.ADMIN, UserRole.DISPATCHER}:
+        if role == UserRole.ADMIN:
             return self.trip_repository.list_trips(status=status)
         if role == UserRole.DRIVER:
             email = (current_user.get("email") or "").strip()
             if not email:
                 return []
-            return self.trip_repository.list_trips_for_driver_email(
+            user_id = str(current_user.get("user_id") or "")
+            return self.trip_repository.list_trips_for_user(
+                user_id=user_id,
                 driver_email=email,
                 status=status,
             )
         raise TripAccessDeniedError("Insufficient permissions for trips.")
+
+    def start_my_trip(
+        self,
+        payload: StartMyTripRequest,
+        *,
+        current_user: dict[str, Any],
+    ) -> dict[str, Any]:
+        if current_user["role"] != UserRole.DRIVER:
+            raise TripAccessDeniedError("Only drivers can start their own trip.")
+        user_id = str(current_user.get("user_id") or "")
+        email = (current_user.get("email") or "").strip()
+        if not user_id or not email:
+            raise TripAccessDeniedError("Driver identity is incomplete.")
+        if self.trip_repository.find_active_trip_for_user(user_id=user_id, driver_email=email):
+            raise TripConflictError("Driver already has an active trip.")
+        try:
+            trip = self.trip_repository.create_active_trip_for_user(
+                code=payload.code,
+                origin=payload.origin,
+                destination=payload.destination,
+                created_by=user_id,
+            )
+            trip["monitoring_session"] = self.trip_repository.ensure_active_monitoring_session(
+                trip["trip_id"]
+            )
+            return trip
+        except IntegrityError as exc:
+            raise TripConflictError("Trip code already exists.") from exc
+
+    def active_trip(self, *, current_user: dict[str, Any]) -> dict[str, Any] | None:
+        role = current_user["role"]
+        if role == UserRole.ADMIN:
+            trips = self.trip_repository.list_trips(status=TripStatus.IN_PROGRESS)
+            return trips[0] if trips else None
+        if role == UserRole.DRIVER:
+            trip = self.trip_repository.find_active_trip_for_user(
+                user_id=str(current_user.get("user_id") or ""),
+                driver_email=(current_user.get("email") or "").strip(),
+            )
+            if trip is not None:
+                trip["monitoring_session"] = self.trip_repository.ensure_active_monitoring_session(
+                    trip["trip_id"]
+                )
+            return trip
+        raise TripAccessDeniedError("Insufficient permissions for trips.")
+
+    def list_my_trips(self, *, current_user: dict[str, Any]) -> list[dict[str, Any]]:
+        if current_user["role"] != UserRole.DRIVER:
+            raise TripAccessDeniedError("Only drivers can list their own trips.")
+        return self.trip_repository.list_trips_for_user(
+            user_id=str(current_user.get("user_id") or ""),
+            driver_email=(current_user.get("email") or "").strip(),
+        )
 
     def get_trip(self, trip_id: str, *, current_user: dict[str, Any]) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
@@ -137,13 +193,47 @@ class TripLifecycleService:
 
     def complete_trip(self, trip_id: str, *, current_user: dict[str, Any]) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
-        self._validate_transition(trip["status"], TripStatus.COMPLETED)
-        assignment = self._active_assignment_or_conflict(trip_id)
-        self._ensure_can_operate_active_assignment(assignment, current_user=current_user)
-        updated = self.trip_repository.complete_trip(trip_id)
+        if trip["status"] != TripStatus.IN_PROGRESS:
+            raise InvalidTripStateTransitionError(
+                f"Cannot change trip status from {trip['status'].value} to completed."
+            )
+        self._ensure_can_operate_trip(trip_id, current_user=current_user)
+        updated = self.trip_repository.complete_active_trip(trip_id)
         if updated is None:
             raise TripNotFoundError("Trip not found.")
+        updated["safety_score"] = self.calculate_or_get_safety_score(trip_id)
         return updated
+
+    def calculate_or_get_safety_score(self, trip_id: str) -> dict[str, Any]:
+        self._get_trip_or_raise(trip_id)
+        existing = self.trip_repository.find_safety_score(trip_id)
+        if existing is not None:
+            return existing
+        counts = self.trip_repository.count_trip_safety_inputs(trip_id)
+        score = calculate_safety_score(
+            counts["alert_count"],
+            counts["critical_events"],
+        )
+        grade = safety_grade(score)
+        explanation = {
+            "base_score": 100.0,
+            "alert_count": counts["alert_count"],
+            "total_events": counts["total_events"],
+            "critical_events": counts["critical_events"],
+            "warning_events": counts["warning_events"],
+            "final_score": score,
+            "grade": grade,
+        }
+        return self.trip_repository.create_safety_score(
+            trip_id=trip_id,
+            score=score,
+            grade=grade,
+            total_events=counts["total_events"],
+            warning_events=counts["warning_events"],
+            critical_events=counts["critical_events"],
+            alert_count=counts["alert_count"],
+            explanation=explanation,
+        )
 
     def cancel_trip(self, trip_id: str, *, reason: str) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
@@ -182,15 +272,29 @@ class TripLifecycleService:
 
     def _ensure_can_read_trip(self, trip_id: str, *, current_user: dict[str, Any]) -> None:
         role = current_user["role"]
-        if role in {UserRole.ADMIN, UserRole.DISPATCHER}:
+        if role == UserRole.ADMIN:
             return
         if role == UserRole.DRIVER:
             email = (current_user.get("email") or "").strip()
-            if email and self.trip_repository.driver_email_has_trip_assignment(
+            user_id = str(current_user.get("user_id") or "")
+            if email and self.trip_repository.driver_owns_trip(
                 trip_id=trip_id,
+                user_id=user_id,
                 driver_email=email,
             ):
                 return
+        raise TripAccessDeniedError("Insufficient permissions for this trip.")
+
+    def _ensure_can_operate_trip(self, trip_id: str, *, current_user: dict[str, Any]) -> None:
+        role = current_user["role"]
+        if role == UserRole.ADMIN:
+            return
+        if role == UserRole.DRIVER and self.trip_repository.driver_owns_trip(
+            trip_id=trip_id,
+            user_id=str(current_user.get("user_id") or ""),
+            driver_email=(current_user.get("email") or "").strip(),
+        ):
+            return
         raise TripAccessDeniedError("Insufficient permissions for this trip.")
 
     def _ensure_can_operate_active_assignment(
@@ -200,7 +304,7 @@ class TripLifecycleService:
         current_user: dict[str, Any],
     ) -> None:
         role = current_user["role"]
-        if role in {UserRole.ADMIN, UserRole.DISPATCHER}:
+        if role == UserRole.ADMIN:
             return
         if role == UserRole.DRIVER:
             email = (current_user.get("email") or "").strip()

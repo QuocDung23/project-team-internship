@@ -15,6 +15,7 @@ SAFETY_EVENT_COLUMNS = """
     severity::text AS severity,
     source,
     occurred_at,
+    monitoring_session_id,
     trip_id,
     driver_id,
     vehicle_id,
@@ -33,7 +34,7 @@ def _row_to_safety_event(row: Any) -> dict[str, Any] | None:
     event["event_id"] = str(event["event_id"])
     event["event_type"] = SafetyEventType(event["event_type"])
     event["severity"] = SafetyEventSeverity(event["severity"])
-    for key in ("trip_id", "driver_id", "vehicle_id"):
+    for key in ("monitoring_session_id", "trip_id", "driver_id", "vehicle_id"):
         if event.get(key) is not None:
             event[key] = str(event[key])
     event["confidence"] = float(event["confidence"])
@@ -68,6 +69,70 @@ class SafetyEventRepository:
     def trip_exists(self, trip_id: str) -> bool:
         return self._exists("trips", "trip_id", trip_id)
 
+    def active_trip_exists(self, trip_id: str) -> bool:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT 1
+                        FROM trips
+                        WHERE trip_id = :trip_id
+                          AND status = 'in_progress'
+                        LIMIT 1
+                        """
+                    ),
+                    {"trip_id": trip_id},
+                )
+                .first()
+            )
+        return row is not None
+
+    def monitoring_session_belongs_to_trip(self, *, monitoring_session_id: str, trip_id: str) -> bool:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT 1
+                        FROM monitoring_sessions
+                        WHERE monitoring_session_id = :monitoring_session_id
+                          AND trip_id = :trip_id
+                          AND status = 'active'
+                        LIMIT 1
+                        """
+                    ),
+                    {"monitoring_session_id": monitoring_session_id, "trip_id": trip_id},
+                )
+                .first()
+            )
+        return row is not None
+
+    def driver_owns_active_trip(self, *, trip_id: str, user_id: str, driver_email: str) -> bool:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT 1
+                        FROM trips t
+                        LEFT JOIN trip_assignments ta ON ta.trip_id = t.trip_id
+                        LEFT JOIN drivers d ON d.driver_id = ta.driver_id
+                        WHERE t.trip_id = :trip_id
+                          AND t.status = 'in_progress'
+                          AND (
+                            t.created_by = :user_id
+                            OR lower(d.email) = lower(:driver_email)
+                          )
+                        LIMIT 1
+                        """
+                    ),
+                    {"trip_id": trip_id, "user_id": user_id, "driver_email": driver_email},
+                )
+                .first()
+            )
+        return row is not None
+
     def driver_exists(self, driver_id: str) -> bool:
         return self._exists("drivers", "driver_id", driver_id)
 
@@ -93,6 +158,7 @@ class SafetyEventRepository:
                         f"""
                         INSERT INTO safety_events (
                             event_id,
+                            monitoring_session_id,
                             event_type,
                             severity,
                             source,
@@ -106,6 +172,7 @@ class SafetyEventRepository:
                         )
                         VALUES (
                             :event_id,
+                            :monitoring_session_id,
                             CAST(:event_type AS safety_event_type),
                             CAST(:severity AS event_severity),
                             :source,

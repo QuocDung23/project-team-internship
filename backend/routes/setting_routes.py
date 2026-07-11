@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from models.schemas import SettingUpdate
-from services.setting_service import get_global_settings, update_global_settings
+from backend.models.schemas import SettingUpdate
+from backend.services.setting_service import get_global_settings, update_global_settings
 
 router=APIRouter(
     tags=["Settings"]

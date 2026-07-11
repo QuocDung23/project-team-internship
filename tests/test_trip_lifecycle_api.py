@@ -45,6 +45,7 @@ def trip_response(**overrides):
         "created_at": NOW,
         "updated_at": NOW,
         "assignment": None,
+        "monitoring_session": None,
     }
     data.update(overrides)
     return data
@@ -56,6 +57,29 @@ class FakeTripLifecycleService:
 
     def list_trips(self, status, current_user):
         return [trip_response(status=status or TripStatus.SCHEDULED)]
+
+    def active_trip(self, current_user):
+        return trip_response(status=TripStatus.IN_PROGRESS)
+
+    def list_my_trips(self, current_user):
+        return [trip_response(status=TripStatus.IN_PROGRESS)]
+
+    def start_my_trip(self, payload, current_user):
+        return trip_response(
+            status=TripStatus.IN_PROGRESS,
+            created_by=current_user["user_id"],
+            monitoring_session={
+                "monitoring_session_id": "monitoring-1",
+                "trip_id": "trip-1",
+                "status": "active",
+                "detector_instance_id": "demo-detector",
+                "camera_index": None,
+                "started_at": NOW,
+                "ended_at": None,
+                "last_snapshot_at": None,
+                "created_at": NOW,
+            },
+        )
 
     def get_trip(self, trip_id, current_user):
         return trip_response(trip_id=trip_id)
@@ -90,6 +114,7 @@ class FakeTripLifecycleService:
                 status=AssignmentStatus.COMPLETED,
                 unassigned_at=NOW,
             ),
+            safety_score=self.calculate_or_get_safety_score(trip_id),
         )
 
     def cancel_trip(self, trip_id, reason):
@@ -97,6 +122,21 @@ class FakeTripLifecycleService:
 
     def abort_trip(self, trip_id, reason):
         return trip_response(trip_id=trip_id, status=TripStatus.ABORTED, aborted_reason=reason)
+
+    def calculate_or_get_safety_score(self, trip_id):
+        return {
+            "safety_score_id": "score-1",
+            "trip_id": trip_id,
+            "score": 92.0,
+            "grade": "A",
+            "total_events": 1,
+            "warning_events": 0,
+            "critical_events": 1,
+            "alert_count": 1,
+            "calculation_version": "v1",
+            "explanation": {},
+            "calculated_at": NOW,
+        }
 
 
 class TripLifecycleApiTest(unittest.TestCase):
@@ -140,6 +180,7 @@ class TripLifecycleApiTest(unittest.TestCase):
         completed = self.client.post("/api/v1/trips/trip-1/complete")
         cancelled = self.client.post("/api/v1/trips/trip-1/cancel", json={"reason": "weather"})
         aborted = self.client.post("/api/v1/trips/trip-1/abort", json={"reason": "incident"})
+        safety_score = self.client.get("/api/v1/trips/trip-1/safety-score")
 
         self.assertEqual(created.status_code, 201)
         self.assertEqual(created.json()["status"], "scheduled")
@@ -155,6 +196,8 @@ class TripLifecycleApiTest(unittest.TestCase):
         self.assertEqual(cancelled.json()["cancelled_reason"], "weather")
         self.assertEqual(aborted.status_code, 200)
         self.assertEqual(aborted.json()["aborted_reason"], "incident")
+        self.assertEqual(safety_score.status_code, 200)
+        self.assertEqual(safety_score.json()["score"], 92.0)
 
     def test_driver_cannot_create_assign_cancel_or_abort_but_can_read_start_complete(self):
         self.authenticate_as(UserRole.DRIVER, email="driver@example.com")
@@ -169,14 +212,20 @@ class TripLifecycleApiTest(unittest.TestCase):
         completed = self.client.post("/api/v1/trips/trip-1/complete")
         cancelled = self.client.post("/api/v1/trips/trip-1/cancel", json={"reason": "weather"})
         aborted = self.client.post("/api/v1/trips/trip-1/abort", json={"reason": "incident"})
+        own_started = self.client.post("/api/v1/trips/start-my-trip", json={})
+        my_trips = self.client.get("/api/v1/trips/my")
 
         self.assertEqual(created.status_code, 403)
         self.assertEqual(assigned.status_code, 403)
         self.assertEqual(read.status_code, 200)
         self.assertEqual(started.status_code, 200)
         self.assertEqual(completed.status_code, 200)
+        self.assertEqual(completed.json()["safety_score"]["score"], 92.0)
         self.assertEqual(cancelled.status_code, 403)
         self.assertEqual(aborted.status_code, 403)
+        self.assertEqual(own_started.status_code, 201)
+        self.assertEqual(own_started.json()["monitoring_session"]["monitoring_session_id"], "monitoring-1")
+        self.assertEqual(my_trips.status_code, 200)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,40 @@
 import json
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stdout
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import StringIO
 from pathlib import Path
 
 from ai_runtime.events import build_safety_event
-from ai_runtime.publishers import AsyncEventPublisher, ConsoleJsonPublisher, LocalJsonlPublisher
+from ai_runtime.publishers import (
+    AsyncEventPublisher,
+    BackendApiPublisher,
+    ConsoleJsonPublisher,
+    LocalJsonlPublisher,
+)
+
+
+class RecordingHandler(BaseHTTPRequestHandler):
+    requests = []
+    status_code = 201
+
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        self.__class__.requests.append(
+            {
+                "path": self.path,
+                "authorization": self.headers.get("Authorization"),
+                "payload": json.loads(body.decode("utf-8")),
+            }
+        )
+        self.send_response(self.__class__.status_code)
+        self.end_headers()
+        self.wfile.write(b"{}")
+
+    def log_message(self, format, *args):
+        return
 
 
 class AiRuntimeIntegrationBoundaryTest(unittest.TestCase):
@@ -58,6 +86,50 @@ class AiRuntimeIntegrationBoundaryTest(unittest.TestCase):
         with redirect_stdout(StringIO()) as output:
             publisher.publish(event)
         self.assertIn("head_nodding_detected", output.getvalue())
+
+    def test_backend_api_publisher_posts_to_ingest_endpoint_with_bearer_token(self):
+        RecordingHandler.requests = []
+        RecordingHandler.status_code = 201
+        server = ThreadingHTTPServer(("127.0.0.1", 0), RecordingHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+
+        event = build_safety_event("drowsiness_detected", "high", 0.9)
+        publisher = BackendApiPublisher(
+            f"http://127.0.0.1:{server.server_port}",
+            auth_token="unit-token",
+        )
+
+        publisher.publish(event)
+
+        self.assertEqual(len(RecordingHandler.requests), 1)
+        self.assertEqual(RecordingHandler.requests[0]["path"], "/api/v1/safety-events/ingest")
+        self.assertEqual(RecordingHandler.requests[0]["authorization"], "Bearer unit-token")
+        self.assertEqual(RecordingHandler.requests[0]["payload"]["event_id"], event["event_id"])
+
+    def test_backend_api_publisher_swallows_backend_failures(self):
+        RecordingHandler.requests = []
+        RecordingHandler.status_code = 500
+        server = ThreadingHTTPServer(("127.0.0.1", 0), RecordingHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+
+        event = build_safety_event("drowsiness_detected", "high", 0.9)
+        publisher = BackendApiPublisher(
+            f"http://127.0.0.1:{server.server_port}/api/v1",
+            warn_interval_sec=0.0,
+        )
+
+        with self.assertLogs("ai_runtime.publishers", level="WARNING") as logs:
+            publisher.publish(event)
+
+        self.assertEqual(len(RecordingHandler.requests), 1)
+        self.assertEqual(RecordingHandler.requests[0]["path"], "/api/v1/safety-events/ingest")
+        self.assertIn("SafetyEvent backend publish failed: HTTP 500", logs.output[0])
 
 
 if __name__ == "__main__":

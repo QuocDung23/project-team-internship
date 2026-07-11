@@ -16,7 +16,7 @@ const EMPTY_VEHICLES: VehicleSnapshot[] = [];
 
 function FleetPage() {
   const [viewMode, setViewMode] = useState<FleetViewMode>("all");
-  const backendTrips = useBackendTrips(true);
+  const backendTrips = useBackendTrips(false);
   const now = useTicker(1000);
   const liveVehicles = backendTrips.vehicles ?? EMPTY_VEHICLES;
   const liveStats = backendTrips.stats;
@@ -47,7 +47,7 @@ function FleetPage() {
       {liveKpi && <FleetKpiRow kpi={liveKpi} />}
       {liveStats && <QueueStatsBar stats={liveStats} />}
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
-        <VehicleGrid vehicles={displayed} emptyMessage="No active backend trips." />
+        <VehicleGrid vehicles={displayed} emptyMessage="No backend trips." />
       </div>
     </div>
   );

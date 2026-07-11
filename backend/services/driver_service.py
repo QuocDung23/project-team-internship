@@ -166,7 +166,7 @@ class DriverService:
         current_user: dict[str, Any],
     ) -> None:
         role = current_user["role"]
-        if role in {UserRole.ADMIN, UserRole.DISPATCHER}:
+        if role == UserRole.ADMIN:
             return
         if role == UserRole.DRIVER and self._is_linked_driver(driver, current_user):
             return
@@ -179,7 +179,7 @@ class DriverService:
         current_user: dict[str, Any],
     ) -> None:
         role = current_user["role"]
-        if role in {UserRole.ADMIN, UserRole.DISPATCHER}:
+        if role == UserRole.ADMIN:
             return
         if role == UserRole.DRIVER and self._is_linked_driver(driver, current_user):
             return

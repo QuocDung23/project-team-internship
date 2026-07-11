@@ -51,6 +51,21 @@ class TripCreate(BaseModel):
         return self
 
 
+class StartMyTripRequest(BaseModel):
+    code: str | None = Field(default=None, max_length=50)
+    vehicle_id: str | None = Field(default=None, min_length=1)
+    origin: str | None = None
+    destination: str | None = None
+
+    @field_validator("code", "vehicle_id", "origin", "destination", mode="before")
+    @classmethod
+    def strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+
 class TripAssignRequest(BaseModel):
     driver_id: str = Field(..., min_length=1)
     vehicle_id: str = Field(..., min_length=1)
@@ -99,6 +114,18 @@ class TripAssignmentResponse(BaseModel):
     created_at: datetime
 
 
+class MonitoringSessionResponse(BaseModel):
+    monitoring_session_id: str
+    trip_id: str
+    status: str
+    detector_instance_id: str | None = None
+    camera_index: int | None = None
+    started_at: datetime
+    ended_at: datetime | None = None
+    last_snapshot_at: datetime | None = None
+    created_at: datetime
+
+
 class TripResponse(BaseModel):
     trip_id: str
     code: str | None = None
@@ -115,7 +142,23 @@ class TripResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     assignment: TripAssignmentResponse | None = None
+    monitoring_session: MonitoringSessionResponse | None = None
+    safety_score: "SafetyScoreResponse | None" = None
 
 
 class TripListResponse(BaseModel):
     trips: list[TripResponse]
+
+
+class SafetyScoreResponse(BaseModel):
+    safety_score_id: str
+    trip_id: str
+    score: float
+    grade: str
+    total_events: int
+    warning_events: int
+    critical_events: int
+    alert_count: int
+    calculation_version: str
+    explanation: dict
+    calculated_at: datetime

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -146,6 +147,43 @@ class TripRepository:
             )
         return [self._with_latest_assignment(trip) for row in rows if (trip := _row_to_trip(row))]
 
+    def list_trips_for_user(
+        self,
+        *,
+        user_id: str,
+        driver_email: str,
+        status: TripStatus | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {"user_id": user_id, "driver_email": driver_email}
+        status_sql = ""
+        if status is not None:
+            status_sql = f"AND t.status = {self._status_param('status', 'trip_status')}"
+            params["status"] = status.value
+
+        with self.engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    text(
+                        f"""
+                        SELECT DISTINCT {", ".join("t." + column.strip() for column in TRIP_COLUMNS.split(",") if column.strip())}
+                        FROM trips t
+                        LEFT JOIN trip_assignments ta ON ta.trip_id = t.trip_id
+                        LEFT JOIN drivers d ON d.driver_id = ta.driver_id
+                        WHERE (
+                            t.created_by = :user_id
+                            OR lower(d.email) = lower(:driver_email)
+                        )
+                        {status_sql}
+                        ORDER BY t.created_at DESC
+                        """
+                    ),
+                    params,
+                )
+                .mappings()
+                .all()
+            )
+        return [self._with_latest_assignment(trip) for row in rows if (trip := _row_to_trip(row))]
+
     def find_by_id(self, trip_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as connection:
             row = (
@@ -270,6 +308,235 @@ class TripRepository:
         driver["driver_id"] = str(driver["driver_id"])
         driver["status"] = DriverStatus(driver["status"])
         return driver
+
+    def find_driver_by_email(self, email: str) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        f"""
+                        SELECT driver_id, full_name, email, status{self._cast_text('driver_status')}
+                        FROM drivers
+                        WHERE lower(email) = lower(:email)
+                        LIMIT 1
+                        """
+                    ),
+                    {"email": email},
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            return None
+        driver = dict(row)
+        driver["driver_id"] = str(driver["driver_id"])
+        driver["status"] = DriverStatus(driver["status"])
+        return driver
+
+    def find_active_trip_for_user(self, *, user_id: str, driver_email: str) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        f"""
+                        SELECT DISTINCT {", ".join("t." + column.strip() for column in TRIP_COLUMNS.split(",") if column.strip())}
+                        FROM trips t
+                        LEFT JOIN trip_assignments ta ON ta.trip_id = t.trip_id
+                        LEFT JOIN drivers d ON d.driver_id = ta.driver_id
+                        WHERE t.status = {self._status_param('status', 'trip_status')}
+                          AND (
+                            t.created_by = :user_id
+                            OR lower(d.email) = lower(:driver_email)
+                          )
+                        ORDER BY t.created_at DESC
+                        LIMIT 1
+                        """
+                    ),
+                    {
+                        "status": TripStatus.IN_PROGRESS.value,
+                        "user_id": user_id,
+                        "driver_email": driver_email,
+                    },
+                )
+                .mappings()
+                .first()
+            )
+        trip = _row_to_trip(row)
+        return self._with_latest_assignment(trip) if trip else None
+
+    def create_active_trip_for_user(
+        self,
+        *,
+        code: str | None,
+        origin: str | None,
+        destination: str | None,
+        created_by: str,
+    ) -> dict[str, Any]:
+        trip_id = str(uuid4()) if not self._is_postgres else None
+        now = _now()
+        with self.engine.begin() as connection:
+            if self._is_postgres:
+                row = (
+                    connection.execute(
+                        text(
+                            f"""
+                            INSERT INTO trips (
+                                code, status, actual_start_at, origin, destination, created_by
+                            )
+                            VALUES (
+                                :code, CAST(:status AS trip_status), :now,
+                                :origin, :destination, :created_by
+                            )
+                            RETURNING {self._trip_columns}
+                            """
+                        ),
+                        {
+                            "code": code,
+                            "status": TripStatus.IN_PROGRESS.value,
+                            "now": now,
+                            "origin": origin,
+                            "destination": destination,
+                            "created_by": created_by,
+                        },
+                    )
+                    .mappings()
+                    .one()
+                )
+            else:
+                row = (
+                    connection.execute(
+                        text(
+                            f"""
+                            INSERT INTO trips (
+                                trip_id, code, status, actual_start_at, origin,
+                                destination, created_by, created_at, updated_at
+                            )
+                            VALUES (
+                                :trip_id, :code, :status, :now, :origin,
+                                :destination, :created_by, :now, :now
+                            )
+                            RETURNING {self._trip_columns}
+                            """
+                        ),
+                        {
+                            "trip_id": trip_id,
+                            "code": code,
+                            "status": TripStatus.IN_PROGRESS.value,
+                            "now": now,
+                            "origin": origin,
+                            "destination": destination,
+                            "created_by": created_by,
+                        },
+                    )
+                    .mappings()
+                    .one()
+                )
+        trip = _row_to_trip(row)
+        if trip is None:
+            raise RuntimeError("created trip was not returned")
+        trip["assignment"] = None
+        trip["monitoring_session"] = self.ensure_active_monitoring_session(trip["trip_id"])
+        return trip
+
+    def ensure_active_monitoring_session(
+        self,
+        trip_id: str,
+        *,
+        detector_instance_id: str | None = "demo-detector",
+        camera_index: int | None = None,
+    ) -> dict[str, Any]:
+        with self.engine.begin() as connection:
+            existing = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT monitoring_session_id, trip_id, status, detector_instance_id,
+                               camera_index, started_at, ended_at, last_snapshot_at, created_at
+                        FROM monitoring_sessions
+                        WHERE trip_id = :trip_id
+                          AND status = 'active'
+                        ORDER BY started_at DESC
+                        LIMIT 1
+                        """
+                    ),
+                    {"trip_id": trip_id},
+                )
+                .mappings()
+                .first()
+            )
+            if existing is not None:
+                return self._row_to_monitoring_session(existing)
+
+            monitoring_session_id = str(uuid4()) if not self._is_postgres else None
+            if self._is_postgres:
+                row = (
+                    connection.execute(
+                        text(
+                            """
+                            INSERT INTO monitoring_sessions (
+                                trip_id, detector_instance_id, camera_index
+                            )
+                            VALUES (:trip_id, :detector_instance_id, :camera_index)
+                            RETURNING monitoring_session_id, trip_id, status::text AS status,
+                                      detector_instance_id, camera_index, started_at, ended_at,
+                                      last_snapshot_at, created_at
+                            """
+                        ),
+                        {
+                            "trip_id": trip_id,
+                            "detector_instance_id": detector_instance_id,
+                            "camera_index": camera_index,
+                        },
+                    )
+                    .mappings()
+                    .one()
+                )
+            else:
+                now = _now()
+                row = (
+                    connection.execute(
+                        text(
+                            """
+                            INSERT INTO monitoring_sessions (
+                                monitoring_session_id, trip_id, status, detector_instance_id,
+                                camera_index, started_at, created_at
+                            )
+                            VALUES (
+                                :monitoring_session_id, :trip_id, 'active',
+                                :detector_instance_id, :camera_index, :now, :now
+                            )
+                            RETURNING monitoring_session_id, trip_id, status, detector_instance_id,
+                                      camera_index, started_at, ended_at, last_snapshot_at, created_at
+                            """
+                        ),
+                        {
+                            "monitoring_session_id": monitoring_session_id,
+                            "trip_id": trip_id,
+                            "detector_instance_id": detector_instance_id,
+                            "camera_index": camera_index,
+                            "now": now,
+                        },
+                    )
+                    .mappings()
+                    .one()
+                )
+        return self._row_to_monitoring_session(row)
+
+    def end_active_monitoring_session(self, trip_id: str) -> None:
+        with self.engine.begin() as connection:
+            now = _now()
+            connection.execute(
+                text(
+                    """
+                    UPDATE monitoring_sessions
+                    SET status = 'ended',
+                        ended_at = :now
+                    WHERE trip_id = :trip_id
+                      AND status = 'active'
+                    """
+                ),
+                {"trip_id": trip_id, "now": now},
+            )
 
     def find_vehicle_by_id(self, vehicle_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as connection:
@@ -483,6 +750,269 @@ class TripRepository:
             assignment_status=AssignmentStatus.COMPLETED,
             timestamp_field="actual_end_at",
         )
+
+    def complete_active_trip(self, trip_id: str) -> dict[str, Any] | None:
+        with self.engine.begin() as connection:
+            now = _now()
+            fields = [
+                f"status = {self._status_param('trip_status', 'trip_status')}",
+                "actual_end_at = :now",
+            ]
+            if not self._is_postgres:
+                fields.append("updated_at = :now")
+            row = (
+                connection.execute(
+                    text(
+                        f"""
+                        UPDATE trips
+                        SET {", ".join(fields)}
+                        WHERE trip_id = :trip_id
+                          AND status = {self._status_param('active_status', 'trip_status')}
+                        RETURNING {self._trip_columns}
+                        """
+                    ),
+                    {
+                        "trip_id": trip_id,
+                        "trip_status": TripStatus.COMPLETED.value,
+                        "active_status": TripStatus.IN_PROGRESS.value,
+                        "now": now,
+                    },
+                )
+                .mappings()
+                .first()
+            )
+            connection.execute(
+                text(
+                    f"""
+                    UPDATE trip_assignments
+                    SET status = {self._status_param('assignment_status', 'assignment_status')},
+                        unassigned_at = :now
+                    WHERE trip_id = :trip_id
+                      AND status IN ('assigned', 'in_progress')
+                    """
+                ),
+                {
+                    "trip_id": trip_id,
+                    "assignment_status": AssignmentStatus.COMPLETED.value,
+                    "now": now,
+                },
+            )
+            connection.execute(
+                text(
+                    """
+                    UPDATE monitoring_sessions
+                    SET status = 'ended',
+                        ended_at = :now
+                    WHERE trip_id = :trip_id
+                      AND status = 'active'
+                    """
+                ),
+                {"trip_id": trip_id, "now": now},
+            )
+        trip = _row_to_trip(row)
+        return self._with_latest_assignment(trip) if trip else None
+
+    def driver_owns_trip(self, *, trip_id: str, user_id: str, driver_email: str) -> bool:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT 1
+                        FROM trips t
+                        LEFT JOIN trip_assignments ta ON ta.trip_id = t.trip_id
+                        LEFT JOIN drivers d ON d.driver_id = ta.driver_id
+                        WHERE t.trip_id = :trip_id
+                          AND (
+                            t.created_by = :user_id
+                            OR lower(d.email) = lower(:driver_email)
+                          )
+                        LIMIT 1
+                        """
+                    ),
+                    {"trip_id": trip_id, "user_id": user_id, "driver_email": driver_email},
+                )
+                .first()
+            )
+        return row is not None
+
+    def count_trip_safety_inputs(self, trip_id: str) -> dict[str, int]:
+        with self.engine.connect() as connection:
+            event_row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT
+                            COUNT(*) AS total_events,
+                            COUNT(*) FILTER (WHERE severity = 'high') AS critical_events
+                        FROM safety_events
+                        WHERE trip_id = :trip_id
+                        """
+                    ),
+                    {"trip_id": trip_id},
+                )
+                .mappings()
+                .one()
+            )
+            alert_row = (
+                connection.execute(
+                    text("SELECT COUNT(*) AS alert_count FROM alerts WHERE trip_id = :trip_id"),
+                    {"trip_id": trip_id},
+                )
+                .mappings()
+                .one()
+            )
+        total_events = int(event_row["total_events"])
+        critical_events = int(event_row["critical_events"])
+        return {
+            "total_events": total_events,
+            "critical_events": critical_events,
+            "warning_events": max(0, total_events - critical_events),
+            "alert_count": int(alert_row["alert_count"]),
+        }
+
+    def find_safety_score(self, trip_id: str) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT
+                            safety_score_id,
+                            trip_id,
+                            score,
+                            grade::text AS grade,
+                            total_events,
+                            warning_events,
+                            critical_events,
+                            alert_count,
+                            calculation_version,
+                            explanation,
+                            calculated_at
+                        FROM safety_scores
+                        WHERE trip_id = :trip_id
+                        LIMIT 1
+                        """
+                    ),
+                    {"trip_id": trip_id},
+                )
+                .mappings()
+                .first()
+            )
+        return self._row_to_safety_score(row)
+
+    def create_safety_score(
+        self,
+        *,
+        trip_id: str,
+        score: float,
+        grade: str,
+        total_events: int,
+        warning_events: int,
+        critical_events: int,
+        alert_count: int,
+        explanation: dict[str, Any],
+    ) -> dict[str, Any]:
+        score_id = str(uuid4()) if not self._is_postgres else None
+        with self.engine.begin() as connection:
+            if self._is_postgres:
+                row = (
+                    connection.execute(
+                        text(
+                            """
+                            INSERT INTO safety_scores (
+                                trip_id, score, grade, total_events, warning_events,
+                                critical_events, alert_count, explanation
+                            )
+                            VALUES (
+                                :trip_id, :score, CAST(:grade AS safety_grade), :total_events,
+                                :warning_events, :critical_events, :alert_count,
+                                CAST(:explanation AS jsonb)
+                            )
+                            ON CONFLICT (trip_id) DO NOTHING
+                            RETURNING
+                                safety_score_id,
+                                trip_id,
+                                score,
+                                grade::text AS grade,
+                                total_events,
+                                warning_events,
+                                critical_events,
+                                alert_count,
+                                calculation_version,
+                                explanation,
+                                calculated_at
+                            """
+                        ),
+                        {
+                            "trip_id": trip_id,
+                            "score": score,
+                            "grade": grade,
+                            "total_events": total_events,
+                            "warning_events": warning_events,
+                            "critical_events": critical_events,
+                            "alert_count": alert_count,
+                            "explanation": json.dumps(explanation),
+                        },
+                    )
+                    .mappings()
+                    .first()
+                )
+            else:
+                row = (
+                    connection.execute(
+                        text(
+                            """
+                            INSERT INTO safety_scores (
+                                safety_score_id, trip_id, score, grade, total_events,
+                                warning_events, critical_events, alert_count,
+                                calculation_version, explanation, calculated_at
+                            )
+                            VALUES (
+                                :safety_score_id, :trip_id, :score, :grade, :total_events,
+                                :warning_events, :critical_events, :alert_count,
+                                'v1', :explanation, :now
+                            )
+                            ON CONFLICT (trip_id) DO NOTHING
+                            RETURNING
+                                safety_score_id,
+                                trip_id,
+                                score,
+                                grade,
+                                total_events,
+                                warning_events,
+                                critical_events,
+                                alert_count,
+                                calculation_version,
+                                explanation,
+                                calculated_at
+                            """
+                        ),
+                        {
+                            "safety_score_id": score_id,
+                            "trip_id": trip_id,
+                            "score": score,
+                            "grade": grade,
+                            "total_events": total_events,
+                            "warning_events": warning_events,
+                            "critical_events": critical_events,
+                            "alert_count": alert_count,
+                            "explanation": json.dumps(explanation),
+                            "now": _now(),
+                        },
+                    )
+                    .mappings()
+                    .first()
+                )
+        if row is None:
+            existing = self.find_safety_score(trip_id)
+            if existing is None:
+                raise RuntimeError("safety score was not created")
+            return existing
+        score_row = self._row_to_safety_score(row)
+        if score_row is None:
+            raise RuntimeError("created safety score was not returned")
+        return score_row
 
     def cancel_trip(self, *, trip_id: str, reason: str) -> dict[str, Any] | None:
         return self._transition_with_assignment_release(
@@ -712,3 +1242,22 @@ class TripRepository:
         if self._is_postgres:
             return f"::{enum_name}::text AS status"
         return " AS status"
+
+    def _row_to_safety_score(self, row: Any) -> dict[str, Any] | None:
+        if row is None:
+            return None
+        score = dict(row)
+        score["safety_score_id"] = str(score["safety_score_id"])
+        score["trip_id"] = str(score["trip_id"])
+        score["score"] = float(score["score"])
+        for key in ("total_events", "warning_events", "critical_events", "alert_count"):
+            score[key] = int(score[key])
+        if isinstance(score.get("explanation"), str):
+            score["explanation"] = json.loads(score["explanation"])
+        return score
+
+    def _row_to_monitoring_session(self, row: Any) -> dict[str, Any]:
+        session = dict(row)
+        session["monitoring_session_id"] = str(session["monitoring_session_id"])
+        session["trip_id"] = str(session["trip_id"])
+        return session

@@ -5,6 +5,7 @@ from backend.auth.roles import UserRole
 from backend.models.driver import DriverStatus
 from backend.models.trip import (
     AssignmentStatus,
+    StartMyTripRequest,
     TripAssignRequest,
     TripCreate,
     TripStatus,
@@ -89,11 +90,48 @@ class FakeTripRepository:
             return []
         return self.list_trips(status=status)
 
+    def list_trips_for_user(self, user_id, driver_email, status=None):
+        if user_id != self.trip.get("created_by") and driver_email.lower() != self.driver["email"]:
+            return []
+        return self.list_trips(status=status)
+
     def find_by_id(self, trip_id):
         return self.trip if trip_id == self.trip["trip_id"] else None
 
     def find_driver_by_id(self, driver_id):
         return self.driver if driver_id == self.driver["driver_id"] else None
+
+    def find_active_trip_for_user(self, user_id, driver_email):
+        if self.trip["status"] == TripStatus.IN_PROGRESS and (
+            user_id == self.trip.get("created_by") or driver_email.lower() == self.driver["email"]
+        ):
+            return self.trip
+        return None
+
+    def create_active_trip_for_user(self, code, origin, destination, created_by):
+        self.trip = trip(
+            trip_id="trip-2",
+            code=code,
+            status=TripStatus.IN_PROGRESS,
+            origin=origin,
+            destination=destination,
+            created_by=created_by,
+            actual_start_at=NOW,
+        )
+        return self.trip
+
+    def ensure_active_monitoring_session(self, trip_id):
+        return {
+            "monitoring_session_id": "monitoring-1",
+            "trip_id": trip_id,
+            "status": "active",
+            "detector_instance_id": "demo-detector",
+            "camera_index": None,
+            "started_at": NOW,
+            "ended_at": None,
+            "last_snapshot_at": None,
+            "created_at": NOW,
+        }
 
     def find_vehicle_by_id(self, vehicle_id):
         return self.vehicle if vehicle_id == self.vehicle["vehicle_id"] else None
@@ -121,6 +159,11 @@ class FakeTripRepository:
             trip_id == self.trip["trip_id"]
             and self.assignment is not None
             and driver_email.lower() == self.driver["email"]
+        )
+
+    def driver_owns_trip(self, trip_id, user_id, driver_email):
+        return trip_id == self.trip["trip_id"] and (
+            user_id == self.trip.get("created_by") or driver_email.lower() == self.driver["email"]
         )
 
     def update_trip_status(self, trip_id, status, cancelled_reason=None, aborted_reason=None):
@@ -154,6 +197,30 @@ class FakeTripRepository:
         self.vehicle["status"] = VehicleStatus.AVAILABLE
         return self.trip
 
+    def complete_active_trip(self, trip_id):
+        self.trip["status"] = TripStatus.COMPLETED
+        self.trip["actual_end_at"] = NOW
+        if self.assignment is not None:
+            self.assignment["status"] = AssignmentStatus.COMPLETED
+            self.assignment["unassigned_at"] = NOW
+            self.trip["assignment"] = self.assignment
+        self.vehicle["status"] = VehicleStatus.AVAILABLE
+        return self.trip
+
+    def find_safety_score(self, trip_id):
+        return None
+
+    def count_trip_safety_inputs(self, trip_id):
+        return {"total_events": 1, "warning_events": 0, "critical_events": 1, "alert_count": 1}
+
+    def create_safety_score(self, **kwargs):
+        return {
+            "safety_score_id": "score-1",
+            "calculation_version": "v1",
+            "calculated_at": NOW,
+            **kwargs,
+        }
+
     def cancel_trip(self, trip_id, reason):
         self.trip["status"] = TripStatus.CANCELLED
         self.trip["cancelled_reason"] = reason
@@ -177,8 +244,8 @@ class TripLifecycleServiceTest(unittest.TestCase):
         self.repository = FakeTripRepository()
         self.service = TripLifecycleService(self.repository)
         self.admin = {"user_id": "user-1", "role": UserRole.ADMIN, "email": "admin@example.com"}
-        self.driver_user = {"role": UserRole.DRIVER, "email": "driver@example.com"}
-        self.other_driver = {"role": UserRole.DRIVER, "email": "other@example.com"}
+        self.driver_user = {"user_id": "user-1", "role": UserRole.DRIVER, "email": "driver@example.com"}
+        self.other_driver = {"user_id": "user-2", "role": UserRole.DRIVER, "email": "other@example.com"}
 
     def test_create_trip_allows_draft_or_scheduled_only(self):
         payload = TripCreate(code=" TRIP-002 ", status=TripStatus.SCHEDULED)
@@ -247,7 +314,19 @@ class TripLifecycleServiceTest(unittest.TestCase):
 
         self.assertEqual(completed["status"], TripStatus.COMPLETED)
         self.assertEqual(completed["assignment"]["status"], AssignmentStatus.COMPLETED)
+        self.assertEqual(completed["safety_score"]["score"], 92.0)
         self.assertEqual(self.repository.vehicle["status"], VehicleStatus.AVAILABLE)
+
+    def test_driver_can_start_only_one_active_my_trip(self):
+        started = self.service.start_my_trip(
+            StartMyTripRequest(code="DEMO-001"),
+            current_user=self.driver_user,
+        )
+
+        self.assertEqual(started["status"], TripStatus.IN_PROGRESS)
+        self.assertEqual(started["monitoring_session"]["monitoring_session_id"], "monitoring-1")
+        with self.assertRaises(TripConflictError):
+            self.service.start_my_trip(StartMyTripRequest(), current_user=self.driver_user)
 
     def test_driver_can_read_start_and_complete_only_own_trip(self):
         self.service.assign_trip(

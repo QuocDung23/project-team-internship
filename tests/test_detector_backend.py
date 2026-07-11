@@ -25,6 +25,52 @@ class FakeResponse:
 
 
 class DetectorBackendTest(unittest.TestCase):
+    def test_monitoring_posts_use_api_prefix_from_backend_root(self):
+        requests = []
+
+        def fake_urlopen(req, timeout):
+            requests.append(
+                {
+                    "url": req.full_url,
+                    "data": req.data,
+                    "content_type": req.headers.get("Content-type"),
+                }
+            )
+            return FakeResponse()
+
+        with patch.object(detector_backend.urllib.request, "urlopen", side_effect=fake_urlopen):
+            detector_backend.post_monitoring_frame(
+                "http://127.0.0.1:8000",
+                b"jpeg-bytes",
+                timeout=0.1,
+            )
+            detector_backend.post_monitoring_snapshot(
+                "http://127.0.0.1:8000",
+                {"timestamp": 1.0, "ear": 0.3, "mar": 0.1, "pitch": 0.0, "dws_score": 100},
+                timeout=0.1,
+            )
+
+        self.assertEqual(requests[0]["url"], "http://127.0.0.1:8000/api/v1/monitoring/frame")
+        self.assertEqual(requests[0]["data"], b"jpeg-bytes")
+        self.assertEqual(requests[0]["content_type"], "image/jpeg")
+        self.assertEqual(requests[1]["url"], "http://127.0.0.1:8000/api/v1/monitoring/snapshot")
+
+    def test_monitoring_posts_do_not_duplicate_existing_api_prefix(self):
+        requests = []
+
+        def fake_urlopen(req, timeout):
+            requests.append(req.full_url)
+            return FakeResponse()
+
+        with patch.object(detector_backend.urllib.request, "urlopen", side_effect=fake_urlopen):
+            detector_backend.post_monitoring_frame(
+                "http://127.0.0.1:8000/api/v1",
+                b"jpeg-bytes",
+                timeout=0.1,
+            )
+
+        self.assertEqual(requests[0], "http://127.0.0.1:8000/api/v1/monitoring/frame")
+
     def test_failed_post_appends_jsonl_outbox(self):
         with tempfile.TemporaryDirectory() as tmp:
             outbox = Path(tmp) / "alerts.jsonl"

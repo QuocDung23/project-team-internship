@@ -62,3 +62,24 @@ test("maps backend tuple alert rows from the current FastAPI response", () => {
   assert.equal(event.severity, "warn");
   assert.equal(event.timestamp, Date.parse("2026-07-05T10:21:30Z"));
 });
+
+test("maps canonical backend alert types from safety event ingestion", () => {
+  const drowsiness = mapBackendAlertToFleetEvent({
+    ...backendAlert,
+    alert_type: "drowsiness",
+    severity: "high",
+  });
+  const inattention = mapBackendAlertToMonitorAlert({
+    ...backendAlert,
+    alert_type: "driver_inattention",
+  });
+  const camera = mapBackendAlertToFleetEvent({
+    ...backendAlert,
+    alert_type: "camera_issue",
+  });
+
+  assert.equal(drowsiness.type, "drowsiness_alert");
+  assert.equal(drowsiness.severity, "critical");
+  assert.equal(inattention.title, "Gáº­t Ä‘áº§u / máº¥t tÆ° tháº¿ Ä‘áº§u");
+  assert.equal(camera.type, "distraction_alert");
+});

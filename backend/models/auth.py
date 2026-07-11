@@ -22,7 +22,7 @@ class UserCreate(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=150)
     email: str = Field(..., min_length=3, max_length=150)
     password: str = Field(..., min_length=12, max_length=256)
-    role: UserRole = UserRole.DISPATCHER
+    role: UserRole = UserRole.DRIVER
     status: str = "active"
 
     @field_validator("full_name")

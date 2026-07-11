@@ -1,6 +1,6 @@
 import type { FleetAlertEvent } from "../types/alerts";
 import type { MonitoringAlert } from "../types/monitoring";
-import { apiBaseUrl } from "./backendApi";
+import { apiBaseUrl, apiHeaders, TOKEN_STORAGE_KEY } from "./backendApi";
 
 export interface BackendAlert {
   alert_id: string;
@@ -82,18 +82,29 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
 }
 
 function fleetType(alertType: string): FleetAlertEvent["type"] {
-  if (alertType === "drowsy_cnn" || alertType === "eyes_closed") {
+  if (
+    alertType === "drowsiness"
+    || alertType === "drowsy_cnn"
+    || alertType === "drowsiness_detected"
+    || alertType === "eyes_closed"
+  ) {
     return "drowsiness_alert";
   }
-  if (alertType === "yawning") return "yawn_alert";
-  if (alertType === "head_nod" || alertType === "no_face_detected") {
+  if (alertType === "yawning" || alertType === "yawning_detected") return "yawn_alert";
+  if (
+    alertType === "driver_inattention"
+    || alertType === "camera_issue"
+    || alertType === "head_nod"
+    || alertType === "head_nodding_detected"
+    || alertType === "no_face_detected"
+  ) {
     return "distraction_alert";
   }
   return "distraction_alert";
 }
 
 function severity(value: string): "warn" | "critical" {
-  return value === "critical" ? "critical" : "warn";
+  return value === "critical" || value === "high" ? "critical" : "warn";
 }
 
 function timestamp(value?: string | null): number {
@@ -103,13 +114,19 @@ function timestamp(value?: string | null): number {
 
 function alertTitle(alertType: string): string {
   switch (alertType) {
+    case "drowsiness":
+    case "drowsiness_detected":
     case "drowsy_cnn":
     case "eyes_closed":
       return "Buồn ngủ / mắt nhắm";
     case "yawning":
+    case "yawning_detected":
       return "Ngáp";
+    case "driver_inattention":
     case "head_nod":
+    case "head_nodding_detected":
       return "Gật đầu / mất tư thế đầu";
+    case "camera_issue":
     case "no_face_detected":
       return "Không phát hiện khuôn mặt";
     default:
@@ -166,8 +183,13 @@ export function mapBackendAlertToMonitorAlert(
 export async function fetchTripAlerts(tripId: string): Promise<BackendAlert[]> {
   const response = await fetch(
     `${apiBaseUrl()}/trips/${encodeURIComponent(tripId)}/alerts`,
+    { headers: apiHeaders() },
   );
   if (!response.ok) {
+    if (response.status === 401) {
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.dispatchEvent(new Event("drowsiness:unauthorized"));
+    }
     throw new Error(`Failed to load alerts: ${response.status}`);
   }
   const rows = (await response.json()) as BackendAlertInput[];

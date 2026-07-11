@@ -24,7 +24,7 @@ class FakeCursor:
 
     def fetchone(self):
         if "FROM trips" in self._last_sql:
-            return ("driver-1",)
+            return ("driver-1", "vehicle-1")
         return ("alert-1",)
 
 
@@ -85,11 +85,10 @@ class AlertServiceTest(unittest.TestCase):
         self.assertEqual(select_params, ("trip-1",))
         self.assertIn("INSERT INTO alerts", insert_sql)
         self.assertIn("driver_id", insert_sql)
-        self.assertIn("captured_frame_path", insert_sql)
-        self.assertIn("alarm_audio_file", insert_sql)
-        self.assertEqual(insert_params[0:4], ("trip-1", "driver-1", "drowsy_cnn", "critical"))
-        self.assertIn(0.93, insert_params)
-        self.assertIn("alert_frames/alert-1.jpg", insert_params)
+        self.assertIn("vehicle_id", insert_sql)
+        self.assertIn("message", insert_sql)
+        self.assertEqual(insert_params[0:5], ("trip-1", "driver-1", "vehicle-1", "critical", "drowsiness"))
+        self.assertIn("CNN=closed:0.93", insert_params[-1])
 
 
 if __name__ == "__main__":

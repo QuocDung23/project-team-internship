@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from pydantic import ValidationError
 
+from backend.auth.roles import UserRole
 from backend.models.safety_event import SafetyEventIngestRequest
 from backend.repositories.safety_event_repository import DuplicateSafetyEventError
 from backend.services.safety_event_service import (
@@ -43,6 +44,15 @@ class FakeSafetyEventRepository:
 
     def trip_exists(self, trip_id):
         return trip_id in self.trips
+
+    def active_trip_exists(self, trip_id):
+        return trip_id in self.trips
+
+    def monitoring_session_belongs_to_trip(self, monitoring_session_id, trip_id):
+        return monitoring_session_id == "monitoring-1" and trip_id in self.trips
+
+    def driver_owns_active_trip(self, trip_id, user_id, driver_email):
+        return trip_id in self.trips and user_id == "user-driver"
 
     def driver_exists(self, driver_id):
         return driver_id in self.drivers
@@ -107,8 +117,9 @@ class SafetyEventServiceTest(unittest.TestCase):
         with self.assertRaises(SafetyEventReferenceError):
             self.service.ingest(SafetyEventIngestRequest(**payload()))
 
-    def test_null_trip_driver_vehicle_demo_event_is_allowed(self):
-        result = self.service.ingest(
+    def test_missing_trip_is_rejected(self):
+        with self.assertRaises(SafetyEventReferenceError):
+            self.service.ingest(
             SafetyEventIngestRequest(
                 **payload(
                     event_id="demo-event",
@@ -120,11 +131,15 @@ class SafetyEventServiceTest(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result["event_id"], "demo-event")
-        self.assertIsNone(result["trip_id"])
-        self.assertIsNone(result["driver_id"])
-        self.assertIsNone(result["vehicle_id"])
-        self.assertIsNone(result["alert_id"])
+    def test_driver_must_own_active_trip(self):
+        current_user = {
+            "user_id": "someone-else",
+            "email": "driver@example.com",
+            "role": UserRole.DRIVER,
+        }
+
+        with self.assertRaises(SafetyEventReferenceError):
+            self.service.ingest(SafetyEventIngestRequest(**payload()), current_user=current_user)
 
 
 if __name__ == "__main__":

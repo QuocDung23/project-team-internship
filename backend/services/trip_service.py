@@ -1,5 +1,5 @@
-from config.db import get_connection
-from services.safety_service import calculate_safety_score, safety_grade
+from backend.config.db import get_connection
+from backend.services.safety_service import calculate_safety_score, safety_grade
 
 
 TRIP_COLUMNS = (

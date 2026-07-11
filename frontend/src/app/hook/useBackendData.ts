@@ -12,6 +12,7 @@ import {
   deleteDriver,
   fetchActiveTrips,
   fetchDrivers,
+  fetchMyDriverProfile,
   fetchMonitoringSnapshot,
   fetchSettings,
   fetchTrips,
@@ -75,6 +76,40 @@ export function useBackendDrivers() {
       await refresh();
     },
   };
+}
+
+export function useMyDriverProfile(enabled = true) {
+  const [row, setRow] = useState<BackendDriver | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!enabled) {
+      setRow(null);
+      setError(null);
+      return;
+    }
+    try {
+      const next = await fetchMyDriverProfile();
+      setRow(next);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load driver profile");
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [refresh]);
+
+  const driver = useMemo<Driver | null>(
+    () => (row ? mapBackendDriverToDriver(row) : null),
+    [row],
+  );
+
+  return { row, driver, isLive: Boolean(row), error, refresh };
 }
 
 export function useBackendTrips(activeOnly = false) {

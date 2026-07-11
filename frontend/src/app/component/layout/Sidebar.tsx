@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "@phosphor-icons/react";
 import type { ReactElement } from "react";
+import { useAuth } from "../../auth/AuthContext";
 
 interface NavItem {
   to: string;
@@ -21,10 +22,15 @@ interface NavItem {
 
 const PRIMARY_NAV: ReadonlyArray<NavItem> = [
   { to: "/", label: "Dashboard", icon: <Gauge size={18} weight="duotone" /> },
-  { to: "/monitoring", label: "Driver Monitoring", icon: <VideoCamera size={18} weight="duotone" /> },
   { to: "/drivers", label: "Drivers", icon: <Users size={18} weight="duotone" /> },
-  { to: "/fleet", label: "Fleet", icon: <Truck size={18} weight="duotone" /> },
+  { to: "/trips", label: "Trips", icon: <Truck size={18} weight="duotone" /> },
   { to: "/alerts", label: "Alerts", icon: <Warning size={18} weight="duotone" /> },
+];
+
+const DRIVER_NAV: ReadonlyArray<NavItem> = [
+  { to: "/monitoring", label: "Monitoring", icon: <VideoCamera size={18} weight="duotone" /> },
+  { to: "/my-trip", label: "My Trip", icon: <Truck size={18} weight="duotone" /> },
+  { to: "/alerts", label: "My Alerts", icon: <Warning size={18} weight="duotone" /> },
 ];
 
 const SECONDARY_NAV: ReadonlyArray<NavItem> = [
@@ -32,6 +38,16 @@ const SECONDARY_NAV: ReadonlyArray<NavItem> = [
 ];
 
 export function Sidebar() {
+  const { user, logout } = useAuth();
+  const primaryNav = user?.role === "driver" ? DRIVER_NAV : PRIMARY_NAV;
+  const secondaryNav = user?.role === "admin" ? SECONDARY_NAV : [];
+  const initials = (user?.full_name ?? user?.email ?? "U")
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <aside
       className="sticky top-0 flex h-dvh w-[252px] shrink-0 flex-col border-r border-hairline bg-surface/80 px-4 py-5 backdrop-blur-xl"
@@ -43,10 +59,10 @@ export function Sidebar() {
         </div>
         <div className="leading-tight">
           <p className="text-[13px] font-semibold tracking-tight text-zinc-100">
-            Sentinel Fleet
+            Driver Safety
           </p>
           <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-            Operations Console
+            {user?.role === "admin" ? "Admin Console" : "Driver Console"}
           </p>
         </div>
       </div>
@@ -74,16 +90,18 @@ export function Sidebar() {
 
       <nav className="flex flex-1 flex-col gap-7 overflow-y-auto">
         <SidebarSection label="Operations">
-          {PRIMARY_NAV.map((item) => (
+          {primaryNav.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </SidebarSection>
 
-        <SidebarSection label="System">
-          {SECONDARY_NAV.map((item) => (
-            <SidebarLink key={item.to} item={item} />
-          ))}
-        </SidebarSection>
+        {secondaryNav.length > 0 && (
+          <SidebarSection label="System">
+            {secondaryNav.map((item) => (
+              <SidebarLink key={item.to} item={item} />
+            ))}
+          </SidebarSection>
+        )}
       </nav>
 
       <div className="mt-4 border-t border-hairline pt-4">
@@ -97,18 +115,19 @@ export function Sidebar() {
 
         <div className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2/50">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-br from-amber-400/20 to-amber-500/5 text-[11px] font-semibold text-amber-300 ring-1 ring-amber-500/30">
-            OP
+            {initials}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-[12px] font-medium text-zinc-200">
-              Operator
+              {user?.full_name ?? "User"}
             </p>
             <p className="truncate text-[10px] text-zinc-500">
-              Safety monitoring
+              {user?.email ?? "Signed in"}
             </p>
           </div>
           <button
             type="button"
+            onClick={logout}
             className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
             aria-label="Sign out"
           >

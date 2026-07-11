@@ -29,6 +29,7 @@ class SafetyEventIngestRequest(BaseModel):
     severity: SafetyEventSeverity
     source: str = Field(default="ai_camera", min_length=1, max_length=100)
     occurred_at: datetime
+    monitoring_session_id: str | None = Field(default=None, min_length=1)
     trip_id: str | None = Field(default=None, min_length=1)
     driver_id: str | None = Field(default=None, min_length=1)
     vehicle_id: str | None = Field(default=None, min_length=1)
@@ -36,7 +37,15 @@ class SafetyEventIngestRequest(BaseModel):
     duration_ms: int = Field(..., ge=0)
     details: dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator("event_id", "source", "trip_id", "driver_id", "vehicle_id", mode="before")
+    @field_validator(
+        "event_id",
+        "source",
+        "monitoring_session_id",
+        "trip_id",
+        "driver_id",
+        "vehicle_id",
+        mode="before",
+    )
     @classmethod
     def strip_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -66,6 +75,7 @@ class SafetyEventIngestResponse(BaseModel):
     severity: SafetyEventSeverity
     source: str
     occurred_at: datetime
+    monitoring_session_id: str | None = None
     trip_id: str | None = None
     driver_id: str | None = None
     vehicle_id: str | None = None

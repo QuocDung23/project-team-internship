@@ -87,11 +87,12 @@ class AuthenticationTest(unittest.TestCase):
 
     def test_role_parsing_and_authorization_dependency(self):
         self.assertEqual(parse_role("admin"), UserRole.ADMIN)
-        self.assertEqual(parse_role("DISPATCHER"), UserRole.DISPATCHER)
         self.assertEqual(UserRole.DRIVER.value, "driver")
+        with self.assertRaises(ValueError):
+            parse_role("operator")
 
         dependency = require_roles(UserRole.ADMIN)
-        current_user = {"role": UserRole.DISPATCHER}
+        current_user = {"role": UserRole.DRIVER}
 
         with self.assertRaises(HTTPException) as exc:
             dependency(current_user)

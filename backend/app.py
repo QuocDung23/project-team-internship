@@ -11,6 +11,9 @@ from backend.api.routes.vehicles import router as vehicles_router
 from backend.core.exceptions import register_exception_handlers
 from backend.core.logging import configure_logging
 from backend.core.settings import get_settings
+from backend.routes.alert_routes import router as legacy_alerts_router
+from backend.routes.monitoring_routes import router as monitoring_router
+from backend.routes.setting_routes import router as settings_router
 
 settings = get_settings()
 configure_logging(settings)
@@ -40,5 +43,8 @@ app.include_router(drivers_router, prefix=settings.api_prefix)
 app.include_router(vehicles_router, prefix=settings.api_prefix)
 app.include_router(trips_router, prefix=settings.api_prefix)
 app.include_router(safety_events_router, prefix=settings.api_prefix)
+app.include_router(legacy_alerts_router, prefix=settings.api_prefix)
+app.include_router(monitoring_router, prefix=settings.api_prefix)
+app.include_router(settings_router, prefix=settings.api_prefix)
 
 logger.debug("FastAPI application initialized")

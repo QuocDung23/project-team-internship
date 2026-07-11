@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class IntegrateCnnCliTest(unittest.TestCase):
-    def test_safety_event_flags_are_documented_in_integration_help(self):
+    def test_integrate_cnn_help_delegates_to_event_enabled_runtime(self):
         with tempfile.TemporaryDirectory() as tmp:
             stub_root = Path(tmp)
             (stub_root / "cv2.py").write_text("", encoding="utf-8")
@@ -27,7 +27,7 @@ class IntegrateCnnCliTest(unittest.TestCase):
             (stub_root / "tensorflow" / "__init__.py").write_text("", encoding="utf-8")
 
             result = subprocess.run(
-                [sys.executable, str(ROOT / "integrate_cnn_with_events.py"), "--help"],
+                [sys.executable, str(ROOT / "integrate_cnn.py"), "--help"],
                 cwd=ROOT,
                 text=True,
                 capture_output=True,
@@ -36,7 +36,34 @@ class IntegrateCnnCliTest(unittest.TestCase):
             )
 
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--camera", result.stdout)
+        self.assertIn("--backend", result.stdout)
+        self.assertIn("--model", result.stdout)
+        self.assertIn("--class-json", result.stdout)
         self.assertIn("--disable-safety-events", result.stdout)
+        self.assertIn("--publish-safety-events-backend", result.stdout)
+        self.assertIn("--safety-backend-url", result.stdout)
+        self.assertIn("--safety-backend-token", result.stdout)
+
+    def test_integrate_cnn_import_does_not_start_detector(self):
+        result = subprocess.run(
+            [sys.executable, "-c", "import integrate_cnn; print('import-ok')"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "import-ok")
+
+    def test_event_runtime_keeps_per_frame_backend_io_out_of_camera_loop(self):
+        source = (ROOT / "integrate_cnn_with_events.py").read_text(encoding="utf-8")
+
+        self.assertNotIn("from detector_backend import post_monitoring_frame", source)
+        self.assertNotIn("post_monitoring_frame(", source)
+        self.assertNotIn("post_monitoring_snapshot(", source)
+        self.assertNotIn("publish_monitoring_state(", source)
 
 
 if __name__ == "__main__":

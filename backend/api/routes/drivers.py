@@ -50,7 +50,7 @@ def _conflict(exc: Exception) -> HTTPException:
 )
 def create_driver(
     payload: DriverCreate,
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: DriverService = Depends(get_driver_service),
 ) -> DriverResponse:
     try:
@@ -62,7 +62,7 @@ def create_driver(
 @router.get("", response_model=DriverListResponse)
 def list_drivers(
     status_filter: DriverStatus | None = Query(default=None, alias="status"),
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: DriverService = Depends(get_driver_service),
 ) -> DriverListResponse:
     return DriverListResponse(drivers=service.list_drivers(status=status_filter))
@@ -99,7 +99,7 @@ def read_driver(
 def update_driver(
     driver_id: str,
     payload: DriverUpdate,
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: DriverService = Depends(get_driver_service),
 ) -> DriverResponse:
     try:
@@ -113,7 +113,7 @@ def update_driver(
 @router.delete("/{driver_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_driver(
     driver_id: str,
-    _current_user: dict = Depends(require_roles(UserRole.ADMIN, UserRole.DISPATCHER)),
+    _current_user: dict = Depends(require_roles(UserRole.ADMIN)),
     service: DriverService = Depends(get_driver_service),
 ) -> Response:
     try:
