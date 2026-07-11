@@ -270,7 +270,7 @@ async function requestJson<T>(path: string, init?: JsonRequestInit): Promise<T> 
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Backend request timed out. Check that the backend server is running.");
+      throw new Error("Backend request timed out. Check that the backend server is running.", { cause: error });
     }
     throw error;
   } finally {

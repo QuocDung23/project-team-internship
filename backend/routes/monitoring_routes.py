@@ -14,6 +14,12 @@ router=APIRouter(
     tags=["Monitoring"]
 )
 
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
 
 @router.post("/monitoring/snapshot")
 def save_monitoring_snapshot(snapshot: MonitoringSnapshot):
@@ -34,7 +40,7 @@ def read_monitoring_frame():
     frame=get_latest_frame()
     if frame is None:
         raise HTTPException(status_code=404, detail="detector frame not available")
-    return Response(content=frame, media_type=latest_frame_content_type())
+    return Response(content=frame, media_type=latest_frame_content_type(), headers=NO_CACHE_HEADERS)
 
 
 @router.post("/monitoring/frame")
@@ -51,4 +57,5 @@ def stream_monitoring_frame():
     return StreamingResponse(
         iter_mjpeg_stream(),
         media_type="multipart/x-mixed-replace; boundary=frame",
+        headers=NO_CACHE_HEADERS,
     )

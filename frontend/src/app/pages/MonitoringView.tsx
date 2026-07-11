@@ -9,7 +9,7 @@ import type { Driver } from "../types";
 export function MonitoringView() {
   const { user } = useAuth();
   const monitoring = useBackendMonitoring();
-  const backendDrivers = useBackendDrivers();
+  const backendDrivers = useBackendDrivers(user?.role === "admin");
   const myDriver = useMyDriverProfile(user?.role === "driver");
   const backendTrips = useBackendTrips(true);
   const detectorTripId = monitoring.raw?.trip_id || "";

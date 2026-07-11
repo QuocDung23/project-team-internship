@@ -31,11 +31,16 @@ import {
   type DriverSnapshot,
 } from "../types/monitoring";
 
-export function useBackendDrivers() {
+export function useBackendDrivers(enabled = true) {
   const [rows, setRows] = useState<BackendDriver[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (!enabled) {
+      setRows(null);
+      setError(null);
+      return;
+    }
     try {
       const next = await fetchDrivers();
       setRows(next);
@@ -43,7 +48,7 @@ export function useBackendDrivers() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load drivers");
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {

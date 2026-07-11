@@ -153,6 +153,18 @@ def _parse_args() -> argparse.Namespace:
         help="Backend base URL for live monitoring frame/snapshot publishing.",
     )
     parser.add_argument(
+        "--monitoring-fps",
+        type=float,
+        default=10.0,
+        help="Max live monitoring publish FPS (default: 10).",
+    )
+    parser.add_argument(
+        "--monitoring-jpeg-quality",
+        type=int,
+        default=70,
+        help="JPEG quality for live monitoring frames, 1-100 (default: 70).",
+    )
+    parser.add_argument(
         "--disable-monitoring-publish",
         action="store_true",
         help="Disable live monitoring frame/snapshot publishing.",
@@ -607,7 +619,11 @@ SAFETY_EVENT_PUBLISHER = _build_safety_event_publisher()
 MONITORING_PUBLISHER = (
     None
     if ARGS.disable_monitoring_publish
-    else AsyncMonitoringPublisher(ARGS.monitoring_backend_url)
+    else AsyncMonitoringPublisher(
+        ARGS.monitoring_backend_url,
+        frame_fps=ARGS.monitoring_fps,
+        jpeg_quality=ARGS.monitoring_jpeg_quality,
+    )
 )
 
 

@@ -44,6 +44,8 @@ class IntegrateCnnCliTest(unittest.TestCase):
         self.assertIn("--publish-safety-events-backend", result.stdout)
         self.assertIn("--safety-backend-url", result.stdout)
         self.assertIn("--safety-backend-token", result.stdout)
+        self.assertIn("--monitoring-fps", result.stdout)
+        self.assertIn("--monitoring-jpeg-quality", result.stdout)
 
     def test_integrate_cnn_import_does_not_start_detector(self):
         result = subprocess.run(

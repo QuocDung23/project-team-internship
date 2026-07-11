@@ -18,63 +18,81 @@ class AsyncMonitoringPublisher:
         self,
         backend_url: str,
         *,
-        interval_seconds: float = 0.2,
+        interval_seconds: float | None = None,
+        frame_fps: float = 10.0,
+        jpeg_quality: int = 70,
         snapshot_timeout: float = 0.5,
         frame_timeout: float = 0.25,
     ) -> None:
         self.backend_url = backend_url
-        self.interval_seconds = max(0.05, float(interval_seconds))
+        if interval_seconds is not None:
+            frame_fps = 1.0 / max(0.05, float(interval_seconds))
+        self.frame_interval_seconds = 1.0 / max(1.0, float(frame_fps))
+        self.snapshot_interval_seconds = max(0.2, self.frame_interval_seconds)
+        self.jpeg_quality = max(1, min(100, int(jpeg_quality)))
         self.snapshot_timeout = snapshot_timeout
         self.frame_timeout = frame_timeout
-        self._condition = threading.Condition()
+        self._frame_condition = threading.Condition()
+        self._snapshot_condition = threading.Condition()
         self._snapshot: dict[str, Any] | None = None
         self._frame = None
         self._closed = False
-        self._last_publish_at = 0.0
-        self._thread = threading.Thread(target=self._run, name="monitoring-publisher", daemon=True)
-        self._thread.start()
+        self._closed_event = threading.Event()
+        self._frame_thread = threading.Thread(target=self._run_frames, name="monitoring-frame-publisher", daemon=True)
+        self._snapshot_thread = threading.Thread(
+            target=self._run_snapshots,
+            name="monitoring-snapshot-publisher",
+            daemon=True,
+        )
+        self._frame_thread.start()
+        self._snapshot_thread.start()
 
     def publish(self, snapshot: dict[str, Any], frame: Any) -> None:
-        now = time.monotonic()
-        if now - self._last_publish_at < self.interval_seconds:
-            return
-        self._last_publish_at = now
-
-        with self._condition:
-            self._snapshot = dict(snapshot)
+        with self._frame_condition:
             self._frame = frame.copy()
-            self._condition.notify()
+            self._frame_condition.notify()
+        with self._snapshot_condition:
+            self._snapshot = dict(snapshot)
+            self._snapshot_condition.notify()
 
     def close(self, timeout: float = 1.0) -> None:
-        with self._condition:
+        self._closed_event.set()
+        with self._frame_condition:
             self._closed = True
-            self._condition.notify()
-        self._thread.join(timeout=max(0.0, timeout))
+            self._frame_condition.notify()
+        with self._snapshot_condition:
+            self._snapshot_condition.notify()
+        join_timeout = max(0.0, timeout)
+        self._frame_thread.join(timeout=join_timeout)
+        self._snapshot_thread.join(timeout=join_timeout)
 
-    def _run(self) -> None:
+    def _sleep_interval(self, started_at: float, interval_seconds: float) -> None:
+        remaining = interval_seconds - (time.monotonic() - started_at)
+        if remaining > 0:
+            self._closed_event.wait(timeout=remaining)
+
+    def _run_frames(self) -> None:
         while True:
-            with self._condition:
-                self._condition.wait_for(
-                    lambda: self._closed or self._snapshot is not None,
+            with self._frame_condition:
+                self._frame_condition.wait_for(
+                    lambda: self._closed or self._frame is not None,
                     timeout=1.0,
                 )
                 if self._closed:
                     return
-                snapshot = self._snapshot
                 frame = self._frame
-                self._snapshot = None
                 self._frame = None
 
-            if snapshot is None or frame is None:
+            if frame is None:
                 continue
 
+            started_at = time.monotonic()
             try:
-                post_monitoring_snapshot(
-                    self.backend_url,
-                    snapshot,
-                    timeout=self.snapshot_timeout,
+                ok, encoded = cv2.imencode(
+                    ".jpg",
+                    frame,
+                    [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality],
                 )
-                ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
                 if ok:
                     post_monitoring_frame(
                         self.backend_url,
@@ -82,4 +100,31 @@ class AsyncMonitoringPublisher:
                         timeout=self.frame_timeout,
                     )
             except Exception as exc:
-                LOGGER.debug("Monitoring publish failed: %s", exc)
+                LOGGER.debug("Monitoring frame publish failed: %s", exc)
+            self._sleep_interval(started_at, self.frame_interval_seconds)
+
+    def _run_snapshots(self) -> None:
+        while True:
+            with self._snapshot_condition:
+                self._snapshot_condition.wait_for(
+                    lambda: self._closed or self._snapshot is not None,
+                    timeout=1.0,
+                )
+                if self._closed:
+                    return
+                snapshot = self._snapshot
+                self._snapshot = None
+
+            if snapshot is None:
+                continue
+
+            started_at = time.monotonic()
+            try:
+                post_monitoring_snapshot(
+                    self.backend_url,
+                    snapshot,
+                    timeout=self.snapshot_timeout,
+                )
+            except Exception as exc:
+                LOGGER.debug("Monitoring snapshot publish failed: %s", exc)
+            self._sleep_interval(started_at, self.snapshot_interval_seconds)
