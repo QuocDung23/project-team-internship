@@ -21,7 +21,8 @@ class DriverCreate(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=150)
     license_number: str = Field(..., min_length=1, max_length=50)
     phone: str | None = Field(default=None, max_length=30)
-    email: str | None = Field(default=None, max_length=150)
+    email: str = Field(..., min_length=3, max_length=150)
+    password: str = Field(..., min_length=12, max_length=256)
     status: DriverStatus = DriverStatus.ACTIVE
     baseline_ear: Decimal | None = Field(default=None, ge=0, max_digits=5, decimal_places=3)
 
@@ -33,7 +34,7 @@ class DriverCreate(BaseModel):
             raise ValueError("value is required")
         return normalized
 
-    @field_validator("phone", "email", mode="before")
+    @field_validator("phone", mode="before")
     @classmethod
     def strip_optional_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -41,12 +42,10 @@ class DriverCreate(BaseModel):
         normalized = str(value).strip()
         return normalized or None
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
-    def normalize_email(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        email = value.lower()
+    def normalize_email(cls, value: str) -> str:
+        email = str(value).strip().lower()
         if "@" not in email or email.startswith("@") or email.endswith("@"):
             raise ValueError("valid email is required")
         return email

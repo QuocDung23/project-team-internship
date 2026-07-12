@@ -13,6 +13,7 @@ import AlertStatsRow from "../component/alerts/AlertStatsRow";
 import AlertFilters from "../component/alerts/AlertFilters";
 import AlertList from "../component/alerts/AlertList";
 import { acknowledgeAlert } from "../services/backendAlerts";
+import { AdminErrorBanner, AdminPage } from "../component/admin/AdminShell";
 
 const EMPTY_EVENTS: FleetAlertEvent[] = [];
 
@@ -76,7 +77,7 @@ export function AlertsPage() {
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4 md:p-6">
+    <AdminPage scroll>
       <AlertHeader
         criticalCount={stats.critical}
         warnCount={stats.warn}
@@ -87,17 +88,9 @@ export function AlertsPage() {
         }}
       />
 
-      {backendAlerts.error && (
-        <section className="panel border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
-          Backend unavailable: {backendAlerts.error}
-        </section>
-      )}
+      <AdminErrorBanner label="Backend unavailable" message={backendAlerts.error} />
 
-      {actionError && (
-        <section className="panel border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
-          {actionError}
-        </section>
-      )}
+      <AdminErrorBanner label="Alert action failed" message={actionError} />
 
       <AlertStatsRow stats={stats} />
 
@@ -138,6 +131,6 @@ export function AlertsPage() {
         acknowledgingId={acknowledgingId}
         onAcknowledge={handleAcknowledge}
       />
-    </div>
+    </AdminPage>
   );
 }

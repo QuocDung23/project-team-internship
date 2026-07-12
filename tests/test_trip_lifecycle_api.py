@@ -32,6 +32,9 @@ def trip_response(**overrides):
     data = {
         "trip_id": "trip-1",
         "code": "TRIP-001",
+        "driver_id": None,
+        "driver_name": None,
+        "driver_email": None,
         "status": TripStatus.SCHEDULED,
         "planned_start_at": None,
         "planned_end_at": None,
@@ -62,6 +65,9 @@ class FakeTripLifecycleService:
         return [
             trip_response(
                 status=status or TripStatus.COMPLETED,
+                driver_id="driver-1",
+                driver_name="Driver One",
+                driver_email="driver@example.com",
                 safety_score=self.calculate_or_get_safety_score("trip-1"),
                 total_alerts_count=3,
                 critical_alerts_count=1,
@@ -196,6 +202,9 @@ class TripLifecycleApiTest(unittest.TestCase):
         self.assertEqual(created.json()["status"], "scheduled")
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(len(listed.json()["trips"]), 1)
+        self.assertEqual(listed.json()["trips"][0]["driver_id"], "driver-1")
+        self.assertEqual(listed.json()["trips"][0]["driver_name"], "Driver One")
+        self.assertEqual(listed.json()["trips"][0]["driver_email"], "driver@example.com")
         self.assertEqual(listed.json()["trips"][0]["safety_score"]["score"], 92.0)
         self.assertEqual(listed.json()["trips"][0]["total_alerts_count"], 3)
         self.assertEqual(listed.json()["trips"][0]["critical_alerts_count"], 1)

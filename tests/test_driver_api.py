@@ -8,6 +8,7 @@ from backend.app import app
 from backend.auth.dependencies import get_current_user
 from backend.auth.roles import UserRole
 from backend.models.driver import DriverStatus
+from backend.services.driver_service import DriverConflictError
 
 
 NOW = datetime.now(timezone.utc)
@@ -47,8 +48,11 @@ def session_response(**overrides):
 class FakeDriverService:
     def __init__(self):
         self.created_payload = None
+        self.raise_create_conflict = False
 
     def create_driver(self, payload):
+        if self.raise_create_conflict:
+            raise DriverConflictError("Driver email already exists.")
         self.created_payload = payload
         return driver_response(full_name=payload.full_name, license_number=payload.license_number)
 
@@ -111,14 +115,57 @@ class DriverApiTest(unittest.TestCase):
                 "full_name": " Dana Driver ",
                 "license_number": " LIC-001 ",
                 "email": "driver@example.com",
+                "password": "StrongPassword123!",
             },
         )
         listed = self.client.get("/api/v1/drivers")
 
         self.assertEqual(created.status_code, 201)
         self.assertEqual(created.json()["full_name"], "Dana Driver")
+        self.assertNotIn("password", created.json())
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(len(listed.json()["drivers"]), 1)
+
+    def test_admin_create_driver_requires_usable_password(self):
+        self.authenticate_as(UserRole.ADMIN)
+
+        missing = self.client.post(
+            "/api/v1/drivers",
+            json={
+                "full_name": "Dana Driver",
+                "license_number": "LIC-001",
+                "email": "driver@example.com",
+            },
+        )
+        short = self.client.post(
+            "/api/v1/drivers",
+            json={
+                "full_name": "Dana Driver",
+                "license_number": "LIC-001",
+                "email": "driver@example.com",
+                "password": "short",
+            },
+        )
+
+        self.assertEqual(missing.status_code, 422)
+        self.assertEqual(short.status_code, 422)
+
+    def test_admin_create_driver_conflict_returns_409(self):
+        self.authenticate_as(UserRole.ADMIN)
+        self.service.raise_create_conflict = True
+
+        created = self.client.post(
+            "/api/v1/drivers",
+            json={
+                "full_name": "Dana Driver",
+                "license_number": "LIC-001",
+                "email": "driver@example.com",
+                "password": "StrongPassword123!",
+            },
+        )
+
+        self.assertEqual(created.status_code, 409)
+        self.assertIn("email", created.json()["detail"])
 
     def test_driver_cannot_list_or_create_drivers(self):
         self.authenticate_as(UserRole.DRIVER, email="driver@example.com")
@@ -126,7 +173,12 @@ class DriverApiTest(unittest.TestCase):
         listed = self.client.get("/api/v1/drivers")
         created = self.client.post(
             "/api/v1/drivers",
-            json={"full_name": "Other", "license_number": "LIC-002"},
+            json={
+                "full_name": "Other",
+                "license_number": "LIC-002",
+                "email": "other@example.com",
+                "password": "StrongPassword123!",
+            },
         )
 
         self.assertEqual(listed.status_code, 403)

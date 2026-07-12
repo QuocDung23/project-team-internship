@@ -6,6 +6,9 @@ export interface BackendAlert {
   alert_id: string;
   trip_id?: string;
   driver_id?: string;
+  driver_name?: string | null;
+  driver_email?: string | null;
+  license_number?: string | null;
   alert_type: string;
   status?: string;
   acknowledged?: boolean;
@@ -86,6 +89,9 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
         acknowledged,
         acknowledged_at: asString(input[16]) || null,
         occurred_at: asString(input[17]) || null,
+        driver_name: asString(input[19]) || null,
+        driver_email: asString(input[20]) || null,
+        license_number: asString(input[21]) || null,
       };
     }
 
@@ -186,8 +192,8 @@ export function mapBackendAlertToFleetEvent(
     id: alert.alert_id,
     type: fleetType(alert.alert_type),
     driverId: alert.driver_id ?? alert.trip_id ?? "unknown-driver",
-    driverName: "Tài xế hiện tại",
-    licensePlate: "Đang giám sát",
+    driverName: alert.driver_name ?? alert.driver_email ?? "Unknown driver",
+    licensePlate: alert.license_number ?? alert.trip_id ?? "No license",
     ear: alert.ear_value ?? 0,
     timestamp: timestamp(alert.occurred_at),
     acknowledged: isAcknowledged(alert),

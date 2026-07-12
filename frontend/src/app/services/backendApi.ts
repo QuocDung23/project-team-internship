@@ -40,6 +40,7 @@ export interface BackendTrip {
   code?: string | null;
   driver_id?: string | null;
   driver_name?: string | null;
+  driver_email?: string | null;
   vehicle_plate?: string | null;
   assignment?: {
     driver_id?: string | null;
@@ -300,6 +301,13 @@ export function deriveDriverStatuses(drivers: Driver[], trips: BackendTrip[]): D
   });
 }
 
+export function getTripsForDriver(driverId: string | null | undefined, trips: BackendTrip[]): BackendTrip[] {
+  if (!driverId) return [];
+  return trips.filter((trip) => (
+    trip.driver_id === driverId || trip.assignment?.driver_id === driverId
+  ));
+}
+
 export interface SafetySummary {
   averageScore: number | null;
   scoredTrips: number;
@@ -412,7 +420,8 @@ export async function createDriver(payload: {
   full_name: string;
   license_number: string;
   phone?: string;
-  email?: string;
+  email: string;
+  password: string;
   status?: string;
 }): Promise<{ driver_id: string }> {
   return requestJson("/drivers", {

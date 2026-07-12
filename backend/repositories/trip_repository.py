@@ -435,6 +435,7 @@ class TripRepository:
         if trip is None:
             raise RuntimeError("created trip was not returned")
         trip["assignment"] = None
+        self._attach_driver_summary(trip)
         trip["monitoring_session"] = self.ensure_active_monitoring_session(trip["trip_id"])
         return trip
 
@@ -1034,7 +1035,68 @@ class TripRepository:
 
     def _with_latest_assignment(self, trip: dict[str, Any]) -> dict[str, Any]:
         trip["assignment"] = self.find_latest_assignment_for_trip(trip["trip_id"])
+        self._attach_driver_summary(trip)
         return trip
+
+    def _attach_driver_summary(self, trip: dict[str, Any]) -> None:
+        driver = None
+        assignment = trip.get("assignment")
+        if assignment is not None:
+            driver = self._driver_summary_by_id(assignment["driver_id"])
+        if driver is None and trip.get("created_by") is not None:
+            driver = self._driver_summary_by_user_id(trip["created_by"])
+
+        trip["driver_id"] = driver["driver_id"] if driver else None
+        trip["driver_name"] = driver["full_name"] if driver else None
+        trip["driver_email"] = driver["email"] if driver else None
+
+    def _driver_summary_by_id(self, driver_id: str) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT driver_id, full_name, email
+                        FROM drivers
+                        WHERE driver_id = :driver_id
+                        LIMIT 1
+                        """
+                    ),
+                    {"driver_id": driver_id},
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            return None
+        driver = dict(row)
+        driver["driver_id"] = str(driver["driver_id"])
+        return driver
+
+    def _driver_summary_by_user_id(self, user_id: str) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT d.driver_id, d.full_name, d.email
+                        FROM users u
+                        JOIN drivers d ON lower(d.email) = lower(u.email)
+                        WHERE u.user_id = :user_id
+                        ORDER BY d.updated_at DESC
+                        LIMIT 1
+                        """
+                    ),
+                    {"user_id": user_id},
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            return None
+        driver = dict(row)
+        driver["driver_id"] = str(driver["driver_id"])
+        return driver
 
     def find_latest_assignment_for_trip(self, trip_id: str) -> dict[str, Any] | None:
         return self._find_assignment(

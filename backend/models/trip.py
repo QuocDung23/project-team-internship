@@ -129,6 +129,9 @@ class MonitoringSessionResponse(BaseModel):
 class TripResponse(BaseModel):
     trip_id: str
     code: str | None = None
+    driver_id: str | None = None
+    driver_name: str | None = None
+    driver_email: str | None = None
     status: TripStatus
     planned_start_at: datetime | None = None
     planned_end_at: datetime | None = None

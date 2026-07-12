@@ -17,6 +17,8 @@ const {
 
 interface DriverRowProps {
   driver: Driver;
+  isUpdating?: boolean;
+  onSelect?: (driver: Driver) => void;
   onSetAvailability?: (driver: Driver, enabled: boolean) => void;
 }
 
@@ -43,11 +45,29 @@ function avatarTone(status: Driver["status"]): string {
   }
 }
 
-function DriverRow({ driver, onSetAvailability }: DriverRowProps) {
+function DriverRow({
+  driver,
+  isUpdating = false,
+  onSelect,
+  onSetAvailability,
+}: DriverRowProps) {
   const ear = driver.ear;
   const canToggleAvailability = Boolean(onSetAvailability) && driver.status !== "driving";
   return (
-    <tr className="border-b border-hairline/50 transition-colors hover:bg-surface-2/30">
+    <tr
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={() => onSelect?.(driver)}
+      onKeyDown={(event) => {
+        if (!onSelect) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(driver);
+        }
+      }}
+      className={`border-b border-hairline/50 transition-colors hover:bg-surface-2/30 ${
+        onSelect ? "cursor-pointer focus-within:bg-surface-2/40 focus:outline-none" : ""
+      }`}
+    >
       <td className="py-2.5 pr-3 font-mono-num text-[11px] text-zinc-500">
         {driver.id}
       </td>
@@ -139,11 +159,14 @@ function DriverRow({ driver, onSetAvailability }: DriverRowProps) {
         {onSetAvailability ? (
           <button
             type="button"
-            disabled={!canToggleAvailability}
-            onClick={() => onSetAvailability(driver, driver.status === "disable")}
+            disabled={!canToggleAvailability || isUpdating}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSetAvailability(driver, driver.status === "disable");
+            }}
             className="rounded-md border border-hairline px-2 py-1 text-[10px] font-semibold text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {driver.status === "disable" ? "Enable" : "Disable"}
+            {isUpdating ? "Saving" : driver.status === "disable" ? "Enable" : "Disable"}
           </button>
         ) : null}
       </td>

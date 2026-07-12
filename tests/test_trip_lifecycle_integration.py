@@ -303,6 +303,7 @@ class TripLifecycleIntegrationTest(unittest.TestCase):
                 "full_name": "Dana Driver",
                 "license_number": "LIC-001",
                 "email": "driver@example.com",
+                "password": "StrongPassword123!",
             },
         )
         check_in = self.client.post(

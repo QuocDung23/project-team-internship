@@ -3,11 +3,14 @@ import test from "node:test";
 
 import {
   buildSafetySummaryFromTrips,
+  createDriver,
   deriveDriverStatuses,
+  getTripsForDriver,
   mapBackendDriverToDriver,
   mapBackendTripToVehicle,
   normalizeBackendSettings,
   startMyTrip,
+  updateDriver,
 } from "../src/app/services/backendApi.ts";
 
 test("maps backend driver object into dashboard driver model", () => {
@@ -134,6 +137,29 @@ test("builds average safety summary from enriched trips", () => {
   assert.equal(summary.criticalAlerts, 2);
 });
 
+test("filters trips by direct or assigned driver id", () => {
+  const trips = getTripsForDriver("driver-1", [
+    {
+      trip_id: "trip-direct",
+      status: "completed",
+      driver_id: "driver-1",
+    },
+    {
+      trip_id: "trip-assignment",
+      status: "in_progress",
+      assignment: { driver_id: "driver-1" },
+    },
+    {
+      trip_id: "trip-other",
+      status: "completed",
+      driver_id: "driver-2",
+    },
+  ]);
+
+  assert.deepEqual(trips.map((trip) => trip.trip_id), ["trip-direct", "trip-assignment"]);
+});
+
+
 test("normalizes backend settings with schema field names", () => {
   const settings = normalizeBackendSettings({
     ear_threshold: "0.27",
@@ -175,5 +201,75 @@ test("startMyTrip sends optional trip fields", async () => {
     code: "DEMO-001",
     origin: "Garage",
     destination: "Depot",
+  });
+});
+
+test("createDriver sends optional management fields", async () => {
+  let request;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    request = { url, init };
+    return new Response(JSON.stringify({ driver_id: "driver-1" }), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    await createDriver({
+      full_name: "Le Thi C",
+      license_number: "LIC-9",
+      phone: "0900000009",
+      email: "driver9@example.com",
+      password: "StrongPassword123!",
+      status: "inactive",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(request.url, "/api/v1/drivers");
+  assert.equal(request.init.method, "POST");
+  assert.deepEqual(JSON.parse(request.init.body), {
+    full_name: "Le Thi C",
+    license_number: "LIC-9",
+    phone: "0900000009",
+    email: "driver9@example.com",
+    password: "StrongPassword123!",
+    status: "inactive",
+  });
+});
+
+test("updateDriver sends editable management fields", async () => {
+  let request;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    request = { url, init };
+    return new Response(JSON.stringify({ driver_id: "driver-1" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    await updateDriver("driver-1", {
+      full_name: "Le Thi Updated",
+      license_number: "LIC-10",
+      phone: "0900000010",
+      email: "driver10@example.com",
+      status: "active",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(request.url, "/api/v1/drivers/driver-1");
+  assert.equal(request.init.method, "PATCH");
+  assert.deepEqual(JSON.parse(request.init.body), {
+    full_name: "Le Thi Updated",
+    license_number: "LIC-10",
+    phone: "0900000010",
+    email: "driver10@example.com",
+    status: "active",
   });
 });

@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 
+from backend.auth.roles import UserRole
 from backend.db.connection import get_engine
 from backend.models.driver import DriverSessionStatus, DriverStatus
 
@@ -103,6 +104,28 @@ class DriverRepository:
             )
         return _row_to_driver(row)
 
+    def email_is_taken(self, email: str) -> bool:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT 1
+                        FROM users
+                        WHERE lower(email) = lower(:email)
+                        UNION
+                        SELECT 1
+                        FROM drivers
+                        WHERE lower(email) = lower(:email)
+                        LIMIT 1
+                        """
+                    ),
+                    {"email": email},
+                )
+                .first()
+            )
+        return row is not None
+
     def create_driver(
         self,
         *,
@@ -114,6 +137,81 @@ class DriverRepository:
         baseline_ear: Any,
     ) -> dict[str, Any]:
         with self.engine.begin() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        f"""
+                        INSERT INTO drivers (
+                            full_name,
+                            license_number,
+                            phone,
+                            email,
+                            status,
+                            baseline_ear
+                        )
+                        VALUES (
+                            :full_name,
+                            :license_number,
+                            :phone,
+                            :email,
+                            CAST(:status AS driver_status),
+                            :baseline_ear
+                        )
+                        RETURNING {DRIVER_COLUMNS}
+                        """
+                    ),
+                    {
+                        "full_name": full_name,
+                        "license_number": license_number,
+                        "phone": phone,
+                        "email": email,
+                        "status": status.value,
+                        "baseline_ear": baseline_ear,
+                    },
+                )
+                .mappings()
+                .one()
+            )
+        driver = _row_to_driver(row)
+        if driver is None:
+            raise RuntimeError("created driver was not returned")
+        return driver
+
+    def create_driver_with_user(
+        self,
+        *,
+        full_name: str,
+        license_number: str,
+        phone: str | None,
+        email: str,
+        status: DriverStatus,
+        baseline_ear: Any,
+        password_hash: str,
+        user_role: UserRole = UserRole.DRIVER,
+        user_status: str = "active",
+    ) -> dict[str, Any]:
+        with self.engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO users (full_name, email, password_hash, role, status)
+                    VALUES (
+                        :full_name,
+                        :email,
+                        :password_hash,
+                        CAST(:role AS user_role),
+                        CAST(:user_status AS user_status)
+                    )
+                    """
+                ),
+                {
+                    "full_name": full_name,
+                    "email": email,
+                    "password_hash": password_hash,
+                    "role": user_role.value,
+                    "user_status": user_status,
+                },
+            )
             row = (
                 connection.execute(
                     text(

@@ -18,6 +18,7 @@ class FakeCursor:
         self.calls = []
         self._last_sql = ""
         self.fetchone_results = []
+        self.fetchall_results = []
 
     def execute(self, sql, params=None):
         self._last_sql = sql
@@ -29,6 +30,9 @@ class FakeCursor:
         if "FROM trips" in self._last_sql:
             return ("driver-1", "vehicle-1")
         return ("alert-1",)
+
+    def fetchall(self):
+        return self.fetchall_results
 
 
 class FakeConnection:
@@ -137,6 +141,67 @@ class AlertServiceTest(unittest.TestCase):
         self.assertEqual(update_params, ("admin-1", "alert-1"))
         self.assertIn("FROM alerts a", select_sql)
         self.assertEqual(select_params, ("alert-1",))
+
+    def test_get_alerts_driver_filter_includes_trip_owned_alerts(self):
+        conn = FakeConnection()
+
+        with patch.object(alert_service, "get_connection", return_value=conn):
+            alerts = alert_service.get_alerts(
+                driver_id="driver-1",
+                current_user={"user_id": "admin-1", "role": "admin", "email": "admin@example.com"},
+            )
+
+        select_sql, select_params = conn.cursor_obj.calls[0]
+
+        self.assertEqual(alerts, [])
+        self.assertIn("a.driver_id=%s", select_sql)
+        self.assertIn("trip_assignments", select_sql)
+        self.assertIn("created_by", select_sql)
+        self.assertIn("users", select_sql)
+        self.assertIn("drivers", select_sql)
+        self.assertIn("driver-1", select_params)
+
+    def test_get_alerts_includes_resolved_driver_identity(self):
+        conn = FakeConnection()
+        conn.cursor_obj.fetchall_results = [
+            (
+                "alert-1",
+                "trip-1",
+                None,
+                "drowsiness",
+                "warning",
+                "cnn_classifier",
+                0.2,
+                None,
+                0.7,
+                "closed",
+                None,
+                None,
+                None,
+                False,
+                None,
+                False,
+                None,
+                "2026-07-05T10:21:30Z",
+                "2026-07-05T10:21:31Z",
+                "Driver One",
+                "driver@example.com",
+                "LIC-001",
+            ),
+        ]
+
+        with patch.object(alert_service, "get_connection", return_value=conn):
+            alerts = alert_service.get_alerts(
+                trip_id="trip-1",
+                current_user={"user_id": "admin-1", "role": "admin", "email": "admin@example.com"},
+            )
+
+        select_sql, _select_params = conn.cursor_obj.calls[0]
+
+        self.assertIn("driver_identity", select_sql)
+        self.assertEqual(alerts[0]["driver_name"], "Driver One")
+        self.assertEqual(alerts[0]["driver_email"], "driver@example.com")
+        self.assertEqual(alerts[0]["license_number"], "LIC-001")
 
 
 if __name__ == "__main__":

@@ -1,79 +1,140 @@
 # Handoff: project-team-internship
-**Date**: 2026-07-12  
-**Branch**: `new-branch`  
-**Session tool**: Claude Code
+**Date**: 2026-07-12
+**Branch**: `new-branch`
+**Session tool**: Codex
 
 ---
 
 ## Current Task
-Replace the Python detector process (`integrate_cnn_with_events.py`) with browser-side CNN inference (TF.js + MediaPipe) that runs while a driver trip is active, accumulates safety events client-side, and bulk-sends them to the backend on "End Trip".
+Admin and driver safety operations UI is being finalized: driver management, trip score/alert visibility, usable driver login creation, clearer alert driver identity, and a better `/trips` layout.
 
 ## What Was Done This Session
+- Refactored the admin console into a denser operations UI.
+  - Added `frontend/src/app/component/admin/AdminShell.tsx` with admin page/header/error/stat primitives.
+  - Added `frontend/src/app/component/admin/AdminDialog.tsx`; dialog bodies are scrollable with a viewport max height.
+  - Updated `frontend/src/app/pages/DashboardPage.tsx`, `frontend/src/app/pages/FleetPage.tsx`, `frontend/src/app/pages/AlertsPage.tsx`, and `frontend/src/app/pages/SettingsPage.tsx`.
+- Made rows on the admin Drivers page clickable for management.
+  - `frontend/src/app/component/drivers/DriverRow.tsx` and `frontend/src/app/component/drivers/DriverTable.tsx` now support `onSelectDriver`.
+  - `frontend/src/app/pages/DriversPage.tsx` opens a create/manage dialog and shows driver activity, linked trips, scores, and recent alerts.
+- Fixed driver trip/score/alert association.
+  - `backend/models/trip.py` extends `TripResponse` with `driver_id`, `driver_name`, and `driver_email`.
+  - `backend/repositories/trip_repository.py` resolves driver identity from latest assignment first, then `trips.created_by -> users.email -> drivers.email`.
+  - `backend/services/alert_service.py` allows `driver_id` alert filtering through direct alert driver, trip assignment, or trip-owner driver email.
+  - `frontend/src/app/services/backendApi.ts` and `frontend/tests/backendApi.test.mjs` were updated for enriched trips and `getTripsForDriver()`.
+- Made admin-created drivers immediately login-capable.
+  - `backend/models/driver.py` now requires `email` and `password` for `DriverCreate`; password min length is 12.
+  - `backend/repositories/driver_repository.py` creates the `users` row and `drivers` row in one transaction via `create_driver_with_user()`.
+  - `backend/services/driver_service.py` hashes the password, creates a `driver` role user, and rejects existing emails with `DriverConflictError`.
+  - `frontend/src/app/pages/DriversPage.tsx` asks for password only in create mode and validates it before submit.
+- Clarified admin alert driver identity.
+  - `backend/services/alert_service.py` now includes `driver_name`, `driver_email`, and `license_number` in alert rows.
+  - `frontend/src/app/services/backendAlerts.ts` maps those fields into `FleetAlertEvent` instead of hardcoded `"Tài xế hiện tại"` and `"Đang giám sát"`.
+  - `frontend/tests/backendAlerts.test.mjs` covers the real driver-name/license mapping.
+- Fixed `/trips` page layout and readability.
+  - `frontend/src/app/pages/FleetPage.tsx` now uses matched desktop-height table/details panels with independent internal scrolling.
+  - Trip table driver cells show driver name plus compact context.
+  - Trip details group driver, score, total/critical alerts, route, times, and recent alerts.
 
-- **TF.js bundling fixed**: TF.js ships CJS with `import` as a method name (reserved in ESM), breaking both Vite pre-bundling (esbuild syntax error) and raw-ESM serving (browser parse error). Fix: serve the IIFE bundle as a static asset (`/Users/ltnguyen/Personal/project-team-internship/frontend/public/tf.min.js`), loaded via `<script src="/tf.min.js">` in `index.html` before the app module. The hook uses `import type * as TF` for types only; `declare const tf` for runtime access.
-
-- **MediaPipe bundling fixed**: Must stay in Vite's `optimizeDeps` (pre-bundled by esbuild). Excluding it causes `ENOENT: vision_bundle_mjs.js.map` at runtime.
-
-- **`useBrowserCNN` hook** (`/Users/ltnguyen/Personal/project-team-internship/frontend/src/app/hook/useBrowserCNN.ts`): Full browser detection hook. Opens webcam, loads MediaPipe Face Landmarker (CDN), loads CNN model from `/models/drowsiness_cnn/model.json`, runs rAF detection loop. Returns `{ videoRef, metrics, isRunning, eventCount, start, stop }`.
-
-- **Camera stream leak fixed**: Stream now stored in `streamRef` (not just `videoRef.current.srcObject`). `stop()` reads from `streamRef` directly — camera releases reliably on End Trip.
-
-- **Video rendering deadlock fixed**: `<video ref={cnnVideoRef}>` must always be in DOM so `videoRef.current` is populated when `start()` is called. `activeTrip` is null when `cnnStart()` runs (React state not yet updated from `refresh()`), so conditional JSX would leave the element absent. Fix: always render the detection `<section>` with `className={activeTrip ? "" : "hidden"}` — CSS hides it visually but the element stays in DOM.
-
-- **`duration_ms` 422 fixed**: Backend expects `int`; floating-point values like `666.666...` were rejected. Added `Math.floor()` to all three duration calculations in the hook.
-
-- **MonitoringView removed**: Deleted `MonitoringView.tsx`, `CabinCam.tsx`, `DriverHeader.tsx`. Routes/nav entries cleaned up. All driver redirects now go to `/my-trip`.
-
-- **Dev scripts** (`scripts/dev.sh`, `scripts/dev.ps1`): Detector startup removed. Scripts now auto-detect `venv/bin/python` (or `venv\Scripts\python.exe` on Windows) and fall back to system `python`. `PYTHON` env var still overrides.
-
-- **Backend bulk ingest endpoint**: `POST /api/v1/safety-events/bulk-ingest` in `/Users/ltnguyen/Personal/project-team-internship/backend/api/routes/safety_events.py`. Accepts `list[SafetyEventIngestRequest]`, tolerates per-event duplicate/reference errors, returns `{ ingested, results }`.
+## Next Steps
+1. Manually verify the admin flows in the browser:
+   - `/drivers`: create a driver with email/password, confirm the dialog scrolls, click a driver row, and confirm linked trips/scores/alerts render.
+   - `/login`: sign in as the newly created driver, then confirm inactive/disabled driver profiles remain blocked.
+   - `/trips`: confirm the table and details panel have matched desktop heights and independent scrolling.
+   - `/alerts`: confirm rows show real driver name/license and acknowledgement still works.
+2. Decide what to do with `0001-patch-2.patch`.
+   - It is untracked and appears to be an exported patch, not part of the app source.
+   - Remove it before cleanup if it is only a duplicate artifact.
+3. Review the large existing diff carefully before committing.
+   - Many files are modified from the admin refactor plus backend contract work.
+   - Use `rtk git diff --stat HEAD` and targeted `rtk git diff -- <file>` reviews.
+4. Run final cleanup verification before commit:
+   - `rtk ./venv/bin/python -m unittest discover -s tests`
+   - `cd frontend && rtk npm run test`
+   - `cd frontend && rtk npx tsc --noEmit`
+   - `cd frontend && rtk npm run lint`
+   - `rtk git diff --check`
 
 ## Git State
+**Branch**: `new-branch`
 
-**Branch**: `new-branch` (ahead of origin by 12 commits, working tree clean)
+**Uncommitted changes observed before this handoff update**:
+- `HANDOFF.md` - updated session handoff context.
+- `backend/models/driver.py` - `DriverCreate` now requires email/password.
+- `backend/models/trip.py` - trip responses expose resolved driver identity.
+- `backend/repositories/driver_repository.py` - email conflict check and transactional user+driver creation.
+- `backend/repositories/trip_repository.py` - resolved trip driver summary from assignment or creator email.
+- `backend/services/alert_service.py` - acknowledgement/listing includes resolved driver info; driver filter includes trip ownership.
+- `backend/services/driver_service.py` - creates hashed driver login user during driver creation.
+- `frontend/src/app/component/admin/AdminDialog.tsx` - new scrollable admin dialog shell.
+- `frontend/src/app/component/admin/AdminShell.tsx` - new shared admin primitives.
+- `frontend/src/app/component/drivers/DriverRow.tsx` - clickable/selectable driver rows.
+- `frontend/src/app/component/drivers/DriverTable.tsx` - passes row selection callback.
+- `frontend/src/app/pages/AlertsPage.tsx` - admin alert page refresh/acknowledgement behavior and filters.
+- `frontend/src/app/pages/DashboardPage.tsx` - admin operations dashboard.
+- `frontend/src/app/pages/DriversPage.tsx` - create/manage driver dialog, password on create, activity panel.
+- `frontend/src/app/pages/FleetPage.tsx` - admin Trips page summary, layout, details panel.
+- `frontend/src/app/pages/SettingsPage.tsx` - admin settings layout refactor.
+- `frontend/src/app/services/backendAlerts.ts` - alert mapper includes resolved driver identity and acknowledgement normalization.
+- `frontend/src/app/services/backendApi.ts` - driver create payload includes password; trip type includes driver identity.
+- `frontend/tests/backendAlerts.test.mjs` - alert mapping tests.
+- `frontend/tests/backendApi.test.mjs` - driver/trip API mapping tests.
+- `tests/test_alert_service.py` - alert acknowledgement, driver filter, and driver identity tests.
+- `tests/test_driver_api.py` - driver create password validation/conflict API tests.
+- `tests/test_driver_service.py` - hashed password and user creation service tests.
+- `tests/test_trip_lifecycle_api.py` - enriched trip response tests.
+- `tests/test_trip_lifecycle_integration.py` - updated driver create payload with password.
+
+**Untracked files**:
+- `0001-patch-2.patch` - exported patch artifact; decide whether to keep.
 
 **Recent commits**:
 ```
-ab8ca13 Refactor useBrowserCNN to use IIFE loaded TensorFlow, improve stream handling, and ensure proper disposal of tensors
-d3c0563 chore: remove Python detector from dev scripts (replaced by browser CNN)
-3f7842c fix: allow Vite to pre-bundle MediaPipe to avoid missing sourcemap error
-643f830 fix: exclude TF.js and MediaPipe from Vite pre-bundling
-884dc82 fix: resolve lint errors in useBrowserCNN and MyTripPage
-503b7a4 feat: remove MonitoringView page and route in favour of browser-side CNN
-78455aa feat: wire useBrowserCNN into MyTripPage with webcam feed and live metrics
-7071c1b feat: add bulkIngestSafetyEvents API function
-1303709 feat: add useBrowserCNN hook for client-side drowsiness detection
-a50275e feat: add bulk safety event ingest endpoint
-2b7848f feat: add ClientSafetyEvent interface to monitoring types
+2dbcdb5 patch 2
+dba5cbf feat: add ClientSafetyEvent type for browser CNN collection
+cabbe40 fix: camera scripts ( camera OK)
+fc89f2b Enhance monitoring publisher and backend integration
+86c548a feat: simplify trip safety workflow
+2da70de chore: add project helper scripts
+27b2331 fix: harden backend trip data handling
+be58014 feat: improve live monitoring publishing
 ```
 
 ## Key Files
+Files the next tool should understand before making changes:
 
-- `/Users/ltnguyen/Personal/project-team-internship/frontend/src/app/hook/useBrowserCNN.ts` — Core detection hook. ~450 lines. Contains landmark indices, EAR/MAR/pitch thresholds, rAF loop, event firing logic. `start()` is async; `stop()` is sync and returns collected events.
-- `/Users/ltnguyen/Personal/project-team-internship/frontend/src/app/pages/MyTripPage.tsx` — Trip page. Detection section uses CSS `hidden` (not JSX conditional) so `<video>` stays in DOM. Call order in `handleEndTrip`: `cnnStop()` → `bulkIngestSafetyEvents()` → `completeTrip()` → `refresh()` (events must be sent while trip is `in_progress`).
-- `/Users/ltnguyen/Personal/project-team-internship/frontend/public/models/drowsiness_cnn/model.json` — TF.js model (converted from Keras `best_model_v2.h5` via SavedModel intermediate). Labels: `{ 0: "closed", 1: "open", 2: "yawn" }`.
-- `/Users/ltnguyen/Personal/project-team-internship/frontend/public/tf.min.js` — TF.js 4.22.0 IIFE bundle (1.4MB), copied from `node_modules/@tensorflow/tfjs/dist/tf.min.js`.
-- `/Users/ltnguyen/Personal/project-team-internship/frontend/vite.config.js` — No `optimizeDeps.exclude` for TF.js (removed). MediaPipe is pre-bundled by Vite (not excluded).
-- `/Users/ltnguyen/Personal/project-team-internship/backend/api/routes/safety_events.py` — Bulk ingest at `/safety-events/bulk-ingest`.
-- `/Users/ltnguyen/Personal/project-team-internship/frontend/src/app/types/monitoring/index.ts` — `ClientSafetyEvent` interface at the bottom.
+- `frontend/src/app/pages/DriversPage.tsx` - admin driver create/manage dialog; password field in create mode; linked trips/score/alert activity panel.
+- `frontend/src/app/pages/FleetPage.tsx` - admin `/trips` page with matched-height table/details layout and trip safety details.
+- `frontend/src/app/pages/AlertsPage.tsx` - admin/global alerts view with filters and acknowledgement action.
+- `frontend/src/app/services/backendAlerts.ts` - maps backend alerts into UI rows; now uses real driver name/license when available.
+- `frontend/src/app/services/backendApi.ts` - frontend backend contract for drivers/trips/settings; `createDriver()` now requires `email` and `password`.
+- `backend/services/alert_service.py` - legacy psycopg alert service; tuple/object shape is consumed by frontend tests.
+- `backend/services/driver_service.py` - admin driver creation now creates a login user and hashes password.
+- `backend/repositories/driver_repository.py` - transaction boundary for `users` + `drivers` creation.
+- `backend/repositories/trip_repository.py` - trip driver identity resolution.
+
+## Tests Already Run
+- `rtk ./venv/bin/python -m unittest discover -s tests` - passed, 86 tests.
+- `cd frontend && rtk npm run test` - passed, 19 tests.
+- `cd frontend && rtk npx tsc --noEmit` - passed.
+- `cd frontend && rtk npm run lint` - passed with one existing warning:
+  - `frontend/src/app/auth/AuthContext.tsx:78:17` `react-refresh/only-export-components`.
 
 ## Decisions Made
-
-- **TF.js via IIFE script tag, not ESM import**: Both Vite pre-bundling and raw ESM serving fail due to `async import(...)` method name (reserved keyword in strict mode). IIFE bypasses both bundlers entirely.
-- **MediaPipe stays in Vite optimizeDeps**: Excluding it causes a missing `.map` file error at runtime; esbuild strips the sourcemap reference when pre-bundling, which makes it work.
-- **CNN model loaded with `tf.loadLayersModel`**: Model was exported as SavedModel then converted with `tf_saved_model_conversion_v2`. If model fails to load, detection continues without CNN (EAR/MAR/pitch still fires events) — graceful degradation.
-- **CSS `hidden` instead of JSX conditional on the detection section**: Needed because `activeTrip` is null when `cnnStart()` runs (state not yet flushed). `display:none` on parent keeps `<video>` in DOM.
-- **`streamRef` for camera track lifecycle**: `videoRef.current.srcObject` can be null or stale; `streamRef.current` is set in `start()` and cleared in `stop()`, making track cleanup reliable.
+- **Driver account creation**: Admin-created drivers must have email/password and get a linked `users` row with role `driver` immediately. Existing email reuse returns conflict; password reset for existing drivers is out of scope.
+- **Driver disabled login**: Backend auth still blocks driver login when linked driver profile is `inactive` or `suspended`; frontend display status `disable` maps to those persisted statuses.
+- **Driver trip association**: Trips can be linked to a driver by assignment or by `created_by` user email matching a driver email. Admin views should use that resolved identity.
+- **Alert identity**: Alerts should show real driver names/license when possible. Resolution order is direct `alerts.driver_id`, latest trip assignment, then trip creator email.
+- **Trips page layout**: Desktop `/trips` should keep table and details visible as same-height panels with independent scrolling. Mobile can stack normally with page scrolling.
+- **Alert acknowledgement**: Acknowledgement remains one-way for now (`PATCH /api/v1/alerts/{alert_id}/acknowledge`); reversible acknowledgement or separate resolved/ignored workflow is out of scope.
 
 ## Active Blockers / Open Issues
-
-- **CNN model may load as GraphModel, not LayersModel**: The model was converted via `tf.saved_model.save` + `tf_saved_model_conversion_v2`. SavedModel exports are typically `GraphModel` format. If `tf.loadLayersModel(...)` throws at runtime, change line ~210 in `useBrowserCNN.ts` to `tf.loadGraphModel("/models/drowsiness_cnn/model.json")` and update `modelRef` type to `TF.GraphModel`.
-- **MediaPipe loads from CDN**: `FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm")` and the face landmarker model from Google Storage. Requires internet on first use; no offline support.
+- `0001-patch-2.patch` is still untracked and should be removed if it is only an exported duplicate.
+- `rtk git diff --check` failed before this handoff rewrite because old `HANDOFF.md` had trailing whitespace. Re-run it after this update.
+- Lint still reports the existing Fast Refresh warning in `frontend/src/app/auth/AuthContext.tsx:78:17`.
 
 ## Context Notes
-
-- Backend runs on PostgreSQL `drowsiness_safety_db_schema` — no schema changes were made in this branch.
-- The Python detector (`integrate_cnn_with_events.py`) still exists in the repo but is no longer started by `dev.sh`/`dev.ps1`. It can be safely deleted in a future cleanup.
-- `best_model_v2.h5` (the original Keras model) is in the project root — not served, not imported anywhere. Keep it as the source of truth for model retraining.
-- Frontend start: `bash scripts/dev.sh` — starts backend (uvicorn) + frontend (Vite). No detector process.
-- Type-check: `cd frontend && npx tsc --noEmit`. Lint: `npm run lint`. Both pass clean.
+- Repository instructions ask shell commands to be prefixed with `rtk`.
+- Use `venv/bin/python` or `rtk ./venv/bin/python` for backend tests; the system Python may not have FastAPI/Pydantic installed.
+- Do not revert unrelated dirty work. This branch intentionally contains a broad admin refactor plus backend contract updates.
+- `backend/services/alert_service.py` is a legacy psycopg-style service. Its tuple response order matters to `frontend/src/app/services/backendAlerts.ts` and `frontend/tests/backendAlerts.test.mjs`.
+- The current branch is ahead of `origin/new-branch` by 2 commits before these uncommitted changes.

@@ -22,13 +22,21 @@ const backendAlert = {
 };
 
 test("maps backend detector alert to fleet event", () => {
-  const event = mapBackendAlertToFleetEvent(backendAlert);
+  const event = mapBackendAlertToFleetEvent({
+    ...backendAlert,
+    driver_id: "driver-1",
+    driver_name: "Driver One",
+    license_number: "LIC-001",
+  });
 
   assert.equal(event.id, "alert-1");
   assert.equal(event.type, "drowsiness_alert");
   assert.equal(event.severity, "critical");
   assert.equal(event.ear, 0.123);
   assert.equal(event.acknowledged, false);
+  assert.equal(event.driverId, "driver-1");
+  assert.equal(event.driverName, "Driver One");
+  assert.equal(event.licensePlate, "LIC-001");
 });
 
 test("maps acknowledged backend alert status to fleet event", () => {

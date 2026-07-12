@@ -1,11 +1,13 @@
 import unittest
 from datetime import datetime, timezone
 
+from backend.auth.password import verify_password
 from backend.auth.roles import UserRole
 from backend.models.driver import DriverCheckInRequest, DriverCreate, DriverStatus, DriverUpdate
 from backend.services.driver_service import (
     ActiveDriverSessionError,
     DriverAccessDeniedError,
+    DriverConflictError,
     DriverService,
     InvalidDriverStatusTransitionError,
     NoActiveDriverSessionError,
@@ -52,6 +54,8 @@ class FakeDriverRepository:
         self.active_session = None
         self.created_sessions = []
         self.deleted = False
+        self.created_user = None
+        self.email_taken = False
 
     def list_drivers(self, status=None):
         if status and self.driver["status"] != status:
@@ -66,6 +70,28 @@ class FakeDriverRepository:
 
     def create_driver(self, **kwargs):
         self.driver = driver(**kwargs, driver_id="driver-2")
+        return self.driver
+
+    def email_is_taken(self, email):
+        return self.email_taken
+
+    def create_driver_with_user(self, **kwargs):
+        self.created_user = {
+            "full_name": kwargs["full_name"],
+            "email": kwargs["email"],
+            "password_hash": kwargs["password_hash"],
+            "role": kwargs["user_role"],
+            "status": kwargs["user_status"],
+        }
+        self.driver = driver(
+            full_name=kwargs["full_name"],
+            license_number=kwargs["license_number"],
+            phone=kwargs["phone"],
+            email=kwargs["email"],
+            status=kwargs["status"],
+            baseline_ear=kwargs["baseline_ear"],
+            driver_id="driver-2",
+        )
         return self.driver
 
     def update_driver(self, driver_id, changes):
@@ -111,6 +137,7 @@ class DriverServiceTest(unittest.TestCase):
             full_name=" New Driver ",
             license_number=" LIC-002 ",
             email="NEW@example.com",
+            password="StrongPassword123!",
         )
 
         created = self.service.create_driver(payload)
@@ -118,6 +145,25 @@ class DriverServiceTest(unittest.TestCase):
         self.assertEqual(created["full_name"], "New Driver")
         self.assertEqual(created["license_number"], "LIC-002")
         self.assertEqual(created["email"], "new@example.com")
+        self.assertEqual(self.repository.created_user["email"], "new@example.com")
+        self.assertEqual(self.repository.created_user["role"], UserRole.DRIVER)
+        self.assertEqual(self.repository.created_user["status"], "active")
+        self.assertNotEqual(self.repository.created_user["password_hash"], "StrongPassword123!")
+        self.assertTrue(verify_password("StrongPassword123!", self.repository.created_user["password_hash"]))
+
+    def test_create_driver_rejects_existing_email(self):
+        self.repository.email_taken = True
+        payload = DriverCreate(
+            full_name="New Driver",
+            license_number="LIC-002",
+            email="driver@example.com",
+            password="StrongPassword123!",
+        )
+
+        with self.assertRaisesRegex(DriverConflictError, "email"):
+            self.service.create_driver(payload)
+
+        self.assertIsNone(self.repository.created_user)
 
     def test_driver_can_read_only_linked_profile(self):
         profile = self.service.get_driver("driver-1", current_user=self.driver_user)

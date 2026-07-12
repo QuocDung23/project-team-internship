@@ -21,6 +21,9 @@ ALERT_COLUMNS = (
     "acknowledged_at",
     "occurred_at",
     "created_at",
+    "driver_name",
+    "driver_email",
+    "license_number",
 )
 
 
@@ -174,10 +177,31 @@ def acknowledge_alert(alert_id: str, *, current_user: dict):
             CASE WHEN a.status IN ('acknowledged', 'resolved') THEN TRUE ELSE FALSE END,
             a.acknowledged_at,
             COALESCE(se.occurred_at, a.opened_at),
-            a.created_at
+            a.created_at,
+            COALESCE(d.full_name, driver_identity.full_name, owner_driver.full_name),
+            COALESCE(d.email, driver_identity.email, owner_driver.email),
+            COALESCE(d.license_number, driver_identity.license_number, owner_driver.license_number)
         FROM alerts a
         LEFT JOIN alert_safety_events ase ON ase.alert_id = a.alert_id
         LEFT JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
+        LEFT JOIN drivers d ON d.driver_id = a.driver_id
+        LEFT JOIN LATERAL (
+            SELECT assigned_driver.full_name, assigned_driver.email, assigned_driver.license_number
+            FROM trip_assignments ta
+            JOIN drivers assigned_driver ON assigned_driver.driver_id = ta.driver_id
+            WHERE ta.trip_id = a.trip_id
+            ORDER BY ta.created_at DESC
+            LIMIT 1
+        ) driver_identity ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT owner_driver.full_name, owner_driver.email, owner_driver.license_number
+            FROM trips owner_trip
+            JOIN users owner_user ON owner_user.user_id = owner_trip.created_by
+            JOIN drivers owner_driver ON lower(owner_driver.email) = lower(owner_user.email)
+            WHERE owner_trip.trip_id = a.trip_id
+            ORDER BY owner_driver.updated_at DESC
+            LIMIT 1
+        ) owner_driver ON TRUE
         WHERE a.alert_id=%s
         LIMIT 1
     """, (alert_id,))
@@ -210,8 +234,30 @@ def get_alerts(
         where_clauses.append("a.trip_id=%s")
         params.append(trip_id)
     if driver_id:
-        where_clauses.append("a.driver_id=%s")
-        params.append(driver_id)
+        where_clauses.append(
+            """
+            (
+                a.driver_id=%s
+                OR EXISTS (
+                    SELECT 1
+                    FROM trip_assignments ta
+                    WHERE ta.trip_id = a.trip_id
+                      AND ta.driver_id = %s
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM trips owner_trip
+                    JOIN users owner_user
+                        ON owner_user.user_id = owner_trip.created_by
+                    JOIN drivers owner_driver
+                        ON lower(owner_driver.email) = lower(owner_user.email)
+                    WHERE owner_trip.trip_id = a.trip_id
+                      AND owner_driver.driver_id = %s
+                )
+            )
+            """
+        )
+        params.extend([driver_id, driver_id, driver_id])
     if severity:
         canonical_severity = "critical" if severity in {"critical", "high"} else "warning"
         where_clauses.append("a.severity=%s")
@@ -261,12 +307,32 @@ def get_alerts(
             CASE WHEN a.status IN ('acknowledged', 'resolved') THEN TRUE ELSE FALSE END,
             a.acknowledged_at,
             COALESCE(se.occurred_at, a.opened_at),
-            a.created_at
+            a.created_at,
+            COALESCE(d.full_name, driver_identity.full_name, owner_driver.full_name),
+            COALESCE(d.email, driver_identity.email, owner_driver.email),
+            COALESCE(d.license_number, driver_identity.license_number, owner_driver.license_number)
         FROM alerts a
         LEFT JOIN alert_safety_events ase ON ase.alert_id = a.alert_id
         LEFT JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
         LEFT JOIN trips t ON t.trip_id = a.trip_id
         LEFT JOIN drivers d ON d.driver_id = a.driver_id
+        LEFT JOIN LATERAL (
+            SELECT assigned_driver.full_name, assigned_driver.email, assigned_driver.license_number
+            FROM trip_assignments ta
+            JOIN drivers assigned_driver ON assigned_driver.driver_id = ta.driver_id
+            WHERE ta.trip_id = a.trip_id
+            ORDER BY ta.created_at DESC
+            LIMIT 1
+        ) driver_identity ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT owner_driver.full_name, owner_driver.email, owner_driver.license_number
+            FROM trips owner_trip
+            JOIN users owner_user ON owner_user.user_id = owner_trip.created_by
+            JOIN drivers owner_driver ON lower(owner_driver.email) = lower(owner_user.email)
+            WHERE owner_trip.trip_id = a.trip_id
+            ORDER BY owner_driver.updated_at DESC
+            LIMIT 1
+        ) owner_driver ON TRUE
         {where_sql}
         ORDER BY COALESCE(se.occurred_at, a.opened_at) DESC
     """, tuple(params))

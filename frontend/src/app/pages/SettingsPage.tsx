@@ -1,5 +1,6 @@
-import { FloppyDisk, Gear, SpinnerGap } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { FloppyDisk, SpinnerGap } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState } from "react";
+import { AdminErrorBanner, AdminHeader, AdminPage } from "../component/admin/AdminShell";
 import { useBackendSettings } from "../hook/useBackendData";
 import type { BackendSettings } from "../services/backendApi";
 
@@ -25,6 +26,7 @@ const DEFAULT_SETTINGS: BackendSettings = {
 export function SettingsPage() {
   const backendSettings = useBackendSettings();
   const [draft, setDraft] = useState<BackendSettings>(DEFAULT_SETTINGS);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
     if (backendSettings.settings) {
@@ -36,6 +38,11 @@ export function SettingsPage() {
     return undefined;
   }, [backendSettings.settings]);
 
+  const isDirty = useMemo(
+    () => JSON.stringify(draft) !== JSON.stringify(backendSettings.settings ?? DEFAULT_SETTINGS),
+    [draft, backendSettings.settings],
+  );
+
   const updateNumber = (key: keyof BackendSettings, value: string) => {
     setDraft((current) => ({ ...current, [key]: Number(value) }));
   };
@@ -44,8 +51,8 @@ export function SettingsPage() {
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
-  const save = () => {
-    void backendSettings.save({
+  const save = async () => {
+    await backendSettings.save({
       ear_threshold: draft.ear_threshold,
       ear_consec_frames: draft.ear_consec_frames,
       cnn_confidence_threshold: draft.cnn_confidence_threshold,
@@ -60,42 +67,46 @@ export function SettingsPage() {
       safety_grade_a_min_score: draft.safety_grade_a_min_score,
       safety_grade_b_min_score: draft.safety_grade_b_min_score,
     });
+    setLastSavedAt(Date.now());
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <header className="panel flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-100">
-            <Gear size={18} weight="duotone" className="text-violet-400" />
-            Cài đặt phát hiện
-          </h1>
-          <p className="mt-0.5 text-[12px] text-zinc-400">
-            {backendSettings.isLive
-              ? "Đang đọc / ghi settings từ backend"
-              : "Backend chưa sẵn sàng, đang hiển thị giá trị mặc định"}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={save}
-          disabled={backendSettings.saving}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-3 py-1.5 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/25 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {backendSettings.saving ? (
-            <SpinnerGap size={13} className="animate-spin" />
-          ) : (
-            <FloppyDisk size={13} weight="bold" />
-          )}
-          Lưu
-        </button>
-      </header>
+    <AdminPage>
+      <AdminHeader
+        eyebrow="System Settings"
+        title="Cài đặt phát hiện"
+        description={
+          backendSettings.isLive
+            ? "Đang đọc / ghi settings từ backend"
+            : "Backend chưa sẵn sàng, đang hiển thị giá trị mặc định"
+        }
+        actions={
+          <>
+            <span className={isDirty ? "text-[11px] text-amber-300" : "text-[11px] text-emerald-300"}>
+              {isDirty
+                ? "Unsaved changes"
+                : lastSavedAt
+                  ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+                  : "No changes"}
+            </span>
+            <button
+              type="button"
+              onClick={save}
+              disabled={backendSettings.saving || !isDirty}
+              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-3 py-1.5 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/25 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {backendSettings.saving ? (
+                <SpinnerGap size={13} className="animate-spin" />
+              ) : (
+                <FloppyDisk size={13} weight="bold" />
+              )}
+              Lưu
+            </button>
+          </>
+        }
+      />
 
-      {backendSettings.error && (
-        <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-4 py-2 text-[12px] text-amber-200">
-          {backendSettings.error}
-        </div>
-      )}
+      <AdminErrorBanner label="Settings unavailable" message={backendSettings.error} />
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="panel grid gap-3 px-5 py-4">
@@ -133,7 +144,7 @@ export function SettingsPage() {
           </div>
         </div>
       </section>
-    </div>
+    </AdminPage>
   );
 }
 

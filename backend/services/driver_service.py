@@ -2,6 +2,7 @@ from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 
+from backend.auth.password import hash_password
 from backend.auth.roles import UserRole
 from backend.models.driver import DriverCreate, DriverStatus, DriverUpdate
 from backend.repositories.driver_repository import DriverRepository
@@ -46,17 +47,22 @@ class DriverService:
         return self.driver_repository.list_drivers(status=status)
 
     def create_driver(self, payload: DriverCreate) -> dict[str, Any]:
+        if self.driver_repository.email_is_taken(payload.email):
+            raise DriverConflictError("Driver email already exists.")
         try:
-            return self.driver_repository.create_driver(
+            return self.driver_repository.create_driver_with_user(
                 full_name=payload.full_name,
                 license_number=payload.license_number,
                 phone=payload.phone,
                 email=payload.email,
                 status=payload.status,
                 baseline_ear=payload.baseline_ear,
+                password_hash=hash_password(payload.password),
+                user_role=UserRole.DRIVER,
+                user_status="active",
             )
         except IntegrityError as exc:
-            raise DriverConflictError("Driver license number already exists.") from exc
+            raise DriverConflictError("Driver email or license number already exists.") from exc
 
     def get_driver(self, driver_id: str, *, current_user: dict[str, Any]) -> dict[str, Any]:
         driver = self.driver_repository.find_by_id(driver_id)

@@ -4,11 +4,20 @@ import type { Driver } from "../../types";
 interface DriverTableProps {
   drivers: Driver[];
   totalCount: number;
+  updatingDriverId?: string | null;
   onClearFilters: () => void;
+  onSelectDriver?: (driver: Driver) => void;
   onSetAvailability?: (driver: Driver, enabled: boolean) => void;
 }
 
-function DriverTable({ drivers, totalCount, onClearFilters, onSetAvailability }: DriverTableProps) {
+function DriverTable({
+  drivers,
+  totalCount,
+  updatingDriverId = null,
+  onClearFilters,
+  onSelectDriver,
+  onSetAvailability,
+}: DriverTableProps) {
   const filteredOut = drivers.length < totalCount;
   return (
     <div className="panel flex flex-1 flex-col gap-0 overflow-hidden">
@@ -44,6 +53,8 @@ function DriverTable({ drivers, totalCount, onClearFilters, onSetAvailability }:
                 <DriverRow
                   key={d.id}
                   driver={d}
+                  isUpdating={updatingDriverId === d.id}
+                  onSelect={onSelectDriver}
                   onSetAvailability={onSetAvailability}
                 />
               ))
