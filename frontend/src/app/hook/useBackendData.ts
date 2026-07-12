@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Driver } from "../types";
 import type {
   FleetKpi,
@@ -16,6 +16,7 @@ import {
   fetchMonitoringSnapshot,
   fetchSettings,
   fetchTrips,
+  hasUsableStoredAuthToken,
   mapBackendDriverToDriver,
   mapBackendTripToVehicle,
   monitoringStreamUrl,
@@ -30,6 +31,8 @@ import {
   overall,
   type DriverSnapshot,
 } from "../types/monitoring";
+
+const MONITORING_STALE_AFTER_MS = 3_000;
 
 export function useBackendDrivers(enabled = true) {
   const [rows, setRows] = useState<BackendDriver[] | null>(null);
@@ -117,11 +120,16 @@ export function useMyDriverProfile(enabled = true) {
   return { row, driver, isLive: Boolean(row), error, refresh };
 }
 
-export function useBackendTrips(activeOnly = false) {
+export function useBackendTrips(activeOnly = false, enabled = true) {
   const [trips, setTrips] = useState<BackendTrip[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (!enabled) {
+      setTrips(null);
+      setError(null);
+      return;
+    }
     try {
       const next = activeOnly ? await fetchActiveTrips() : await fetchTrips();
       setTrips(next);
@@ -129,7 +137,7 @@ export function useBackendTrips(activeOnly = false) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load trips");
     }
-  }, [activeOnly]);
+  }, [activeOnly, enabled]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -217,15 +225,30 @@ export function useBackendMonitoring() {
   const [raw, setRaw] = useState<BackendMonitoringSnapshot | null>(null);
   const [snap, setSnap] = useState<DriverSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pollNow, setPollNow] = useState(() => Date.now());
+  const [lastFrameProgressAt, setLastFrameProgressAt] = useState(() => Date.now());
+  const lastFrameTimestampRef = useRef<number | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const nextRaw = await fetchMonitoringSnapshot();
+      const now = Date.now();
+      setPollNow(now);
       if (nextRaw.available === false) {
+        lastFrameTimestampRef.current = null;
+        setLastFrameProgressAt(now);
         setRaw(null);
         setSnap(null);
         setError(null);
         return;
+      }
+      if (
+        nextRaw.frame_available &&
+        typeof nextRaw.frame_timestamp === "number" &&
+        nextRaw.frame_timestamp !== lastFrameTimestampRef.current
+      ) {
+        lastFrameTimestampRef.current = nextRaw.frame_timestamp;
+        setLastFrameProgressAt(now);
       }
       const nextSnap = mapMonitoringSnapshot(nextRaw);
       setRaw(nextRaw);
@@ -249,11 +272,18 @@ export function useBackendMonitoring() {
     };
   }, [refresh]);
 
+  const hasFrame = Boolean(raw?.frame_available);
+  const isStale = Boolean(raw?.stale) || !hasFrame || pollNow - lastFrameProgressAt > MONITORING_STALE_AFTER_MS;
+  const hasAuthToken = hasUsableStoredAuthToken();
+
   return {
     raw,
     snap,
     streamUrl: monitoringStreamUrl(),
-    isLive: Boolean(snap),
+    hasFrame,
+    isStale,
+    isLive: Boolean(snap) && !isStale,
+    hasAuthToken,
     error,
     refresh,
   };

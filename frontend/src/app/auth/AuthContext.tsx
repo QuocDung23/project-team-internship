@@ -8,7 +8,13 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { fetchCurrentUser, loginUser, TOKEN_STORAGE_KEY, type AuthUser } from "../services/backendApi";
+import {
+  fetchCurrentUser,
+  hasUsableStoredAuthToken,
+  loginUser,
+  TOKEN_STORAGE_KEY,
+  type AuthUser,
+} from "../services/backendApi";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -31,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   useEffect(() => {
     let active = true;
     async function loadUser() {
-      if (!window.localStorage.getItem(TOKEN_STORAGE_KEY)) {
+      if (!hasUsableStoredAuthToken()) {
         setIsLoading(false);
         return;
       }

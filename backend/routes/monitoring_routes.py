@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from backend.models.schemas import MonitoringSnapshot
@@ -30,7 +32,7 @@ def save_monitoring_snapshot(snapshot: MonitoringSnapshot):
 def read_monitoring_snapshot():
     snapshot=get_monitoring_snapshot()
     if snapshot is None:
-        return {"available": False}
+        return {"available": False, "server_time": time.time(), "stale": True}
     snapshot["available"] = True
     return snapshot
 

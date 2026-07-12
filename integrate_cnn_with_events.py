@@ -645,6 +645,14 @@ MONITORING_PUBLISHER = (
         jpeg_quality=ARGS.monitoring_jpeg_quality,
     )
 )
+if MONITORING_PUBLISHER is None:
+    print("📡 Monitoring publish: OFF (--disable-monitoring-publish)")
+else:
+    print(
+        "📡 Monitoring publish: ON "
+        f"url={ARGS.monitoring_backend_url} fps={ARGS.monitoring_fps:g} "
+        f"jpeg_quality={ARGS.monitoring_jpeg_quality}"
+    )
 
 
 def _dws_score() -> int:

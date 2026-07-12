@@ -11,6 +11,7 @@ from detector_backend import post_monitoring_frame, post_monitoring_snapshot
 
 
 LOGGER = logging.getLogger(__name__)
+WARN_INTERVAL_SECONDS = 5.0
 
 
 class AsyncMonitoringPublisher:
@@ -32,6 +33,10 @@ class AsyncMonitoringPublisher:
         self.jpeg_quality = max(1, min(100, int(jpeg_quality)))
         self.snapshot_timeout = snapshot_timeout
         self.frame_timeout = frame_timeout
+        self._frame_failures = 0
+        self._snapshot_failures = 0
+        self._last_frame_warning_at = 0.0
+        self._last_snapshot_warning_at = 0.0
         self._frame_condition = threading.Condition()
         self._snapshot_condition = threading.Condition()
         self._snapshot: dict[str, Any] | None = None
@@ -46,6 +51,34 @@ class AsyncMonitoringPublisher:
         )
         self._frame_thread.start()
         self._snapshot_thread.start()
+
+    def _warn_publish_failure(
+        self,
+        *,
+        kind: str,
+        exc: Exception,
+        timeout: float,
+        failures: int,
+        now: float,
+    ) -> bool:
+        last_warning_at = self._last_frame_warning_at if kind == "frame" else self._last_snapshot_warning_at
+        if now - last_warning_at < WARN_INTERVAL_SECONDS:
+            return False
+
+        if kind == "frame":
+            self._last_frame_warning_at = now
+        else:
+            self._last_snapshot_warning_at = now
+
+        LOGGER.warning(
+            "Monitoring %s publish failed: backend_url=%s timeout=%.2fs failures=%d error=%s",
+            kind,
+            self.backend_url,
+            timeout,
+            failures,
+            exc,
+        )
+        return True
 
     def publish(self, snapshot: dict[str, Any], frame: Any) -> None:
         with self._frame_condition:
@@ -99,8 +132,16 @@ class AsyncMonitoringPublisher:
                         encoded.tobytes(),
                         timeout=self.frame_timeout,
                     )
+                    self._frame_failures = 0
             except Exception as exc:
-                LOGGER.debug("Monitoring frame publish failed: %s", exc)
+                self._frame_failures += 1
+                self._warn_publish_failure(
+                    kind="frame",
+                    exc=exc,
+                    timeout=self.frame_timeout,
+                    failures=self._frame_failures,
+                    now=time.monotonic(),
+                )
             self._sleep_interval(started_at, self.frame_interval_seconds)
 
     def _run_snapshots(self) -> None:
@@ -125,6 +166,14 @@ class AsyncMonitoringPublisher:
                     snapshot,
                     timeout=self.snapshot_timeout,
                 )
+                self._snapshot_failures = 0
             except Exception as exc:
-                LOGGER.debug("Monitoring snapshot publish failed: %s", exc)
+                self._snapshot_failures += 1
+                self._warn_publish_failure(
+                    kind="snapshot",
+                    exc=exc,
+                    timeout=self.snapshot_timeout,
+                    failures=self._snapshot_failures,
+                    now=time.monotonic(),
+                )
             self._sleep_interval(started_at, self.snapshot_interval_seconds)

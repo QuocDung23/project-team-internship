@@ -9,9 +9,10 @@ import type { Driver } from "../types";
 export function MonitoringView() {
   const { user } = useAuth();
   const monitoring = useBackendMonitoring();
-  const backendDrivers = useBackendDrivers(user?.role === "admin");
-  const myDriver = useMyDriverProfile(user?.role === "driver");
-  const backendTrips = useBackendTrips(true);
+  const canLoadProtectedData = Boolean(user) && monitoring.hasAuthToken;
+  const backendDrivers = useBackendDrivers(canLoadProtectedData && user?.role === "admin");
+  const myDriver = useMyDriverProfile(canLoadProtectedData && user?.role === "driver");
+  const backendTrips = useBackendTrips(true, canLoadProtectedData);
   const detectorTripId = monitoring.raw?.trip_id || "";
   const liveTripId = detectorTripId || getActiveTripId();
   const activeTrip = backendTrips.trips?.find((trip) => trip.trip_id === liveTripId) ?? null;
@@ -19,7 +20,7 @@ export function MonitoringView() {
     ? backendDrivers.drivers?.find((candidate) => candidate.id === activeTrip.driver_id) ?? myDriver.driver
     : myDriver.driver;
   const snap = monitoring.snap;
-  const headStatus = snap ? overall(snap) : ("active" as MetricStatus);
+  const headStatus = monitoring.isStale ? ("critical" as MetricStatus) : snap ? overall(snap) : ("active" as MetricStatus);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -36,7 +37,11 @@ export function MonitoringView() {
         </section>
       )}
 
-      <CabinCam streamUrl={monitoring.streamUrl} hasSnapshot={Boolean(snap)} />
+      <CabinCam
+        streamUrl={monitoring.streamUrl}
+        hasFrame={monitoring.hasFrame}
+        isStale={monitoring.isStale}
+      />
 
       <section className="panel mx-auto grid w-full max-w-[640px] grid-cols-2 gap-3 px-4 py-3 text-sm sm:grid-cols-5">
         <Metric label="FPS" value={snap?.fps ? snap.fps.toFixed(1) : "--"} />

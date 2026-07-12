@@ -103,6 +103,12 @@ export interface BackendMonitoringSnapshot {
   received_at?: number;
   frame_available?: boolean;
   frame_timestamp?: number;
+  server_time?: number;
+  snapshot_received_at?: number | null;
+  frame_received_at?: number | null;
+  snapshot_age_seconds?: number | null;
+  frame_age_seconds?: number | null;
+  stale?: boolean;
   fps?: number | null;
   ear: number;
   mar: number;
@@ -127,6 +133,8 @@ export interface BackendMonitoringSnapshot {
 
 export interface BackendMonitoringUnavailable {
   available: false;
+  server_time?: number;
+  stale?: boolean;
 }
 
 function apiEnv(name: string): string | undefined {
@@ -137,11 +145,47 @@ export function apiBaseUrl(): string {
   return apiEnv("VITE_API_BASE_URL")?.replace(/\/$/, "") || "/api/v1";
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    return JSON.parse(globalThis.atob(padded)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function isAccessTokenUsable(token: string, nowSeconds = Date.now() / 1000): boolean {
+  const trimmed = token.trim();
+  if (!trimmed) return false;
+  const payload = decodeJwtPayload(trimmed);
+  if (!payload) return false;
+  const expiresAt = payload.exp;
+  if (typeof expiresAt !== "number") return true;
+  return expiresAt > nowSeconds + 30;
+}
+
+export function hasUsableStoredAuthToken(): boolean {
+  if (typeof window === "undefined") return false;
+  const token = window.localStorage.getItem(TOKEN_STORAGE_KEY)?.trim() ?? "";
+  if (!token) return false;
+  if (isAccessTokenUsable(token)) return true;
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+  return false;
+}
+
 export function apiAuthToken(): string {
   const envToken = apiEnv("VITE_API_BEARER_TOKEN")?.trim();
   if (envToken) return envToken;
   if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(TOKEN_STORAGE_KEY)?.trim() ?? "";
+  const token = window.localStorage.getItem(TOKEN_STORAGE_KEY)?.trim() ?? "";
+  if (!token) return "";
+  if (isAccessTokenUsable(token)) return token;
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+  window.dispatchEvent(new Event("drowsiness:unauthorized"));
+  return "";
 }
 
 export function apiHeaders(headers?: Record<string, string>): Record<string, string> {
