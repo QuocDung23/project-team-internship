@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useAuth } from "../auth/AuthContext";
 
@@ -12,6 +12,7 @@ import AlertHeader from "../component/alerts/AlertHeader";
 import AlertStatsRow from "../component/alerts/AlertStatsRow";
 import AlertFilters from "../component/alerts/AlertFilters";
 import AlertList from "../component/alerts/AlertList";
+import { acknowledgeAlert } from "../services/backendAlerts";
 
 const EMPTY_EVENTS: FleetAlertEvent[] = [];
 
@@ -22,6 +23,8 @@ export function AlertsPage() {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [showAcknowledged, setShowAcknowledged] = useState(true);
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const backendAlerts = useBackendAlerts(undefined, {
     tripId: tripIdFilter.trim() || undefined,
     driverId: user?.role === "admin" ? driverIdFilter.trim() || undefined : undefined,
@@ -29,6 +32,23 @@ export function AlertsPage() {
     status: "all",
   });
   const events = backendAlerts.fleetEvents ?? EMPTY_EVENTS;
+
+  const handleAcknowledge = useCallback(
+    async (event: FleetAlertEvent) => {
+      if (event.acknowledged || acknowledgingId) return;
+      setAcknowledgingId(event.id);
+      setActionError(null);
+      try {
+        await acknowledgeAlert(event.id);
+        await backendAlerts.refresh();
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Failed to acknowledge alert");
+      } finally {
+        setAcknowledgingId(null);
+      }
+    },
+    [acknowledgingId, backendAlerts],
+  );
 
   const filtered = useMemo(
     () =>
@@ -73,6 +93,12 @@ export function AlertsPage() {
         </section>
       )}
 
+      {actionError && (
+        <section className="panel border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
+          {actionError}
+        </section>
+      )}
+
       <AlertStatsRow stats={stats} />
 
       <AlertFilters
@@ -107,7 +133,11 @@ export function AlertsPage() {
         ) : null}
       </section>
 
-      <AlertList events={filtered} />
+      <AlertList
+        events={filtered}
+        acknowledgingId={acknowledgingId}
+        onAcknowledge={handleAcknowledge}
+      />
     </div>
   );
 }

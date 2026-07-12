@@ -35,6 +35,8 @@ class UserService:
             raise InvalidCredentialsError("Invalid email or password.")
         if user.get("status") != "active":
             raise InactiveUserError("User account is inactive.")
+        if self._has_disabled_driver_profile(user):
+            raise InactiveUserError("Driver account is disabled.")
         return user
 
     def create_access_token_for_user(self, user: dict[str, Any]) -> tuple[str, int]:
@@ -69,3 +71,15 @@ class UserService:
             email=email,
             password_hash=hash_password(password),
         )
+
+    def _has_disabled_driver_profile(self, user: dict[str, Any]) -> bool:
+        role = user.get("role")
+        role_value = role.value if isinstance(role, UserRole) else str(role)
+        if role_value != UserRole.DRIVER.value:
+            return False
+
+        driver_status = user.get("driver_status")
+        if driver_status is None:
+            return False
+        status_value = driver_status.value if hasattr(driver_status, "value") else str(driver_status)
+        return status_value.strip().lower() in {"inactive", "suspended"}

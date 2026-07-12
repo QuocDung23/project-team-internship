@@ -17,6 +17,7 @@ const {
 
 interface DriverRowProps {
   driver: Driver;
+  onSetAvailability?: (driver: Driver, enabled: boolean) => void;
 }
 
 function earColor(ear: number): string {
@@ -33,19 +34,18 @@ function earHint(ear: number): string {
 
 function avatarTone(status: Driver["status"]): string {
   switch (status) {
-    case "critical":
+    case "disable":
       return "bg-red-500/15 text-red-300";
-    case "warn":
-      return "bg-amber-500/15 text-amber-300";
-    case "offline":
+    case "idle":
       return "bg-zinc-500/15 text-zinc-400";
-    default:
+    case "driving":
       return "bg-emerald-500/15 text-emerald-300";
   }
 }
 
-function DriverRow({ driver }: DriverRowProps) {
+function DriverRow({ driver, onSetAvailability }: DriverRowProps) {
   const ear = driver.ear;
+  const canToggleAvailability = Boolean(onSetAvailability) && driver.status !== "driving";
   return (
     <tr className="border-b border-hairline/50 transition-colors hover:bg-surface-2/30">
       <td className="py-2.5 pr-3 font-mono-num text-[11px] text-zinc-500">
@@ -134,6 +134,18 @@ function DriverRow({ driver }: DriverRowProps) {
           <ClockClockwise size={10} className="text-zinc-600" />
           {formatTime(driver.lastUpdate)}
         </div>
+      </td>
+      <td className="py-2.5 pl-3">
+        {onSetAvailability ? (
+          <button
+            type="button"
+            disabled={!canToggleAvailability}
+            onClick={() => onSetAvailability(driver, driver.status === "disable")}
+            className="rounded-md border border-hairline px-2 py-1 text-[10px] font-semibold text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {driver.status === "disable" ? "Enable" : "Disable"}
+          </button>
+        ) : null}
       </td>
     </tr>
   );

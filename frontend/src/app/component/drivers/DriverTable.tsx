@@ -5,9 +5,10 @@ interface DriverTableProps {
   drivers: Driver[];
   totalCount: number;
   onClearFilters: () => void;
+  onSetAvailability?: (driver: Driver, enabled: boolean) => void;
 }
 
-function DriverTable({ drivers, totalCount, onClearFilters }: DriverTableProps) {
+function DriverTable({ drivers, totalCount, onClearFilters, onSetAvailability }: DriverTableProps) {
   const filteredOut = drivers.length < totalCount;
   return (
     <div className="panel flex flex-1 flex-col gap-0 overflow-hidden">
@@ -25,20 +26,27 @@ function DriverTable({ drivers, totalCount, onClearFilters }: DriverTableProps) 
               <th className="py-2 pr-3 font-medium">Cảnh báo</th>
               <th className="py-2 pr-3 font-medium">Điện thoại</th>
               <th className="py-2 pl-3 font-medium">Cập nhật</th>
+              <th className="py-2 pl-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline/50">
             {drivers.length === 0 ? (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="py-12 text-center text-[12px] text-zinc-500"
                 >
                   Không tìm thấy tài xế nào phù hợp
                 </td>
               </tr>
             ) : (
-              drivers.map((d) => <DriverRow key={d.id} driver={d} />)
+              drivers.map((d) => (
+                <DriverRow
+                  key={d.id}
+                  driver={d}
+                  onSetAvailability={onSetAvailability}
+                />
+              ))
             )}
           </tbody>
         </table>

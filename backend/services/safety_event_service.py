@@ -23,7 +23,7 @@ class SafetyEventService:
 
     def ingest(self, payload: SafetyEventIngestRequest, *, current_user: dict | None = None) -> dict:
         self._validate_references(payload, current_user=current_user)
-        create_alert = payload.severity == SafetyEventSeverity.HIGH
+        create_alert = payload.severity in {SafetyEventSeverity.MEDIUM, SafetyEventSeverity.HIGH}
 
         try:
             return self.repository.ingest_event(

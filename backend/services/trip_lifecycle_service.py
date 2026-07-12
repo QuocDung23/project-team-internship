@@ -63,16 +63,18 @@ class TripLifecycleService:
     ) -> list[dict[str, Any]]:
         role = current_user["role"]
         if role == UserRole.ADMIN:
-            return self.trip_repository.list_trips(status=status)
+            return self._with_safety_summaries(self.trip_repository.list_trips(status=status))
         if role == UserRole.DRIVER:
             email = (current_user.get("email") or "").strip()
             if not email:
                 return []
             user_id = str(current_user.get("user_id") or "")
-            return self.trip_repository.list_trips_for_user(
-                user_id=user_id,
-                driver_email=email,
-                status=status,
+            return self._with_safety_summaries(
+                self.trip_repository.list_trips_for_user(
+                    user_id=user_id,
+                    driver_email=email,
+                    status=status,
+                )
             )
         raise TripAccessDeniedError("Insufficient permissions for trips.")
 
@@ -100,7 +102,7 @@ class TripLifecycleService:
             trip["monitoring_session"] = self.trip_repository.ensure_active_monitoring_session(
                 trip["trip_id"]
             )
-            return trip
+            return self._with_safety_summary(trip)
         except IntegrityError as exc:
             raise TripConflictError("Trip code already exists.") from exc
 
@@ -108,7 +110,7 @@ class TripLifecycleService:
         role = current_user["role"]
         if role == UserRole.ADMIN:
             trips = self.trip_repository.list_trips(status=TripStatus.IN_PROGRESS)
-            return trips[0] if trips else None
+            return self._with_safety_summary(trips[0]) if trips else None
         if role == UserRole.DRIVER:
             trip = self.trip_repository.find_active_trip_for_user(
                 user_id=str(current_user.get("user_id") or ""),
@@ -118,21 +120,24 @@ class TripLifecycleService:
                 trip["monitoring_session"] = self.trip_repository.ensure_active_monitoring_session(
                     trip["trip_id"]
                 )
-            return trip
+                return self._with_safety_summary(trip)
+            return None
         raise TripAccessDeniedError("Insufficient permissions for trips.")
 
     def list_my_trips(self, *, current_user: dict[str, Any]) -> list[dict[str, Any]]:
         if current_user["role"] != UserRole.DRIVER:
             raise TripAccessDeniedError("Only drivers can list their own trips.")
-        return self.trip_repository.list_trips_for_user(
-            user_id=str(current_user.get("user_id") or ""),
-            driver_email=(current_user.get("email") or "").strip(),
+        return self._with_safety_summaries(
+            self.trip_repository.list_trips_for_user(
+                user_id=str(current_user.get("user_id") or ""),
+                driver_email=(current_user.get("email") or "").strip(),
+            )
         )
 
     def get_trip(self, trip_id: str, *, current_user: dict[str, Any]) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
         self._ensure_can_read_trip(trip_id, current_user=current_user)
-        return trip
+        return self._with_safety_summary(trip)
 
     def schedule_trip(self, trip_id: str) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
@@ -143,7 +148,7 @@ class TripLifecycleService:
         )
         if updated is None:
             raise TripNotFoundError("Trip not found.")
-        return updated
+        return self._with_safety_summary(updated)
 
     def assign_trip(self, trip_id: str, payload: TripAssignRequest) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
@@ -177,7 +182,7 @@ class TripLifecycleService:
             raise TripConflictError("Trip assignment conflicts with an active assignment.") from exc
         if assigned is None:
             raise TripNotFoundError("Trip not found.")
-        return assigned
+        return self._with_safety_summary(assigned)
 
     def start_trip(self, trip_id: str, *, current_user: dict[str, Any]) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
@@ -189,7 +194,7 @@ class TripLifecycleService:
         updated = self.trip_repository.start_trip(trip_id)
         if updated is None:
             raise TripNotFoundError("Trip not found.")
-        return updated
+        return self._with_safety_summary(updated)
 
     def complete_trip(self, trip_id: str, *, current_user: dict[str, Any]) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
@@ -202,7 +207,7 @@ class TripLifecycleService:
         if updated is None:
             raise TripNotFoundError("Trip not found.")
         updated["safety_score"] = self.calculate_or_get_safety_score(trip_id)
-        return updated
+        return self._with_safety_summary(updated)
 
     def calculate_or_get_safety_score(self, trip_id: str) -> dict[str, Any]:
         self._get_trip_or_raise(trip_id)
@@ -241,7 +246,7 @@ class TripLifecycleService:
         updated = self.trip_repository.cancel_trip(trip_id=trip_id, reason=reason)
         if updated is None:
             raise TripNotFoundError("Trip not found.")
-        return updated
+        return self._with_safety_summary(updated)
 
     def abort_trip(self, trip_id: str, *, reason: str) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)
@@ -250,13 +255,28 @@ class TripLifecycleService:
         updated = self.trip_repository.abort_trip(trip_id=trip_id, reason=reason)
         if updated is None:
             raise TripNotFoundError("Trip not found.")
-        return updated
+        return self._with_safety_summary(updated)
 
     def _get_trip_or_raise(self, trip_id: str) -> dict[str, Any]:
         trip = self.trip_repository.find_by_id(trip_id)
         if trip is None:
             raise TripNotFoundError("Trip not found.")
         return trip
+
+    def _with_safety_summaries(self, trips: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [self._with_safety_summary(trip) for trip in trips]
+
+    def _with_safety_summary(self, trip: dict[str, Any]) -> dict[str, Any]:
+        counts = self.trip_repository.count_trip_safety_inputs(trip["trip_id"])
+        safety_score = trip.get("safety_score")
+        if safety_score is None:
+            safety_score = self.trip_repository.find_safety_score(trip["trip_id"])
+        return {
+            **trip,
+            "safety_score": safety_score,
+            "total_alerts_count": counts["alert_count"],
+            "critical_alerts_count": counts["critical_events"],
+        }
 
     def _validate_transition(self, current: TripStatus, requested: TripStatus) -> None:
         if requested not in ALLOWED_TRANSITIONS[current]:

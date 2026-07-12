@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  acknowledgeAlert,
   mapBackendAlertToFleetEvent,
   mapBackendAlertToMonitorAlert,
 } from "../src/app/services/backendAlerts.ts";
@@ -28,6 +29,42 @@ test("maps backend detector alert to fleet event", () => {
   assert.equal(event.severity, "critical");
   assert.equal(event.ear, 0.123);
   assert.equal(event.acknowledged, false);
+});
+
+test("maps acknowledged backend alert status to fleet event", () => {
+  const event = mapBackendAlertToFleetEvent({
+    ...backendAlert,
+    status: "acknowledged",
+  });
+
+  assert.equal(event.acknowledged, true);
+});
+
+test("maps acknowledged tuple alert rows from the current FastAPI response", () => {
+  const event = mapBackendAlertToFleetEvent([
+    "alert-ack",
+    "trip-1",
+    "driver-1",
+    "drowsiness",
+    "warning",
+    "cnn_classifier",
+    0.2,
+    9,
+    0.61,
+    "closed",
+    null,
+    null,
+    null,
+    false,
+    null,
+    true,
+    "2026-07-05T10:21:35Z",
+    "2026-07-05T10:21:30Z",
+    "2026-07-05T10:21:31Z",
+  ]);
+
+  assert.equal(event.id, "alert-ack");
+  assert.equal(event.acknowledged, true);
 });
 
 test("maps backend detector alert to monitoring alert", () => {
@@ -80,6 +117,28 @@ test("maps canonical backend alert types from safety event ingestion", () => {
 
   assert.equal(drowsiness.type, "drowsiness_alert");
   assert.equal(drowsiness.severity, "critical");
-  assert.equal(inattention.title, "Gáº­t Ä‘áº§u / máº¥t tÆ° tháº¿ Ä‘áº§u");
+  assert.equal(inattention.title, "Gật đầu / mất tư thế đầu");
   assert.equal(camera.type, "distraction_alert");
+});
+
+test("acknowledgeAlert sends PATCH and normalizes response", async () => {
+  let request;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    request = { url, init };
+    return new Response(JSON.stringify({ ...backendAlert, status: "acknowledged" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    const alert = await acknowledgeAlert("alert-1");
+    assert.equal(alert.acknowledged, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(request.url, "/api/v1/alerts/alert-1/acknowledge");
+  assert.equal(request.init.method, "PATCH");
 });

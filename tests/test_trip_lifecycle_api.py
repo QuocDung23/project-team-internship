@@ -46,6 +46,9 @@ def trip_response(**overrides):
         "updated_at": NOW,
         "assignment": None,
         "monitoring_session": None,
+        "safety_score": None,
+        "total_alerts_count": 0,
+        "critical_alerts_count": 0,
     }
     data.update(overrides)
     return data
@@ -56,7 +59,14 @@ class FakeTripLifecycleService:
         return trip_response(code=payload.code, status=payload.status, created_by=current_user["user_id"])
 
     def list_trips(self, status, current_user):
-        return [trip_response(status=status or TripStatus.SCHEDULED)]
+        return [
+            trip_response(
+                status=status or TripStatus.COMPLETED,
+                safety_score=self.calculate_or_get_safety_score("trip-1"),
+                total_alerts_count=3,
+                critical_alerts_count=1,
+            )
+        ]
 
     def active_trip(self, current_user):
         return trip_response(status=TripStatus.IN_PROGRESS)
@@ -186,6 +196,9 @@ class TripLifecycleApiTest(unittest.TestCase):
         self.assertEqual(created.json()["status"], "scheduled")
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(len(listed.json()["trips"]), 1)
+        self.assertEqual(listed.json()["trips"][0]["safety_score"]["score"], 92.0)
+        self.assertEqual(listed.json()["trips"][0]["total_alerts_count"], 3)
+        self.assertEqual(listed.json()["trips"][0]["critical_alerts_count"], 1)
         self.assertEqual(assigned.status_code, 200)
         self.assertEqual(assigned.json()["assignment"]["driver_id"], "driver-1")
         self.assertEqual(started.status_code, 200)

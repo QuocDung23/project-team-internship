@@ -1,4 +1,4 @@
-export type DriverStatus = "active" | "warn" | "critical" | "offline";
+export type DriverStatus = "driving" | "idle" | "disable";
 
 export type EyeState = "open" | "closed" | "yawning";
 

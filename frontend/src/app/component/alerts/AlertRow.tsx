@@ -10,9 +10,11 @@ import {
 
 interface AlertRowProps {
   event: FleetAlertEvent;
+  isAcknowledging?: boolean;
+  onAcknowledge?: (event: FleetAlertEvent) => void;
 }
 
-export default function AlertRow({ event }: AlertRowProps) {
+export default function AlertRow({ event, isAcknowledging = false, onAcknowledge }: AlertRowProps) {
   const isCritical = event.severity === "critical";
   return (
     <div
@@ -75,12 +77,22 @@ export default function AlertRow({ event }: AlertRowProps) {
         </span>
       </div>
 
-      {event.acknowledged && (
+      {event.acknowledged ? (
         <div className="flex items-center gap-1 text-[10px] text-emerald-400">
           <CheckCircle size={11} fill="currentColor" />
           Đã xác nhận
         </div>
-      )}
+      ) : onAcknowledge ? (
+        <button
+          type="button"
+          onClick={() => onAcknowledge(event)}
+          disabled={isAcknowledging}
+          className="inline-flex w-fit items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <CheckCircle size={11} />
+          {isAcknowledging ? "Đang xác nhận" : "Xác nhận"}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -5,28 +5,35 @@ import DashboardHeader from "../component/dashboards/DashboardHeader";
 import DriverTable from "../component/dashboards/DriverTable";
 import KpiGrid from "../component/dashboards/KpiGrid";
 import type { Driver } from "../types";
+import { buildSafetySummaryFromTrips, deriveDriverStatuses, type BackendTrip } from "../services/backendApi";
 
 const EMPTY_DRIVERS: Driver[] = [];
+const EMPTY_TRIPS: BackendTrip[] = [];
 
 function DashboardPage() {
   const backendDrivers = useBackendDrivers();
   const backendTrips = useBackendTrips();
   const now = useTicker(1000);
 
-  const driverList = backendDrivers.drivers ?? EMPTY_DRIVERS;
+  const trips = backendTrips.trips ?? EMPTY_TRIPS;
+  const driverList = useMemo(
+    () => deriveDriverStatuses(backendDrivers.drivers ?? EMPTY_DRIVERS, trips),
+    [backendDrivers.drivers, trips],
+  );
 
   const kpis = useMemo(() => {
     const total = driverList.length;
-    const active = backendTrips.trips?.filter((trip) => trip.status === "in_progress").length ?? 0;
-    const warn = driverList.filter((d) => d.status === "warn").length;
-    const critical = driverList.filter((d) => d.status === "critical").length;
-    const offline = driverList.filter((d) => d.status === "offline").length;
-    const totalAlerts = backendTrips.trips?.reduce(
-      (sum, trip) => sum + Number(trip.total_alerts_count ?? 0),
-      0,
-    ) ?? 0;
-    return { total, active, warn, critical, offline, totalAlerts };
-  }, [backendTrips.trips, driverList]);
+    const safety = buildSafetySummaryFromTrips(trips);
+    return {
+      total,
+      driving: driverList.filter((d) => d.status === "driving").length,
+      idle: driverList.filter((d) => d.status === "idle").length,
+      disable: driverList.filter((d) => d.status === "disable").length,
+      totalAlerts: safety.totalAlerts,
+      criticalAlerts: safety.criticalAlerts,
+      averageScore: safety.averageScore,
+    };
+  }, [driverList, trips]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">

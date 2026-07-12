@@ -3,7 +3,7 @@
 // filters). All UI building blocks live under `component/drivers/`.
 
 import { useMemo, useState } from "react";
-import { useBackendDrivers } from "../hook/useBackendData";
+import { useBackendDrivers, useBackendTrips } from "../hook/useBackendData";
 import DriversHeader from "../component/drivers/DriversHeader";
 import DriverStatsBar from "../component/drivers/DriverStatsBar";
 import DriverFilters from "../component/drivers/DriverFilters";
@@ -14,16 +14,18 @@ import type {
   DriverStatusFilter,
 } from "../types/drivers";
 import type { Driver } from "../types";
+import { deriveDriverStatuses } from "../services/backendApi";
 
 function DriversPage() {
   const backendDrivers = useBackendDrivers();
+  const backendTrips = useBackendTrips(false);
   const [search, setSearch] = useState("");
   const [eyeFilter, setEyeFilter] = useState<DriverEyeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<DriverStatusFilter>("all");
 
   const allDrivers: Driver[] = useMemo(
-    () => backendDrivers.drivers ?? [],
-    [backendDrivers.drivers],
+    () => deriveDriverStatuses(backendDrivers.drivers ?? [], backendTrips.trips ?? []),
+    [backendDrivers.drivers, backendTrips.trips],
   );
 
   const filtered = useMemo(
@@ -46,10 +48,9 @@ function DriversPage() {
   const stats: DriverStats = useMemo(
     () => ({
       total: allDrivers.length,
-      active: allDrivers.filter((d) => d.status === "active").length,
-      warn: allDrivers.filter((d) => d.status === "warn").length,
-      critical: allDrivers.filter((d) => d.status === "critical").length,
-      offline: allDrivers.filter((d) => d.status === "offline").length,
+      driving: allDrivers.filter((d) => d.status === "driving").length,
+      idle: allDrivers.filter((d) => d.status === "idle").length,
+      disable: allDrivers.filter((d) => d.status === "disable").length,
       eyesOpen: allDrivers.filter((d) => d.eyeState === "open").length,
       eyesClosed: allDrivers.filter((d) => d.eyeState === "closed").length,
       yawning: allDrivers.filter((d) => d.eyeState === "yawning").length,
@@ -76,12 +77,23 @@ function DriversPage() {
     });
   };
 
+  const handleSetAvailability = (driver: Driver, enabled: boolean) => {
+    void backendDrivers.updateDriver(driver.id, {
+      status: enabled ? "active" : "inactive",
+    });
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4 md:p-6">
       <DriversHeader stats={stats} onAdd={handleAddDriver} />
       {backendDrivers.error && (
         <section className="panel border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
           Backend unavailable: {backendDrivers.error}
+        </section>
+      )}
+      {backendTrips.error && (
+        <section className="panel border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
+          Trips unavailable: {backendTrips.error}
         </section>
       )}
       <DriverStatsBar stats={stats} />
@@ -97,6 +109,7 @@ function DriversPage() {
         drivers={filtered}
         totalCount={allDrivers.length}
         onClearFilters={handleClearFilters}
+        onSetAvailability={handleSetAvailability}
       />
     </div>
   );

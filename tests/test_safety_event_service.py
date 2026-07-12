@@ -100,16 +100,16 @@ class SafetyEventServiceTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             SafetyEventIngestRequest(**payload(details=[]))
 
-    def test_low_and_medium_severity_do_not_create_alert(self):
+    def test_medium_severity_creates_warning_alert_but_low_does_not(self):
         low = self.service.ingest(SafetyEventIngestRequest(**payload(event_id="event-low", severity="low")))
         medium = self.service.ingest(
             SafetyEventIngestRequest(**payload(event_id="event-medium", severity="medium"))
         )
 
         self.assertIsNone(low["alert_id"])
-        self.assertIsNone(medium["alert_id"])
+        self.assertEqual(medium["alert_id"], "alert-1")
         self.assertFalse(self.repository.ingested[0][1])
-        self.assertFalse(self.repository.ingested[1][1])
+        self.assertTrue(self.repository.ingested[1][1])
 
     def test_missing_references_are_rejected_when_provided(self):
         self.repository.trips.clear()

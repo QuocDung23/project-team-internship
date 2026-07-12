@@ -32,18 +32,16 @@ const EYE_ACTIVE: Record<DriverEyeFilter, string> = {
 
 const STATUS_OPTIONS: ReadonlyArray<DriverStatusFilter> = [
   "all",
-  "active",
-  "warn",
-  "critical",
-  "offline",
+  "driving",
+  "idle",
+  "disable",
 ];
 
 const STATUS_ACTIVE: Record<DriverStatusFilter, string> = {
   all: "bg-emerald-500/20 text-emerald-300",
-  active: "bg-emerald-500/20 text-emerald-300",
-  warn: "bg-amber-500/20 text-amber-300",
-  critical: "bg-red-500/20 text-red-300",
-  offline: "bg-zinc-500/20 text-zinc-300",
+  driving: "bg-emerald-500/20 text-emerald-300",
+  idle: "bg-zinc-500/20 text-zinc-300",
+  disable: "bg-red-500/20 text-red-300",
 };
 
 function DriverFilters({

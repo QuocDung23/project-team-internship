@@ -94,6 +94,7 @@ export interface BrowserCNNReturn {
   metrics: DriverSnapshot | null;
   isRunning: boolean;
   eventCount: number;
+  events: ClientSafetyEvent[];
   start: (tripId: string) => Promise<void>;
   stop: () => ClientSafetyEvent[];
 }
@@ -103,6 +104,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
   const [metrics, setMetrics] = useState<DriverSnapshot | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [eventCount, setEventCount] = useState(0);
+  const [events, setEvents] = useState<ClientSafetyEvent[]>([]);
 
   // Mutable refs — not state
   const runningRef = useRef(false);
@@ -133,6 +135,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
   const pushEvent = useCallback((event: ClientSafetyEvent) => {
     eventsRef.current.push(event);
     setEventCount(eventsRef.current.length);
+    setEvents(eventsRef.current.slice());
   }, []);
 
   const stop = useCallback((): ClientSafetyEvent[] => {
@@ -163,6 +166,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
       tripIdRef.current = tripId;
       eventsRef.current = [];
       setEventCount(0);
+      setEvents([]);
       earCounterRef.current = 0;
       marCounterRef.current = 0;
       poseCounterRef.current = 0;
@@ -176,7 +180,9 @@ export function useBrowserCNN(): BrowserCNNReturn {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
       } catch (err) {
         console.error("[useBrowserCNN] Camera access denied:", err);
-        return;
+        throw new Error("Camera access denied. Please allow camera access to run live detection.", {
+          cause: err,
+        });
       }
 
       if (!videoRef.current) {
@@ -437,5 +443,5 @@ export function useBrowserCNN(): BrowserCNNReturn {
     [pushEvent, stop],
   );
 
-  return { videoRef, metrics, isRunning, eventCount, start, stop };
+  return { videoRef, metrics, isRunning, eventCount, events, start, stop };
 }

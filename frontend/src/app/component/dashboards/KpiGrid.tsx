@@ -4,10 +4,11 @@ import type { KpiTone } from "../../types/dashboards";
 
 export interface DashboardKpis {
   total: number;
-  active: number;
-  offline: number;
-  warn: number;
-  critical: number;
+  driving: number;
+  idle: number;
+  disable: number;
+  averageScore: number | null;
+  criticalAlerts: number;
   totalAlerts: number;
 }
 
@@ -17,40 +18,39 @@ interface KpiGridProps {
 
 export default function KpiGrid({ kpis }: KpiGridProps) {
   const total = kpis.total;
-  const active = kpis.active;
-  const offline = kpis.offline;
-  const warn = kpis.warn;
-  const critical = kpis.critical;
+  const driving = kpis.driving;
+  const idle = kpis.idle;
+  const disabled = kpis.disable;
   const alertsTone: KpiTone =
-    critical > 0 ? "critical" : warn > 0 ? "warn" : "active";
+    kpis.criticalAlerts > 0 ? "critical" : kpis.totalAlerts > 0 ? "warn" : "active";
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <KpiCard
         label="Tổng xe đang chạy"
-        value={total}
-        hint={`${active} bình thường · ${offline} offline`}
+        value={driving}
+        hint={`${idle} idle · ${disabled} disable · ${total} tài xế`}
         tone="active"
         icon={<Truck size={16} weight="duotone" />}
       />
       <KpiCard
-        label="Tài xế online"
-        value={total - offline}
-        hint={`${total} tài xế trong hệ thống`}
+        label="Tài xế idle"
+        value={idle}
+        hint={`${driving} driving · ${disabled} disable`}
         icon={<Users size={16} weight="duotone" />}
       />
       <KpiCard
         label="Cảnh báo ca"
         value={kpis.totalAlerts}
-        hint={`${warn} cảnh báo · ${critical} nguy hiểm`}
+        hint={`${kpis.criticalAlerts} critical alerts`}
         tone={alertsTone}
         icon={<Warning size={16} weight="duotone" />}
       />
       <KpiCard
-        label="Tỉ lệ an toàn"
-        value={total === 0 ? "—" : `${Math.round((active / total) * 100)}%`}
-        hint="DWS score trung bình ca"
-        tone={critical > 0 ? "warn" : "active"}
+        label="Điểm an toàn TB"
+        value={kpis.averageScore === null ? "—" : kpis.averageScore}
+        hint="Average completed trip score"
+        tone={kpis.averageScore !== null && kpis.averageScore < 60 ? "critical" : "active"}
         icon={<ShieldCheck size={16} weight="duotone" />}
       />
     </div>

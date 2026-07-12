@@ -2,7 +2,7 @@ import { Plus, Users } from "@phosphor-icons/react";
 import type { DriverStats } from "../../types/drivers";
 
 interface DriversHeaderProps {
-  stats: Pick<DriverStats, "total" | "active" | "offline">;
+  stats: Pick<DriverStats, "total" | "driving" | "idle" | "disable">;
   onAdd: () => void;
 }
 
@@ -15,8 +15,7 @@ function DriversHeader({ stats, onAdd }: DriversHeaderProps) {
           Quản lý tài xế
         </h1>
         <p className="mt-0.5 text-[12px] text-zinc-400">
-          {stats.total} tài xế · {stats.active} hoạt động · {stats.offline}{" "}
-          offline
+          {stats.total} tài xế · {stats.driving} driving · {stats.idle} idle · {stats.disable} disable
         </p>
       </div>
       <button

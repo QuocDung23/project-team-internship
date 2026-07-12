@@ -62,6 +62,8 @@ def trip(**overrides):
 class FakeTripRepository:
     def __init__(self):
         self.trip = trip()
+        self.safety_score = None
+        self.safety_counts = {"total_events": 1, "warning_events": 0, "critical_events": 1, "alert_count": 1}
         self.assignment = None
         self.driver = {
             "driver_id": "driver-1",
@@ -208,10 +210,12 @@ class FakeTripRepository:
         return self.trip
 
     def find_safety_score(self, trip_id):
-        return None
+        if trip_id != self.trip["trip_id"]:
+            return None
+        return self.safety_score
 
     def count_trip_safety_inputs(self, trip_id):
-        return {"total_events": 1, "warning_events": 0, "critical_events": 1, "alert_count": 1}
+        return self.safety_counts
 
     def create_safety_score(self, **kwargs):
         return {
@@ -254,6 +258,48 @@ class TripLifecycleServiceTest(unittest.TestCase):
 
         self.assertEqual(created["code"], "TRIP-002")
         self.assertEqual(created["status"], TripStatus.SCHEDULED)
+
+    def test_list_trips_includes_safety_score_and_alert_summary(self):
+        self.repository.trip["status"] = TripStatus.COMPLETED
+        self.repository.safety_score = {
+            "safety_score_id": "score-1",
+            "trip_id": "trip-1",
+            "score": 91.0,
+            "grade": "A",
+            "total_events": 3,
+            "warning_events": 1,
+            "critical_events": 2,
+            "alert_count": 3,
+            "calculation_version": "v1",
+            "explanation": {},
+            "calculated_at": NOW,
+        }
+        self.repository.safety_counts = {
+            "total_events": 3,
+            "warning_events": 1,
+            "critical_events": 2,
+            "alert_count": 3,
+        }
+
+        listed = self.service.list_trips(status=None, current_user=self.admin)
+
+        self.assertEqual(listed[0]["safety_score"]["score"], 91.0)
+        self.assertEqual(listed[0]["total_alerts_count"], 3)
+        self.assertEqual(listed[0]["critical_alerts_count"], 2)
+
+    def test_list_trips_without_score_still_includes_alert_summary(self):
+        self.repository.safety_counts = {
+            "total_events": 2,
+            "warning_events": 1,
+            "critical_events": 1,
+            "alert_count": 2,
+        }
+
+        listed = self.service.list_trips(status=None, current_user=self.admin)
+
+        self.assertIsNone(listed[0]["safety_score"])
+        self.assertEqual(listed[0]["total_alerts_count"], 2)
+        self.assertEqual(listed[0]["critical_alerts_count"], 1)
 
     def test_assign_validates_state_driver_vehicle_and_active_assignments(self):
         assigned = self.service.assign_trip(

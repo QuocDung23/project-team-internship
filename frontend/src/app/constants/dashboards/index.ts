@@ -3,18 +3,16 @@ import type { KpiTone } from "../../types/dashboards";
 
 // Driver status → human label in Vietnamese.
 const STATUS_LABEL: Record<DriverStatus, string> = {
-  active: "Bình thường",
-  warn: "Cảnh báo",
-  critical: "Nguy hiểm",
-  offline: "Offline",
+  driving: "Driving",
+  idle: "Idle",
+  disable: "Disable",
 };
 
 // Driver status → badge tone for the StatusBadge / KpiCard component.
 const STATUS_TONE: Record<DriverStatus, KpiTone> = {
-  active: "active",
-  warn: "warn",
-  critical: "critical",
-  offline: "neutral",
+  driving: "active",
+  idle: "neutral",
+  disable: "critical",
 };
 
 const DashboardConstants = {

@@ -6,10 +6,9 @@ interface DriverStatsBarProps {
 
 function DriverStatsBar({ stats }: DriverStatsBarProps) {
   const items: ReadonlyArray<{ label: string; value: number; tone: string }> = [
-    { label: "Bình thường", value: stats.active, tone: "text-emerald-400" },
-    { label: "Cảnh báo", value: stats.warn, tone: "text-amber-400" },
-    { label: "Nguy hiểm", value: stats.critical, tone: "text-red-400" },
-    { label: "Offline", value: stats.offline, tone: "text-zinc-400" },
+    { label: "Driving", value: stats.driving, tone: "text-emerald-400" },
+    { label: "Idle", value: stats.idle, tone: "text-zinc-400" },
+    { label: "Disable", value: stats.disable, tone: "text-red-400" },
     { label: "Dùng điện thoại", value: stats.onPhone, tone: "text-red-400" },
   ];
 

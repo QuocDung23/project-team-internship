@@ -18,6 +18,18 @@ USER_COLUMNS = """
     updated_at
 """
 
+USER_WITH_DRIVER_COLUMNS = """
+    u.user_id,
+    u.full_name,
+    u.email,
+    u.password_hash,
+    u.role::text AS role,
+    u.status::text AS status,
+    CASE WHEN u.role = 'driver' THEN d.status::text ELSE NULL END AS driver_status,
+    u.created_at,
+    u.updated_at
+"""
+
 
 def _row_to_user(row: Any) -> dict[str, Any] | None:
     if row is None:
@@ -38,9 +50,11 @@ class UserRepository:
                 connection.execute(
                     text(
                         f"""
-                        SELECT {USER_COLUMNS}
-                        FROM users
-                        WHERE lower(email) = lower(:email)
+                        SELECT {USER_WITH_DRIVER_COLUMNS}
+                        FROM users u
+                        LEFT JOIN drivers d ON lower(d.email) = lower(u.email)
+                        WHERE lower(u.email) = lower(:email)
+                        ORDER BY d.updated_at DESC NULLS LAST
                         LIMIT 1
                         """
                     ),
@@ -57,9 +71,11 @@ class UserRepository:
                 connection.execute(
                     text(
                         f"""
-                        SELECT {USER_COLUMNS}
-                        FROM users
-                        WHERE user_id = :user_id
+                        SELECT {USER_WITH_DRIVER_COLUMNS}
+                        FROM users u
+                        LEFT JOIN drivers d ON lower(d.email) = lower(u.email)
+                        WHERE u.user_id = :user_id
+                        ORDER BY d.updated_at DESC NULLS LAST
                         LIMIT 1
                         """
                     ),

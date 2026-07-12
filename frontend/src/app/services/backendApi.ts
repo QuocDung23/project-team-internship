@@ -55,10 +55,12 @@ export interface BackendTrip {
   planned_start_at?: string | null;
   end_time?: string | null;
   actual_end_at?: string | null;
+  origin?: string | null;
+  destination?: string | null;
   status: string;
   total_alerts_count?: number | string | null;
   critical_alerts_count?: number | string | null;
-  safety_score?: number | string | null;
+  safety_score?: SafetyScore | number | string | null;
   safety_grade?: string | null;
 }
 
@@ -74,6 +76,12 @@ export interface SafetyScore {
   calculation_version: string;
   explanation: Record<string, unknown>;
   calculated_at: string;
+}
+
+export interface StartMyTripPayload {
+  code?: string;
+  origin?: string;
+  destination?: string;
 }
 
 export interface BackendSettings {
@@ -212,9 +220,8 @@ function asString(value: unknown, fallback = ""): string {
 }
 
 function backendStatusToDriver(value: string | null | undefined): Driver["status"] {
-  if (value === "suspended") return "critical";
-  if (value === "inactive") return "offline";
-  return "active";
+  if (value === "inactive" || value === "suspended") return "disable";
+  return "idle";
 }
 
 export function mapBackendDriverToDriver(input: BackendDriver): Driver {
@@ -272,6 +279,55 @@ export function mapBackendTripToVehicle(input: BackendTrip): VehicleSnapshot {
     fuelPercent: 0,
     engineTemp: 0,
     lastUpdate: Date.now(),
+  };
+}
+
+function activeTripDriverId(trip: BackendTrip): string | null {
+  if (trip.status !== "in_progress") return null;
+  return trip.driver_id ?? trip.assignment?.driver_id ?? null;
+}
+
+export function deriveDriverStatuses(drivers: Driver[], trips: BackendTrip[]): Driver[] {
+  const drivingDriverIds = new Set(
+    trips.map(activeTripDriverId).filter((driverId): driverId is string => Boolean(driverId)),
+  );
+  return drivers.map((driver) => {
+    if (driver.status === "disable") return driver;
+    return {
+      ...driver,
+      status: drivingDriverIds.has(driver.id) ? "driving" : "idle",
+    };
+  });
+}
+
+export interface SafetySummary {
+  averageScore: number | null;
+  scoredTrips: number;
+  totalAlerts: number;
+  criticalAlerts: number;
+}
+
+function tripSafetyScoreValue(trip: BackendTrip): number | null {
+  const score = trip.safety_score;
+  if (score && typeof score === "object") return score.score;
+  const parsed = asNumber(score, NaN);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function buildSafetySummaryFromTrips(trips: BackendTrip[]): SafetySummary {
+  const scores = trips
+    .filter((trip) => trip.status === "completed")
+    .map(tripSafetyScoreValue)
+    .filter((score): score is number => score !== null);
+  const averageScore = scores.length > 0
+    ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+    : null;
+
+  return {
+    averageScore,
+    scoredTrips: scores.length,
+    totalAlerts: trips.reduce((sum, trip) => sum + asNumber(trip.total_alerts_count, 0), 0),
+    criticalAlerts: trips.reduce((sum, trip) => sum + asNumber(trip.critical_alerts_count, 0), 0),
   };
 }
 
@@ -368,8 +424,8 @@ export async function createDriver(payload: {
 export async function updateDriver(
   driverId: string,
   payload: {
-    full_name: string;
-    license_number: string;
+    full_name?: string;
+    license_number?: string;
     phone?: string;
     email?: string;
     status?: string;
@@ -402,10 +458,18 @@ export async function fetchTrips(): Promise<BackendTrip[]> {
   return Array.isArray(data) ? data : data.trips ?? [];
 }
 
-export async function startMyTrip(): Promise<BackendTrip> {
+function compactOptionalTextPayload<T extends object>(payload: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(payload)
+      .map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])
+      .filter(([, value]) => value !== undefined && value !== ""),
+  ) as Partial<T>;
+}
+
+export async function startMyTrip(payload: StartMyTripPayload = {}): Promise<BackendTrip> {
   return requestJson<BackendTrip>("/trips/start-my-trip", {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify(compactOptionalTextPayload(payload)),
   });
 }
 

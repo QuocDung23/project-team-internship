@@ -16,7 +16,11 @@ function FleetPage() {
     tripId: string;
     score: SafetyScore;
   } | null>(null);
-  const score = loadedScore?.tripId === selectedTrip?.trip_id ? loadedScore?.score ?? null : null;
+  const score = loadedScore?.tripId === selectedTrip?.trip_id
+    ? loadedScore?.score ?? null
+    : selectedTrip && typeof selectedTrip.safety_score === "object"
+      ? selectedTrip.safety_score
+      : null;
 
   useEffect(() => {
     if (!selectedTrip || selectedTrip.status !== "completed") {
@@ -52,11 +56,13 @@ function FleetPage() {
       )}
 
       <section className="panel overflow-hidden">
-        <div className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr] border-b border-hairline px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1.4fr_0.8fr_1fr_1fr_0.7fr_0.7fr] border-b border-hairline px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-500">
           <span>Trip</span>
           <span>Status</span>
           <span>Started</span>
           <span>Completed</span>
+          <span>Score</span>
+          <span>Alerts</span>
         </div>
         <div className="max-h-[360px] overflow-y-auto">
           {trips.length > 0 ? (
@@ -83,6 +89,8 @@ function FleetPage() {
             <TripMetric label="Status" value={selectedTrip.status} />
             <TripMetric label="Driver ID" value={selectedTrip.driver_id ?? selectedTrip.assignment?.driver_id ?? "-"} />
             <TripMetric label="Safety score" value={score ? `${score.score} (${score.grade})` : "-"} />
+            <TripMetric label="Alerts" value={String(selectedTrip.total_alerts_count ?? score?.alert_count ?? "-")} />
+            <TripMetric label="Critical alerts" value={String(selectedTrip.critical_alerts_count ?? score?.critical_events ?? "-")} />
           </div>
           <div className="grid content-start gap-2">
             <div className="flex items-center justify-between">
@@ -131,7 +139,7 @@ function TripRow({
       type="button"
       onClick={onSelect}
       className={[
-        "grid w-full grid-cols-[1.4fr_0.8fr_1fr_1fr] gap-3 border-b border-hairline px-4 py-3 text-left text-sm transition",
+        "grid w-full grid-cols-[1.4fr_0.8fr_1fr_1fr_0.7fr_0.7fr] gap-3 border-b border-hairline px-4 py-3 text-left text-sm transition",
         selected ? "bg-emerald-500/10 text-zinc-100" : "text-zinc-300 hover:bg-surface-2/50",
       ].join(" ")}
     >
@@ -143,8 +151,20 @@ function TripRow({
       <span className="truncate text-xs text-zinc-500">
         {endedAt ? new Date(endedAt).toLocaleString() : "-"}
       </span>
+      <span className="truncate text-xs text-zinc-300">{tripScoreLabel(trip)}</span>
+      <span className="font-mono-num text-xs text-zinc-300">{String(trip.total_alerts_count ?? "-")}</span>
     </button>
   );
+}
+
+function tripScoreLabel(trip: BackendTrip): string {
+  if (trip.safety_score && typeof trip.safety_score === "object") {
+    return `${trip.safety_score.score} (${trip.safety_score.grade})`;
+  }
+  if (trip.safety_score !== null && trip.safety_score !== undefined) {
+    return trip.safety_grade ? `${trip.safety_score} (${trip.safety_grade})` : String(trip.safety_score);
+  }
+  return "-";
 }
 
 function TripMetric({ label, value }: { label: string; value: string }) {

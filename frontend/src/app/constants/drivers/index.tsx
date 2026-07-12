@@ -20,18 +20,16 @@ const EYE_ICONS: Record<Driver["eyeState"], ReactNode> = {
 
 // Vietnamese labels for the driver status.
 const STATUS_LABEL: Record<DriverStatus, string> = {
-  active: "Bình thường",
-  warn: "Cảnh báo",
-  critical: "Nguy hiểm",
-  offline: "Offline",
+  driving: "Driving",
+  idle: "Idle",
+  disable: "Disable",
 };
 
 // Map driver status → badge tone shared by `StatusBadge` and `KpiCard`.
 const STATUS_TONE: Record<DriverStatus, KpiTone> = {
-  active: "active",
-  warn: "warn",
-  critical: "critical",
-  offline: "neutral",
+  driving: "active",
+  idle: "neutral",
+  disable: "critical",
 };
 
 const DriverConstants = {

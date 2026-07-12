@@ -1,6 +1,6 @@
 import type { FleetAlertEvent } from "../types/alerts";
 import type { MonitoringAlert } from "../types/monitoring";
-import { apiBaseUrl, apiHeaders, TOKEN_STORAGE_KEY } from "./backendApi";
+import { apiBaseUrl, apiHeaders, TOKEN_STORAGE_KEY } from "./backendApi.ts";
 
 export interface BackendAlert {
   alert_id: string;
@@ -8,6 +8,8 @@ export interface BackendAlert {
   driver_id?: string;
   alert_type: string;
   status?: string;
+  acknowledged?: boolean;
+  acknowledged_at?: string | null;
   detection_method: string;
   severity: string;
   ear_value?: number | null;
@@ -54,9 +56,21 @@ function asString(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim() !== "" ? value : fallback;
 }
 
+function asBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.trim().toLowerCase() === "true";
+  return Boolean(value);
+}
+
+function isAcknowledged(alert: Pick<BackendAlert, "acknowledged" | "status">): boolean {
+  if (typeof alert.acknowledged === "boolean") return alert.acknowledged;
+  return alert.status === "acknowledged" || alert.status === "resolved";
+}
+
 export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
   if (Array.isArray(input)) {
     if (input.length >= 18) {
+      const acknowledged = asBoolean(input[15]);
       return {
         alert_id: asString(input[0], "alert"),
         trip_id: asString(input[1]) || undefined,
@@ -69,6 +83,8 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
         cnn_confidence: asNumber(input[8]),
         cnn_label: asString(input[9]) || null,
         alarm_triggered: Boolean(input[13]),
+        acknowledged,
+        acknowledged_at: asString(input[16]) || null,
         occurred_at: asString(input[17]) || null,
       };
     }
@@ -83,11 +99,15 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
       cnn_confidence: asNumber(input[6]),
       cnn_label: asString(input[7]) || null,
       alarm_triggered: Boolean(input[8]),
+      acknowledged: false,
       occurred_at: asString(input[9]) || null,
     };
   }
 
-  return input;
+  return {
+    ...input,
+    acknowledged: isAcknowledged(input),
+  };
 }
 
 function fleetType(alertType: string): FleetAlertEvent["type"] {
@@ -170,7 +190,7 @@ export function mapBackendAlertToFleetEvent(
     licensePlate: "Đang giám sát",
     ear: alert.ear_value ?? 0,
     timestamp: timestamp(alert.occurred_at),
-    acknowledged: false,
+    acknowledged: isAcknowledged(alert),
     severity: severity(alert.severity),
     location: alert.detection_method,
   };
@@ -191,6 +211,21 @@ export function mapBackendAlertToMonitorAlert(
 
 export async function fetchTripAlerts(tripId: string): Promise<BackendAlert[]> {
   return fetchAlerts({ tripId });
+}
+
+export async function acknowledgeAlert(alertId: string): Promise<BackendAlert> {
+  const response = await fetch(`${apiBaseUrl()}/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+    method: "PATCH",
+    headers: apiHeaders(),
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.dispatchEvent(new Event("drowsiness:unauthorized"));
+    }
+    throw new Error(`Failed to acknowledge alert: ${response.status}`);
+  }
+  return normalizeBackendAlert(await response.json());
 }
 
 export async function fetchAlerts(query: AlertQuery = {}): Promise<BackendAlert[]> {

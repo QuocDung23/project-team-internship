@@ -6,10 +6,9 @@ export type DriverStatusFilter = "all" | DriverStatus;
 
 export interface DriverStats {
   total: number;
-  active: number;
-  warn: number;
-  critical: number;
-  offline: number;
+  driving: number;
+  idle: number;
+  disable: number;
   eyesOpen: number;
   eyesClosed: number;
   yawning: number;

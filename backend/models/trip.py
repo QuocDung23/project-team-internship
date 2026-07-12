@@ -144,6 +144,8 @@ class TripResponse(BaseModel):
     assignment: TripAssignmentResponse | None = None
     monitoring_session: MonitoringSessionResponse | None = None
     safety_score: "SafetyScoreResponse | None" = None
+    total_alerts_count: int = 0
+    critical_alerts_count: int = 0
 
 
 class TripListResponse(BaseModel):

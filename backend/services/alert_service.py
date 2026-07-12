@@ -114,6 +114,83 @@ def get_trip_alerts(trip_id: str):
     return get_alerts(trip_id=trip_id)
 
 
+def acknowledge_alert(alert_id: str, *, current_user: dict):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    role = current_user.get("role")
+    role_value = getattr(role, "value", role)
+    user_id = str(current_user.get("user_id") or "")
+    params = [user_id, alert_id]
+    auth_sql = ""
+
+    if role_value == "driver":
+        auth_sql = """
+            AND EXISTS (
+                SELECT 1
+                FROM trips t
+                LEFT JOIN drivers d ON d.driver_id = a.driver_id
+                WHERE t.trip_id = a.trip_id
+                  AND (
+                    t.created_by=%s
+                    OR lower(d.email)=lower(%s)
+                  )
+            )
+        """
+        params.extend([user_id, (current_user.get("email") or "").strip()])
+
+    cur.execute(f"""
+        UPDATE alerts a
+        SET status='acknowledged',
+            acknowledged_at=COALESCE(a.acknowledged_at, now()),
+            acknowledged_by=%s,
+            updated_at=now()
+        WHERE a.alert_id=%s
+        {auth_sql}
+        RETURNING alert_id
+    """, tuple(params))
+
+    if cur.fetchone() is None:
+        conn.close()
+        raise ValueError("alert not found")
+
+    cur.execute("""
+        SELECT
+            a.alert_id,
+            a.trip_id,
+            a.driver_id,
+            a.alert_type,
+            a.severity,
+            COALESCE(se.detection_method::text, se.source, 'backend'),
+            se.ear_value,
+            NULL::integer,
+            se.cnn_confidence,
+            se.cnn_label,
+            se.evidence_frame_path,
+            NULL::numeric,
+            NULL::numeric,
+            CASE WHEN a.severity = 'critical' THEN TRUE ELSE FALSE END,
+            NULL::text,
+            CASE WHEN a.status IN ('acknowledged', 'resolved') THEN TRUE ELSE FALSE END,
+            a.acknowledged_at,
+            COALESCE(se.occurred_at, a.opened_at),
+            a.created_at
+        FROM alerts a
+        LEFT JOIN alert_safety_events ase ON ase.alert_id = a.alert_id
+        LEFT JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
+        WHERE a.alert_id=%s
+        LIMIT 1
+    """, (alert_id,))
+    alert = _row_to_alert(cur.fetchone())
+
+    conn.commit()
+    conn.close()
+
+    if alert is None:
+        raise ValueError("alert not found")
+    return alert
+
+
 def get_alerts(
     *,
     trip_id: str | None = None,

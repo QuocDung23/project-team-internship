@@ -218,7 +218,7 @@ class SafetyEventRepository:
                                 :trip_id,
                                 :driver_id,
                                 :vehicle_id,
-                                'critical',
+                                CAST(:alert_severity AS alert_severity),
                                 :alert_type,
                                 :title,
                                 :message
@@ -230,10 +230,11 @@ class SafetyEventRepository:
                             "trip_id": event["trip_id"],
                             "driver_id": event["driver_id"],
                             "vehicle_id": event["vehicle_id"],
+                            "alert_severity": self._alert_severity(event["severity"]),
                             "alert_type": self._alert_type(event["event_type"]),
-                            "title": self._alert_title(event["event_type"]),
+                            "title": self._alert_title(event["event_type"], event["severity"]),
                             "message": (
-                                f"High severity safety event {event['event_type'].value} "
+                                f"{event['severity'].value.title()} severity safety event {event['event_type'].value} "
                                 f"detected with confidence {event['confidence']:.2f}."
                             ),
                         },
@@ -274,8 +275,12 @@ class SafetyEventRepository:
             return "driver_inattention"
         return "drowsiness"
 
-    def _alert_title(self, event_type: SafetyEventType) -> str:
-        return f"High severity {event_type.value.replace('_', ' ')}"
+    def _alert_severity(self, severity: SafetyEventSeverity) -> str:
+        return "critical" if severity == SafetyEventSeverity.HIGH else "warning"
+
+    def _alert_title(self, event_type: SafetyEventType, severity: SafetyEventSeverity) -> str:
+        label = "Critical" if severity == SafetyEventSeverity.HIGH else "Warning"
+        return f"{label} {event_type.value.replace('_', ' ')}"
 
 
 class DuplicateSafetyEventError(Exception):

@@ -9,7 +9,7 @@ from backend.auth.jwt import TokenError, create_access_token, decode_access_toke
 from backend.auth.password import hash_password, verify_password
 from backend.auth.roles import UserRole, parse_role
 from backend.core.settings import get_settings
-from backend.services.user_service import InvalidCredentialsError, UserService, public_user
+from backend.services.user_service import InactiveUserError, InvalidCredentialsError, UserService, public_user
 
 
 class FakeUserRepository:
@@ -73,6 +73,21 @@ class AuthenticationTest(unittest.TestCase):
 
         with self.assertRaises(InvalidCredentialsError):
             service.authenticate_user(email="admin@example.com", password="bad-password")
+
+    def test_user_service_rejects_disabled_driver_profile(self):
+        for driver_status in ("inactive", "suspended"):
+            with self.subTest(driver_status=driver_status):
+                user = {
+                    "email": "driver@example.com",
+                    "password_hash": hash_password("StrongerPassword123!"),
+                    "role": UserRole.DRIVER,
+                    "status": "active",
+                    "driver_status": driver_status,
+                }
+                service = UserService(FakeUserRepository(user))
+
+                with self.assertRaises(InactiveUserError):
+                    service.authenticate_user(email="driver@example.com", password="StrongerPassword123!")
 
     def test_jwt_expiration_is_enforced(self):
         token = create_access_token(

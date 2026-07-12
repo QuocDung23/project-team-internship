@@ -17,12 +17,15 @@ class FakeCursor:
     def __init__(self):
         self.calls = []
         self._last_sql = ""
+        self.fetchone_results = []
 
     def execute(self, sql, params=None):
         self._last_sql = sql
         self.calls.append((sql, params))
 
     def fetchone(self):
+        if self.fetchone_results:
+            return self.fetchone_results.pop(0)
         if "FROM trips" in self._last_sql:
             return ("driver-1", "vehicle-1")
         return ("alert-1",)
@@ -89,6 +92,51 @@ class AlertServiceTest(unittest.TestCase):
         self.assertIn("message", insert_sql)
         self.assertEqual(insert_params[0:5], ("trip-1", "driver-1", "vehicle-1", "critical", "drowsiness"))
         self.assertIn("CNN=closed:0.93", insert_params[-1])
+
+    def test_acknowledge_alert_marks_alert_acknowledged(self):
+        conn = FakeConnection()
+        conn.cursor_obj.fetchone_results = [
+            ("alert-1",),
+            (
+                "alert-1",
+                "trip-1",
+                "driver-1",
+                "drowsiness",
+                "warning",
+                "cnn_classifier",
+                0.2,
+                None,
+                0.7,
+                "yawn",
+                None,
+                None,
+                None,
+                False,
+                None,
+                True,
+                "2026-07-05T10:21:35Z",
+                "2026-07-05T10:21:30Z",
+                "2026-07-05T10:21:31Z",
+            ),
+        ]
+
+        with patch.object(alert_service, "get_connection", return_value=conn):
+            alert = alert_service.acknowledge_alert(
+                "alert-1",
+                current_user={"user_id": "admin-1", "role": "admin", "email": "admin@example.com"},
+            )
+
+        update_sql, update_params = conn.cursor_obj.calls[0]
+        select_sql, select_params = conn.cursor_obj.calls[1]
+
+        self.assertEqual(alert["alert_id"], "alert-1")
+        self.assertTrue(alert["acknowledged"])
+        self.assertTrue(conn.committed)
+        self.assertIn("UPDATE alerts", update_sql)
+        self.assertIn("acknowledged_at", update_sql)
+        self.assertEqual(update_params, ("admin-1", "alert-1"))
+        self.assertIn("FROM alerts a", select_sql)
+        self.assertEqual(select_params, ("alert-1",))
 
 
 if __name__ == "__main__":

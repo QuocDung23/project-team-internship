@@ -5,9 +5,15 @@ import AlertRow from "./AlertRow";
 
 interface AlertListProps {
   events: FleetAlertEvent[];
+  acknowledgingId?: string | null;
+  onAcknowledge?: (event: FleetAlertEvent) => void;
 }
 
-export default function AlertList({ events }: AlertListProps) {
+export default function AlertList({
+  events,
+  acknowledgingId = null,
+  onAcknowledge,
+}: AlertListProps) {
   if (events.length === 0) {
     return (
       <div className="panel flex flex-col items-center justify-center gap-3 py-16">
@@ -22,7 +28,12 @@ export default function AlertList({ events }: AlertListProps) {
   return (
     <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
       {events.map((event) => (
-        <AlertRow key={event.id} event={event} />
+        <AlertRow
+          key={event.id}
+          event={event}
+          isAcknowledging={acknowledgingId === event.id}
+          onAcknowledge={onAcknowledge}
+        />
       ))}
     </div>
   );
