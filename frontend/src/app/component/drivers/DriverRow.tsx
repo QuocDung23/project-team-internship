@@ -68,7 +68,7 @@ function DriverRow({
         onSelect ? "cursor-pointer focus-within:bg-surface-2/40 focus:outline-none" : ""
       }`}
     >
-      <td className="py-2.5 pr-3 font-mono-num text-[11px] text-zinc-500">
+      <td className="py-2.5 px-3 pr-3 font-mono-num max-w-[80px] text-[11px] text-zinc-500 truncate" title={driver.id}>
         {driver.id}
       </td>
       <td className="py-2.5 pr-3">

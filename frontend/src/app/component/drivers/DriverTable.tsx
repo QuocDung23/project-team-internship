@@ -25,7 +25,7 @@ function DriverTable({
         <table className="w-full text-left text-[12px]">
           <thead className="sticky top-0 z-10 border-b border-hairline bg-surface-1 text-[10px] uppercase tracking-wider text-zinc-500">
             <tr>
-              <th className="py-2 pr-3 font-medium">Mã</th>
+              <th className="py-2 px-3 font-medium">Mã</th>
               <th className="py-2 pr-3 font-medium">Tài xế</th>
               <th className="py-2 pr-3 font-medium">Biển số</th>
               <th className="py-2 pr-3 font-medium">Khu vực</th>

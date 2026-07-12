@@ -1,0 +1,39 @@
+From e02be9319092f1881847e56d638930719688ce23 Mon Sep 17 00:00:00 2001
+From: Liem Nguyen <liem.thanh.nguyen@mgm-tp.com>
+Date: Sun, 12 Jul 2026 21:27:15 +0700
+Subject: [PATCH] css
+
+---
+ frontend/src/app/component/drivers/DriverRow.tsx   | 2 +-
+ frontend/src/app/component/drivers/DriverTable.tsx | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/frontend/src/app/component/drivers/DriverRow.tsx b/frontend/src/app/component/drivers/DriverRow.tsx
+index 4be92b8..1746dc6 100644
+--- a/frontend/src/app/component/drivers/DriverRow.tsx
++++ b/frontend/src/app/component/drivers/DriverRow.tsx
+@@ -68,7 +68,7 @@ function DriverRow({
+         onSelect ? "cursor-pointer focus-within:bg-surface-2/40 focus:outline-none" : ""
+       }`}
+     >
+-      <td className="py-2.5 pr-3 font-mono-num text-[11px] text-zinc-500">
++      <td className="py-2.5 px-3 pr-3 font-mono-num max-w-[80px] text-[11px] text-zinc-500 truncate" title={driver.id}>
+         {driver.id}
+       </td>
+       <td className="py-2.5 pr-3">
+diff --git a/frontend/src/app/component/drivers/DriverTable.tsx b/frontend/src/app/component/drivers/DriverTable.tsx
+index d585db8..09b1d4e 100644
+--- a/frontend/src/app/component/drivers/DriverTable.tsx
++++ b/frontend/src/app/component/drivers/DriverTable.tsx
+@@ -25,7 +25,7 @@ function DriverTable({
+         <table className="w-full text-left text-[12px]">
+           <thead className="sticky top-0 z-10 border-b border-hairline bg-surface-1 text-[10px] uppercase tracking-wider text-zinc-500">
+             <tr>
+-              <th className="py-2 pr-3 font-medium">Mã</th>
++              <th className="py-2 px-3 font-medium">Mã</th>
+               <th className="py-2 pr-3 font-medium">Tài xế</th>
+               <th className="py-2 pr-3 font-medium">Biển số</th>
+               <th className="py-2 pr-3 font-medium">Khu vực</th>
+-- 
+2.45.2
+
