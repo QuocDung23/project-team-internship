@@ -30,9 +30,10 @@ else {
     "http://${BackendHost}:${BackendPort}"
 }
 $DetectorEnabled = if ($env:DETECTOR_ENABLED) { $env:DETECTOR_ENABLED } else { "true" }
-$DetectorScript = if ($env:DETECTOR_SCRIPT) { $env:DETECTOR_SCRIPT } else { "intergrate_cnn.py" }
+$DetectorScript = if ($env:DETECTOR_SCRIPT) { $env:DETECTOR_SCRIPT } else { "integrate_cnn.py" }
 $DetectorCamera = if ($env:DETECTOR_CAMERA) { $env:DETECTOR_CAMERA } else { "0" }
-$DetectorBackend = if ($env:DETECTOR_BACKEND) { $env:DETECTOR_BACKEND } else { "msmf" }
+$DetectorBackend = if ($env:DETECTOR_BACKEND) { $env:DETECTOR_BACKEND } else { "dshow" }
+$DetectorCameraReadTimeout = if ($env:DETECTOR_CAMERA_READ_TIMEOUT) { $env:DETECTOR_CAMERA_READ_TIMEOUT } else { "60" }
 $DetectorDeviceName = if ($env:DETECTOR_DEVICE_NAME) { $env:DETECTOR_DEVICE_NAME } else { "" }
 
 Set-Location $RootDir
@@ -49,7 +50,38 @@ function Stop-DevProcesses {
     }
 }
 
+function Stop-OldWorkspaceDevProcesses {
+    if ($env:DEV_CLEAN_OLD -eq "false" -or $env:DEV_CLEAN_OLD -eq "0") {
+        return
+    }
+
+    $escapedRoot = [Regex]::Escape([string]$RootDir)
+    $patterns = @(
+        "uvicorn.*backend\.app:app",
+        "vite",
+        "integrate_cnn\.py",
+        "intergrate_cnn\.py"
+    )
+
+    $oldProcesses = Get-CimInstance Win32_Process |
+        Where-Object {
+            $CommandLine = $_.CommandLine
+            $_.ProcessId -ne $PID `
+                -and $CommandLine `
+                -and $CommandLine -match $escapedRoot `
+                -and (($patterns | Where-Object { $CommandLine -match $_ }).Count -gt 0)
+        }
+
+    foreach ($OldProcess in $oldProcesses) {
+        Write-Host "Stopping old dev process $($OldProcess.ProcessId): $($OldProcess.Name)"
+        Stop-Process -Id $OldProcess.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
+
 try {
+    Stop-OldWorkspaceDevProcesses
+    Start-Sleep -Milliseconds 500
+
     Write-Host "Starting FastAPI backend on http://${BackendHost}:${BackendPort}"
     $Backend = Start-Process -FilePath $PythonBin `
         -ArgumentList @("-m", "uvicorn", "backend.app:app", "--reload", "--host", $BackendHost, "--port", $BackendPort) `
@@ -84,6 +116,7 @@ try {
         $DetectorArgs = @(
             $DetectorScript,
             "--backend", $DetectorBackend,
+            "--camera-read-timeout", $DetectorCameraReadTimeout,
             "--monitoring-backend-url", "${BackendProxyTarget}/api/v1",
             "--safety-backend-url", $BackendProxyTarget
         )

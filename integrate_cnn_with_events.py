@@ -106,6 +106,15 @@ def _parse_args() -> argparse.Namespace:
             "Drop N grabbed frames each loop to reduce lag when CPU is slow (default: 0). Example: 2."
         ),
     )
+    parser.add_argument(
+        "--camera-read-timeout",
+        type=float,
+        default=15.0,
+        help=(
+            "Seconds to tolerate temporary camera read failures before exiting "
+            "(default: 15). Use 0 to exit on the first failed read."
+        ),
+    )
 
     parser.add_argument(
         "--threaded-capture",
@@ -988,6 +997,8 @@ prev_time = time.time()
 prev_eye_alert = False
 prev_mar_alert = False
 prev_pose_alert = False
+last_camera_frame_at = time.monotonic()
+camera_loss_reported = False
 
 try:
     while True:
@@ -1002,8 +1013,22 @@ try:
             ret, frame = cap.read()
 
         if not ret or frame is None:
-            print("⚠️  Mất tín hiệu camera")
-            break
+            now_monotonic = time.monotonic()
+            if not camera_loss_reported:
+                print("⚠️  Mất tín hiệu camera tạm thời, đang chờ khôi phục...")
+                camera_loss_reported = True
+            if float(ARGS.camera_read_timeout) <= 0 or (
+                now_monotonic - last_camera_frame_at
+            ) >= float(ARGS.camera_read_timeout):
+                print("⚠️  Mất tín hiệu camera quá lâu, dừng detector.")
+                break
+            time.sleep(0.1)
+            continue
+
+        if camera_loss_reported:
+            print("✅ Camera đã khôi phục.")
+            camera_loss_reported = False
+        last_camera_frame_at = time.monotonic()
 
         frame = cv2.flip(frame, 1)
 
