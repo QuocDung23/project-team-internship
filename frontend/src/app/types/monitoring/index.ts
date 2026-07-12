@@ -93,3 +93,19 @@ export function dwsLabelFn(score: number): string {
   if (score >= 30) return "Can chu y";
   return "Binh thuong";
 }
+
+export interface ClientSafetyEvent {
+  event_id: string;
+  event_type: "drowsiness_detected" | "yawning_detected" | "head_nodding_detected";
+  severity: "medium" | "high";
+  occurred_at: string;
+  confidence: number;
+  duration_ms: number;
+  details: {
+    ear_value?: number;
+    mar_value?: number;
+    pitch_value?: number;
+    cnn_label?: string;
+    consecutive_frame_count?: number;
+  };
+}

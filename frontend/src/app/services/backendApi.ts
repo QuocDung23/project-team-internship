@@ -4,6 +4,7 @@ import type {
   VehicleQueueStats,
   VehicleSnapshot,
 } from "../types/fleets";
+import type { ClientSafetyEvent } from "../types/monitoring";
 
 export interface BackendDriver {
   driver_id: string;
@@ -481,4 +482,15 @@ export function buildVehicleStatsFromTrips(vehicles: VehicleSnapshot[]): Vehicle
       : 0,
     queueByTeam,
   };
+}
+
+export async function bulkIngestSafetyEvents(
+  tripId: string,
+  events: ClientSafetyEvent[],
+): Promise<{ ingested: number; results: { event_id: string; ok: boolean; error?: string }[] }> {
+  const payload = events.map((e) => ({ ...e, trip_id: tripId, source: "browser_cnn" }));
+  return requestJson("/safety-events/bulk-ingest", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

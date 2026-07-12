@@ -3,7 +3,6 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { MainLayout } from "./component/layout/MainLayout";
 import DashboardPage from "./pages/DashboardPage";
-import { MonitoringView } from "./pages/MonitoringView";
 import DriversPage from "./pages/DriversPage";
 import FleetPage from "./pages/FleetPage";
 import { AlertsPage } from "./pages/AlertsPage";
@@ -45,16 +44,15 @@ function ProtectedApp(): ReactElement {
       <Routes>
         <Route
           path="/"
-          element={user.role === "admin" ? <DashboardPage /> : <Navigate to="/monitoring" replace />}
+          element={user.role === "admin" ? <DashboardPage /> : <Navigate to="/my-trip" replace />}
         />
-        <Route path="/monitoring" element={<MonitoringView />} />
         <Route
           path="/my-trip"
           element={user.role === "driver" ? <MyTripPage /> : <Navigate to="/" replace />}
         />
         <Route
           path="/drivers"
-          element={user.role === "admin" ? <DriversPage /> : <Navigate to="/monitoring" replace />}
+          element={user.role === "admin" ? <DriversPage /> : <Navigate to="/my-trip" replace />}
         />
         <Route
           path="/trips"
@@ -64,7 +62,7 @@ function ProtectedApp(): ReactElement {
         <Route path="/alerts" element={<AlertsPage />} />
         <Route
           path="/settings"
-          element={user.role === "admin" ? <SettingsPage /> : <Navigate to="/monitoring" replace />}
+          element={user.role === "admin" ? <SettingsPage /> : <Navigate to="/my-trip" replace />}
         />
         <Route
           path="*"

@@ -6,9 +6,11 @@ import {
   startMyTrip,
   type BackendTrip,
   type SafetyScore,
+  bulkIngestSafetyEvents,
 } from "../services/backendApi";
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useMyDriverProfile } from "../hook/useBackendData";
+import { useBrowserCNN } from "../hook/useBrowserCNN";
 
 export function MyTripPage() {
   const [trips, setTrips] = useState<BackendTrip[]>([]);
@@ -24,6 +26,7 @@ export function MyTripPage() {
     tripId: tripForAlerts?.trip_id,
   });
   const alerts = (tripAlerts.monitorAlerts ?? []).slice(0, 8);
+  const { videoRef: cnnVideoRef, metrics: cnnMetrics, isRunning: cnnRunning, eventCount: cnnEventCount, start: cnnStart, stop: cnnStop } = useBrowserCNN();
 
   async function refresh() {
     setError("");
@@ -44,14 +47,33 @@ export function MyTripPage() {
     return () => window.clearTimeout(timeoutId);
   }, []);
 
-  async function run(action: () => Promise<unknown>) {
+  async function handleStartTrip() {
     setIsBusy(true);
     setError("");
     try {
-      await action();
+      const newTrip = await startMyTrip();
+      await cnnStart(newTrip.trip_id);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Trip action failed");
+      setError(err instanceof Error ? err.message : "Failed to start trip");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleEndTrip() {
+    if (!activeTrip) return;
+    setIsBusy(true);
+    setError("");
+    try {
+      const events = cnnStop();
+      if (events.length > 0) {
+        await bulkIngestSafetyEvents(activeTrip.trip_id, events);
+      }
+      await completeTrip(activeTrip.trip_id);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to end trip");
     } finally {
       setIsBusy(false);
     }
@@ -72,7 +94,7 @@ export function MyTripPage() {
               type="button"
               className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-zinc-950 disabled:opacity-50"
               disabled={isBusy || Boolean(activeTrip)}
-              onClick={() => void run(() => startMyTrip())}
+              onClick={() => void handleStartTrip()}
             >
               Start trip
             </button>
@@ -80,7 +102,7 @@ export function MyTripPage() {
               type="button"
               className="rounded-md border border-hairline px-3 py-2 text-xs font-semibold text-zinc-200 disabled:opacity-50"
               disabled={isBusy || !activeTrip}
-              onClick={() => activeTrip && void run(() => completeTrip(activeTrip.trip_id))}
+              onClick={() => void handleEndTrip()}
             >
               End trip
             </button>
@@ -95,6 +117,35 @@ export function MyTripPage() {
           <TripMetric label="Started" value={latestTrip?.actual_start_at ? new Date(latestTrip.actual_start_at).toLocaleString() : "-"} />
           <TripMetric label="Ended" value={endedAt ? new Date(endedAt).toLocaleString() : "-"} />
         </div>
+      </section>
+
+      <section className={`panel flex flex-col gap-3 p-5 ${activeTrip ? "" : "hidden"}`}>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-zinc-100">Live Detection</h2>
+          {cnnRunning && (
+            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+              {cnnEventCount} events
+            </span>
+          )}
+        </div>
+        <div className={`relative aspect-[4/3] w-full max-w-[480px] overflow-hidden rounded-md bg-zinc-950 ${cnnRunning ? "" : "hidden"}`}>
+          <video
+            ref={cnnVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="h-full w-full object-contain"
+          />
+        </div>
+        {cnnRunning && cnnMetrics && (
+          <div className="grid grid-cols-4 gap-2 text-sm sm:grid-cols-5">
+            <LiveMetric label="EAR" value={cnnMetrics.ear.toFixed(3)} alert={cnnMetrics.earAlert} />
+            <LiveMetric label="MAR" value={cnnMetrics.mar.toFixed(3)} alert={cnnMetrics.marAlert} />
+            <LiveMetric label="Pitch" value={cnnMetrics.pitch.toFixed(1)} alert={cnnMetrics.poseAlert} />
+            <LiveMetric label="DWS" value={`${cnnMetrics.dwsScore}%`} alert={cnnMetrics.dwsScore >= 70} />
+            <LiveMetric label="FPS" value={cnnMetrics.fps ? String(cnnMetrics.fps) : "--"} alert={false} />
+          </div>
+        )}
       </section>
 
       <section className="panel grid gap-3 p-5 text-sm md:grid-cols-3">
@@ -155,6 +206,17 @@ function TripMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
       <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
       <p className="mt-1 truncate text-zinc-100">{value}</p>
+    </div>
+  );
+}
+
+function LiveMetric({ label, value, alert }: { label: string; value: string; alert: boolean }) {
+  return (
+    <div className="rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
+      <p className={`mt-1 font-mono-num text-lg font-semibold ${alert ? "text-rose-400" : "text-zinc-100"}`}>
+        {value}
+      </p>
     </div>
   );
 }

@@ -31,4 +31,11 @@ finally {
     Pop-Location
 }
 
+# Write-Host "Starting database (Docker Compose)..."
+# if (Get-Command docker -ErrorAction SilentlyContinue) {
+#     Invoke-Checked docker-compose up -d
+# } else {
+#     Write-Host "WARNING: docker not found — skipping DB start"
+# }
+
 Write-Host "Setup complete."

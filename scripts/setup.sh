@@ -15,4 +15,11 @@ echo "Installing frontend dependencies..."
   npm install
 )
 
+echo "Starting database (Docker Compose)..."
+if command -v docker &>/dev/null; then
+  docker-compose up -d
+else
+  echo "WARNING: docker not found — skipping DB start"
+fi
+
 echo "Setup complete."

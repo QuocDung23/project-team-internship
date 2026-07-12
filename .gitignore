@@ -9,6 +9,7 @@ Desktop.ini
 .agents/
 .tools/
 *.code-workspace
+*.err
 
 # Python bytecode and caches
 __pycache__/

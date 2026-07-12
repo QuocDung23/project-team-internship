@@ -1,4 +1,3 @@
-import { ArrowUpRight } from "@phosphor-icons/react";
 import type { Driver } from "../../types";
 import { formatTime } from "../../hook/useTicker";
 import { StatusBadge } from "../monitoring/StatusBadge";
@@ -15,23 +14,10 @@ export default function DriverTable({ drivers, maxRows = 8 }: DriverTableProps) 
   const rows = drivers.slice(0, maxRows);
   return (
     <section className="panel flex flex-col gap-3 px-5 py-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-[13px] font-semibold tracking-tight text-zinc-100">
-            Realtime driver status
-          </h2>
-          <p className="mt-0.5 text-[11px] text-zinc-500">
-            Backend realtime status. Open monitoring to inspect the live
-            detector stream.
-          </p>
-        </div>
-        <a
-          href="/monitoring"
-          className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 hover:text-emerald-200"
-        >
-          View monitoring
-          <ArrowUpRight size={12} weight="bold" />
-        </a>
+      <header>
+        <h2 className="text-[13px] font-semibold tracking-tight text-zinc-100">
+          Realtime driver status
+        </h2>
       </header>
 
       <div className="overflow-x-auto">

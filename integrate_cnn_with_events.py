@@ -22,12 +22,14 @@ Phím tắt:
 import argparse
 import json
 import os
+import signal
 import sys
 import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
+
 
 import cv2
 import dlib
@@ -44,6 +46,18 @@ from ai_runtime.publishers import (
     LocalJsonlPublisher,
 )
 from ai_runtime.monitoring_publisher import AsyncMonitoringPublisher
+
+
+_shutdown_requested = False
+
+
+def _handle_signal(signum, frame):
+    global _shutdown_requested
+    _shutdown_requested = True
+
+
+signal.signal(signal.SIGTERM, _handle_signal)
+signal.signal(signal.SIGINT, _handle_signal)
 
 try:
     import tensorflow as tf
@@ -125,11 +139,11 @@ def _parse_args() -> argparse.Namespace:
             "Recommended for USB webcams on Windows (default: true)."
         ),
     )
-    parser.add_argument("--model", default="best_model.h5", help="Keras .h5 model path")
+    parser.add_argument("--model", default="best_model_v2.h5", help="Keras .h5 model path")
     parser.add_argument(
         "--class-json",
-        default="class_indices.json",
-        help="JSON mapping index->class name (default: class_indices.json)",
+        default="class_indices_v2.json",
+        help="JSON mapping index->class name (default: class_indices_v2.json)",
     )
     parser.add_argument(
         "--disable-safety-events",
@@ -1001,7 +1015,7 @@ last_camera_frame_at = time.monotonic()
 camera_loss_reported = False
 
 try:
-    while True:
+    while not _shutdown_requested:
         if grabber is not None:
             ret, frame = grabber.read(timeout=1.0)
         else:
@@ -1375,6 +1389,10 @@ finally:
     cap.release()
     try:
         _alert_channel.stop()
+    except Exception:
+        pass
+    try:
+        pygame.mixer.quit()
     except Exception:
         pass
     if SAFETY_EVENT_PUBLISHER is not None and hasattr(SAFETY_EVENT_PUBLISHER, "close"):

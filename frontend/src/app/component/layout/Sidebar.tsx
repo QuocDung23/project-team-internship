@@ -1,7 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
   Gauge,
-  VideoCamera,
   Users,
   Truck,
   Warning,
@@ -28,7 +27,6 @@ const PRIMARY_NAV: ReadonlyArray<NavItem> = [
 ];
 
 const DRIVER_NAV: ReadonlyArray<NavItem> = [
-  { to: "/monitoring", label: "Monitoring", icon: <VideoCamera size={18} weight="duotone" /> },
   { to: "/my-trip", label: "My Trip", icon: <Truck size={18} weight="duotone" /> },
   { to: "/alerts", label: "My Alerts", icon: <Warning size={18} weight="duotone" /> },
 ];

@@ -16,7 +16,7 @@ function FleetPage() {
     tripId: string;
     score: SafetyScore;
   } | null>(null);
-  const score = loadedScore?.tripId === selectedTrip?.trip_id ? loadedScore.score : null;
+  const score = loadedScore?.tripId === selectedTrip?.trip_id ? loadedScore?.score ?? null : null;
 
   useEffect(() => {
     if (!selectedTrip || selectedTrip.status !== "completed") {

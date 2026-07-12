@@ -2,7 +2,15 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHON_BIN="${PYTHON:-python}"
+if [[ -z "${PYTHON:-}" ]]; then
+  if [[ -x "$ROOT_DIR/venv/bin/python" ]]; then
+    PYTHON_BIN="$ROOT_DIR/venv/bin/python"
+  else
+    PYTHON_BIN="python"
+  fi
+else
+  PYTHON_BIN="$PYTHON"
+fi
 BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
 BACKEND_PORT_WAS_SET="${BACKEND_PORT+x}"
 BACKEND_PORT="${BACKEND_PORT:-8001}"
@@ -27,11 +35,6 @@ PY
   )"
 fi
 VITE_BACKEND_PROXY_TARGET="${VITE_BACKEND_PROXY_TARGET:-http://${BACKEND_HOST}:${BACKEND_PORT}}"
-DETECTOR_ENABLED="${DETECTOR_ENABLED:-true}"
-DETECTOR_SCRIPT="${DETECTOR_SCRIPT:-intergrate_cnn.py}"
-DETECTOR_CAMERA="${DETECTOR_CAMERA:-0}"
-DETECTOR_BACKEND="${DETECTOR_BACKEND:-msmf}"
-DETECTOR_DEVICE_NAME="${DETECTOR_DEVICE_NAME:-}"
 
 cd "$ROOT_DIR"
 
@@ -62,23 +65,6 @@ echo "Proxying frontend /api requests to ${VITE_BACKEND_PROXY_TARGET}"
 ) &
 PIDS+=("$!")
 
-if [[ "$DETECTOR_ENABLED" != "false" && "$DETECTOR_ENABLED" != "0" ]]; then
-  echo "Starting detector from ${DETECTOR_SCRIPT} on camera ${DETECTOR_CAMERA}"
-  DETECTOR_ARGS=(
-    "$DETECTOR_SCRIPT"
-    --backend "$DETECTOR_BACKEND"
-    --monitoring-backend-url "${VITE_BACKEND_PROXY_TARGET}/api/v1"
-    --safety-backend-url "$VITE_BACKEND_PROXY_TARGET"
-  )
-  if [[ -n "$DETECTOR_DEVICE_NAME" ]]; then
-    DETECTOR_ARGS+=(--device-name "$DETECTOR_DEVICE_NAME")
-  else
-    DETECTOR_ARGS+=(--camera "$DETECTOR_CAMERA")
-  fi
-  "$PYTHON_BIN" "${DETECTOR_ARGS[@]}" &
-  PIDS+=("$!")
-fi
-
 echo
 echo "Development services are running. Press Ctrl+C to stop."
-wait -n "${PIDS[@]}"
+wait

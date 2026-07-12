@@ -1,7 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
-$PythonBin = if ($env:PYTHON) { $env:PYTHON } else { "python" }
+$VenvPython = Join-Path $RootDir "venv\Scripts\python.exe"
+$PythonBin = if ($env:PYTHON) { $env:PYTHON } elseif (Test-Path $VenvPython) { $VenvPython } else { "python" }
 $NpmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
 if ($NpmCommand) {
     $NpmBin = $NpmCommand.Source
@@ -29,12 +30,6 @@ $BackendProxyTarget = if ($env:VITE_BACKEND_PROXY_TARGET) {
 else {
     "http://${BackendHost}:${BackendPort}"
 }
-$DetectorEnabled = if ($env:DETECTOR_ENABLED) { $env:DETECTOR_ENABLED } else { "true" }
-$DetectorScript = if ($env:DETECTOR_SCRIPT) { $env:DETECTOR_SCRIPT } else { "integrate_cnn.py" }
-$DetectorCamera = if ($env:DETECTOR_CAMERA) { $env:DETECTOR_CAMERA } else { "0" }
-$DetectorBackend = if ($env:DETECTOR_BACKEND) { $env:DETECTOR_BACKEND } else { "dshow" }
-$DetectorCameraReadTimeout = if ($env:DETECTOR_CAMERA_READ_TIMEOUT) { $env:DETECTOR_CAMERA_READ_TIMEOUT } else { "60" }
-$DetectorDeviceName = if ($env:DETECTOR_DEVICE_NAME) { $env:DETECTOR_DEVICE_NAME } else { "" }
 
 Set-Location $RootDir
 
@@ -58,9 +53,7 @@ function Stop-OldWorkspaceDevProcesses {
     $escapedRoot = [Regex]::Escape([string]$RootDir)
     $patterns = @(
         "uvicorn.*backend\.app:app",
-        "vite",
-        "integrate_cnn\.py",
-        "intergrate_cnn\.py"
+        "vite"
     )
 
     $oldProcesses = Get-CimInstance Win32_Process |
@@ -110,29 +103,6 @@ try {
         }
     }
     $Processes += $Frontend
-
-    if ($DetectorEnabled -ne "false" -and $DetectorEnabled -ne "0") {
-        Write-Host "Starting detector from ${DetectorScript} on camera ${DetectorCamera}"
-        $DetectorArgs = @(
-            $DetectorScript,
-            "--backend", $DetectorBackend,
-            "--camera-read-timeout", $DetectorCameraReadTimeout,
-            "--monitoring-backend-url", "${BackendProxyTarget}/api/v1",
-            "--safety-backend-url", $BackendProxyTarget
-        )
-        if ($DetectorDeviceName) {
-            $DetectorArgs += @("--device-name", $DetectorDeviceName)
-        }
-        else {
-            $DetectorArgs += @("--camera", $DetectorCamera)
-        }
-        $Detector = Start-Process -FilePath $PythonBin `
-            -ArgumentList $DetectorArgs `
-            -WorkingDirectory $RootDir `
-            -NoNewWindow `
-            -PassThru
-        $Processes += $Detector
-    }
 
     Write-Host ""
     Write-Host "Development services are running. Press Ctrl+C to stop."
