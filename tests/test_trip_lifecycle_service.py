@@ -360,7 +360,7 @@ class TripLifecycleServiceTest(unittest.TestCase):
 
         self.assertEqual(completed["status"], TripStatus.COMPLETED)
         self.assertEqual(completed["assignment"]["status"], AssignmentStatus.COMPLETED)
-        self.assertEqual(completed["safety_score"]["score"], 92.0)
+        self.assertEqual(completed["safety_score"]["score"], 90.0)
         self.assertEqual(self.repository.vehicle["status"], VehicleStatus.AVAILABLE)
 
     def test_driver_can_start_only_one_active_my_trip(self):

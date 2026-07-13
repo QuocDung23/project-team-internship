@@ -1,12 +1,10 @@
 from backend.auth.roles import UserRole
-from backend.models.safety_event import (
-    SafetyEventIngestRequest,
-    SafetyEventSeverity,
-)
+from backend.models.safety_event import SafetyEventIngestRequest
 from backend.repositories.safety_event_repository import (
     DuplicateSafetyEventError,
     SafetyEventRepository,
 )
+from backend.services.safety_policy import aggregation_kind, pair_window_seconds
 
 
 class SafetyEventDuplicateError(Exception):
@@ -23,12 +21,13 @@ class SafetyEventService:
 
     def ingest(self, payload: SafetyEventIngestRequest, *, current_user: dict | None = None) -> dict:
         self._validate_references(payload, current_user=current_user)
-        create_alert = payload.severity in {SafetyEventSeverity.MEDIUM, SafetyEventSeverity.HIGH}
+        kind = aggregation_kind(payload.event_type)
 
         try:
             return self.repository.ingest_event(
                 payload.model_dump(mode="json"),
-                create_alert=create_alert,
+                aggregation_kind=kind,
+                aggregation_window_seconds=pair_window_seconds(kind) if kind else None,
             )
         except DuplicateSafetyEventError as exc:
             raise SafetyEventDuplicateError(f"event_id already ingested: {payload.event_id}") from exc

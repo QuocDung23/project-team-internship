@@ -282,6 +282,8 @@ EAR_CONSEC_FRAMES = 20          # [FIX-2] cũ: 40 → quá cao, mắt nhắm lâ
 # MAR (ngáp)
 MAR_THRESHOLD = 0.55
 MAR_CONSEC_FRAMES = 8           # [FIX-4] cũ: 12 → chậm
+YAWN_EVENT_MAR_THRESHOLD = 0.8
+DROWSINESS_EVENT_MIN_SECONDS = 2.0
 
 # Head pose — chỉ báo khi THỰC SỰ cúi đầu (pitch âm = cúi)
 # [FIX-1] Dùng pitch đã normalize, không dùng abs().
@@ -1011,6 +1013,9 @@ prev_time = time.time()
 prev_eye_alert = False
 prev_mar_alert = False
 prev_pose_alert = False
+eye_event_started_at = None
+eye_event_published = False
+yawn_event_open = False
 last_camera_frame_at = time.monotonic()
 camera_loss_reported = False
 
@@ -1327,12 +1332,26 @@ try:
                 frame,
             )
 
-        if ear_alert and not prev_eye_alert:
+        if ear_alert:
+            if eye_event_started_at is None:
+                eye_event_started_at = curr_time
+            eye_event_duration = curr_time - eye_event_started_at
+        else:
+            eye_event_started_at = None
+            eye_event_published = False
+            eye_event_duration = 0.0
+
+        if (
+            ear_alert
+            and not eye_event_published
+            and eye_event_duration >= DROWSINESS_EVENT_MIN_SECONDS
+        ):
+            eye_event_published = True
             publish_safety_event(
                 event_type="drowsiness_detected",
-                severity="high",
+                severity="medium",
                 confidence=(float(_ema_cnn_conf) if USE_CNN else min(1.0, EAR_COUNTER / max(1, EAR_CONSEC_FRAMES))),
-                duration_ms=int((EAR_COUNTER / max(1.0, fps)) * 1000),
+                duration_ms=int(eye_event_duration * 1000),
                 detection_method=("cnn_classifier" if USE_CNN else "ear_dlib"),
                 ear_value=float(ear),
                 mar_value=float(mar),
@@ -1340,7 +1359,14 @@ try:
                 consecutive_frame_count=int(EAR_COUNTER),
                 alarm_triggered=True,
             )
-        if mar_alert and not prev_mar_alert:
+        if mar > YAWN_EVENT_MAR_THRESHOLD:
+            should_publish_yawn = not yawn_event_open
+            yawn_event_open = True
+        else:
+            should_publish_yawn = False
+            yawn_event_open = False
+
+        if should_publish_yawn:
             publish_safety_event(
                 event_type="yawning_detected",
                 severity="medium",

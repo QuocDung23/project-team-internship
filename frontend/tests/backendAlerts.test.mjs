@@ -48,6 +48,15 @@ test("maps acknowledged backend alert status to fleet event", () => {
   assert.equal(event.acknowledged, true);
 });
 
+test("shows browser CNN alerts with a driver-friendly source label", () => {
+  const event = mapBackendAlertToFleetEvent({
+    ...backendAlert,
+    detection_method: "browser_cnn",
+  });
+
+  assert.equal(event.location, "Phát hiện qua camera AI");
+});
+
 test("maps acknowledged tuple alert rows from the current FastAPI response", () => {
   const event = mapBackendAlertToFleetEvent([
     "alert-ack",

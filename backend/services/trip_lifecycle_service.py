@@ -8,6 +8,7 @@ from backend.models.trip import StartMyTripRequest, TripAssignRequest, TripCreat
 from backend.models.vehicle import VehicleStatus
 from backend.repositories.trip_repository import TripRepository
 from backend.services.safety_service import calculate_safety_score, safety_grade
+from backend.services.safety_policy import CRITICAL_ALERT_PENALTY, WARNING_ALERT_PENALTY
 
 
 class TripNotFoundError(Exception):
@@ -226,6 +227,8 @@ class TripLifecycleService:
             "total_events": counts["total_events"],
             "critical_events": counts["critical_events"],
             "warning_events": counts["warning_events"],
+            "warning_penalty": WARNING_ALERT_PENALTY,
+            "critical_penalty": CRITICAL_ALERT_PENALTY,
             "final_score": score,
             "grade": grade,
         }

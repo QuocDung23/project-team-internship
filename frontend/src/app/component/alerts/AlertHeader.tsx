@@ -20,7 +20,7 @@ export default function AlertHeader({
           Nhật ký cảnh báo
         </h1>
         <p className="mt-0.5 text-[12px] text-zinc-400">
-          Stream cảnh báo thời gian thực · cập nhật liên tục từ central backend
+          Stream cảnh báo thời gian thực 
         </p>
       </div>
       <div className="flex items-center gap-3">

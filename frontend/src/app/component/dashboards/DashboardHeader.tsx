@@ -17,7 +17,7 @@ export default function DashboardHeader({
           Tổng quan đội xe
         </h1>
         <p className="mt-0.5 text-[12px] text-zinc-400">
-          Ca trực đang chạy · 3 khu vực · cập nhật liên tục từ central backend
+          Ca trực đang chạy · 3 khu vực
         </p>
       </div>
       <div className="flex items-center gap-3 text-[11px]">

@@ -3,16 +3,12 @@ import type { ClientSafetyEvent } from "../types/monitoring";
 export const EAR_THRESHOLD = 0.28;
 export const MAR_THRESHOLD = 0.8;
 export const DROWSINESS_WARNING_MS = 2_000;
-export const DROWSINESS_AGGREGATION_MS = 30_000;
-export const YAWN_AGGREGATION_MS = 20_000;
 
 export interface BrowserDetectionState {
   eyeClosureStartedAt: number | null;
   drowsinessWarningActive: boolean;
   drowsinessEventOpen: boolean;
-  drowsinessEventTimes: number[];
   yawnOpen: boolean;
-  yawnEventTimes: number[];
 }
 
 export interface DetectionSample {
@@ -47,9 +43,7 @@ export function createBrowserDetectionState(): BrowserDetectionState {
     eyeClosureStartedAt: null,
     drowsinessWarningActive: false,
     drowsinessEventOpen: false,
-    drowsinessEventTimes: [],
     yawnOpen: false,
-    yawnEventTimes: [],
   };
 }
 
@@ -57,17 +51,11 @@ export function resetBrowserDetectionState(state: BrowserDetectionState): void {
   state.eyeClosureStartedAt = null;
   state.drowsinessWarningActive = false;
   state.drowsinessEventOpen = false;
-  state.drowsinessEventTimes = [];
   state.yawnOpen = false;
-  state.yawnEventTimes = [];
 }
 
 export function displayPitch(rawPitch: number): number {
   return -rawPitch;
-}
-
-function recentTimes(times: number[], now: number, windowMs: number): number[] {
-  return times.filter((time) => now - time <= windowMs);
 }
 
 export function processDetectionSample(
@@ -109,19 +97,11 @@ export function processDetectionSample(
 
     if (state.drowsinessWarningActive && !state.drowsinessEventOpen) {
       state.drowsinessEventOpen = true;
-      state.drowsinessEventTimes = recentTimes(
-        [...state.drowsinessEventTimes, sample.now],
-        sample.now,
-        DROWSINESS_AGGREGATION_MS,
-      );
-      if (state.drowsinessEventTimes.length >= 2) {
-        events.push({
-          eventType: "drowsiness_detected",
-          severity: "high",
-          durationMs: closedDurationMs,
-        });
-        state.drowsinessEventTimes = [];
-      }
+      events.push({
+        eventType: "drowsiness_detected",
+        severity: "medium",
+        durationMs: closedDurationMs,
+      });
     }
   }
 
@@ -129,19 +109,11 @@ export function processDetectionSample(
     state.yawnOpen = false;
   } else if (!state.yawnOpen) {
     state.yawnOpen = true;
-    state.yawnEventTimes = recentTimes(
-      [...state.yawnEventTimes, sample.now],
-      sample.now,
-      YAWN_AGGREGATION_MS,
-    );
-    if (state.yawnEventTimes.length >= 2) {
-      events.push({
-        eventType: "yawning_detected",
-        severity: "medium",
-        durationMs: 0,
-      });
-      state.yawnEventTimes = [];
-    }
+    events.push({
+      eventType: "yawning_detected",
+      severity: "medium",
+      durationMs: 0,
+    });
   }
 
   return {

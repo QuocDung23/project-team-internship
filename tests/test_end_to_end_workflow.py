@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -22,6 +22,7 @@ class WorkflowState:
     def __init__(self):
         self.events = {}
         self.alerts = []
+        self.unlinked_drowsiness_events = []
 
 
 class WorkflowSafetyEventService:
@@ -40,14 +41,25 @@ class WorkflowSafetyEventService:
         }
         self.state.events[payload.event_id] = event
 
-        if payload.severity.value == "high":
-            alert_type = self._alert_type(payload.event_type.value)
+        if payload.event_type.value in {"drowsiness_detected", "eyes_closed"}:
+            self.state.unlinked_drowsiness_events.append(event)
+            occurred_at = payload.occurred_at
+            self.state.unlinked_drowsiness_events = [
+                candidate
+                for candidate in self.state.unlinked_drowsiness_events
+                if (
+                    occurred_at
+                    - datetime.fromisoformat(candidate["occurred_at"].replace("Z", "+00:00"))
+                ).total_seconds()
+                <= 30
+            ]
+        if len(self.state.unlinked_drowsiness_events) >= 2:
             alert = {
                 "alert_id": f"alert-{len(self.state.alerts) + 1}",
                 "trip_id": payload.trip_id,
                 "driver_id": payload.driver_id,
-                "alert_type": alert_type,
-                "severity": "critical",
+                "alert_type": "drowsiness",
+                "severity": "warning",
                 "detection_method": payload.details.get("detection_method", "ai_camera"),
                 "ear_value": payload.details.get("ear"),
                 "consecutive_frame_count": payload.details.get("consecutive_frame_count"),
@@ -58,16 +70,9 @@ class WorkflowSafetyEventService:
             }
             self.state.alerts.append(alert)
             event["alert_id"] = alert["alert_id"]
+            del self.state.unlinked_drowsiness_events[:2]
 
         return event
-
-    @staticmethod
-    def _alert_type(event_type):
-        if event_type in {"camera_blocked", "no_face_detected"}:
-            return "camera_issue"
-        if event_type in {"distraction", "head_nod", "head_nodding_detected"}:
-            return "driver_inattention"
-        return "drowsiness"
 
 
 class EndToEndWorkflowTest(unittest.TestCase):
@@ -103,6 +108,7 @@ class EndToEndWorkflowTest(unittest.TestCase):
     def complete_trip(self, trip_id, current_user):
         trip_alerts = [alert for alert in self.state.alerts if alert["trip_id"] == trip_id]
         critical_count = sum(1 for alert in trip_alerts if alert["severity"] == "critical")
+        warning_count = max(0, len(trip_alerts) - critical_count)
         score = calculate_safety_score(len(trip_alerts), critical_count)
         return {
             "trip_id": trip_id,
@@ -126,7 +132,7 @@ class EndToEndWorkflowTest(unittest.TestCase):
                 "score": score,
                 "grade": safety_grade(score),
                 "total_events": len(self.state.events),
-                "warning_events": 0,
+                "warning_events": warning_count,
                 "critical_events": critical_count,
                 "alert_count": len(trip_alerts),
                 "calculation_version": "v1",
@@ -139,7 +145,7 @@ class EndToEndWorkflowTest(unittest.TestCase):
         payload = {
             "event_id": "ai-event-1",
             "event_type": "drowsiness_detected",
-            "severity": "high",
+            "severity": "medium",
             "source": "ai_camera",
             "occurred_at": NOW.isoformat(),
             "trip_id": TRIP_ID,
@@ -154,8 +160,14 @@ class EndToEndWorkflowTest(unittest.TestCase):
                 "cnn_label": "closed",
             },
         }
+        second_payload = {
+            **payload,
+            "event_id": "ai-event-2",
+            "occurred_at": (NOW + timedelta(seconds=10)).isoformat(),
+        }
 
         ingested = self.client.post("/api/v1/safety-events/ingest", json=payload)
+        second_ingested = self.client.post("/api/v1/safety-events/ingest", json=second_payload)
         duplicate = self.client.post("/api/v1/safety-events/ingest", json=payload)
         alerts = self.client.get(f"/api/v1/trips/{TRIP_ID}/alerts")
         invalid_alerts = self.client.get("/api/v1/trips/trip-1/alerts")
@@ -163,17 +175,20 @@ class EndToEndWorkflowTest(unittest.TestCase):
 
         self.assertEqual(ingested.status_code, 201)
         self.assertEqual(ingested.json()["event_id"], "ai-event-1")
-        self.assertEqual(ingested.json()["alert_id"], "alert-1")
+        self.assertIsNone(ingested.json()["alert_id"])
+        self.assertEqual(second_ingested.status_code, 201)
+        self.assertEqual(second_ingested.json()["alert_id"], "alert-1")
         self.assertIn("ai-event-1", self.state.events)
         self.assertEqual(duplicate.status_code, 409)
         self.assertEqual(alerts.status_code, 200)
         self.assertEqual(alerts.json()[0]["alert_type"], "drowsiness")
-        self.assertEqual(alerts.json()[0]["severity"], "critical")
+        self.assertEqual(alerts.json()[0]["severity"], "warning")
         self.assertEqual(invalid_alerts.status_code, 422)
         self.assertEqual(score.status_code, 200)
         self.assertEqual(score.json()["safety_score"]["alert_count"], 1)
-        self.assertEqual(score.json()["safety_score"]["critical_events"], 1)
-        self.assertEqual(score.json()["safety_score"]["score"], 92.0)
+        self.assertEqual(score.json()["safety_score"]["warning_events"], 1)
+        self.assertEqual(score.json()["safety_score"]["critical_events"], 0)
+        self.assertEqual(score.json()["safety_score"]["score"], 95.0)
         self.assertEqual(score.json()["safety_score"]["grade"], "A")
 
 

@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from pydantic import ValidationError
 
@@ -41,6 +41,9 @@ class FakeSafetyEventRepository:
         self.vehicles = {"vehicle-1"}
         self.raise_duplicate = False
         self.ingested = []
+        self.unlinked_candidates = {"drowsiness": [], "yawning": []}
+        self.last_drowsiness_alert_at = None
+        self.alerts = []
 
     def trip_exists(self, trip_id):
         return trip_id in self.trips
@@ -60,14 +63,40 @@ class FakeSafetyEventRepository:
     def vehicle_exists(self, vehicle_id):
         return vehicle_id in self.vehicles
 
-    def ingest_event(self, data, create_alert):
+    def _occurred_at(self, data):
+        value = data["occurred_at"]
+        if isinstance(value, datetime):
+            return value
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    def ingest_event(self, data, aggregation_kind=None, aggregation_window_seconds=None):
         if self.raise_duplicate:
             raise DuplicateSafetyEventError(data["event_id"])
-        self.ingested.append((data, create_alert))
+        self.ingested.append((data, aggregation_kind, aggregation_window_seconds))
+        alert_id = None
+        if aggregation_kind:
+            candidates = self.unlinked_candidates[aggregation_kind]
+            candidates.append(data)
+            occurred_at = self._occurred_at(data)
+            candidates[:] = [
+                candidate
+                for candidate in candidates
+                if (occurred_at - self._occurred_at(candidate)).total_seconds() <= aggregation_window_seconds
+            ]
+            if len(candidates) >= 2:
+                severity = "warning"
+                if aggregation_kind == "drowsiness" and self.last_drowsiness_alert_at is not None:
+                    if (occurred_at - self.last_drowsiness_alert_at).total_seconds() <= 60:
+                        severity = "critical"
+                if aggregation_kind == "drowsiness":
+                    self.last_drowsiness_alert_at = occurred_at
+                self.alerts.append({"kind": aggregation_kind, "severity": severity})
+                alert_id = f"alert-{len(self.alerts)}"
+                del candidates[:2]
         return {
             **data,
             "safety_event_id": "safety-event-1",
-            "alert_id": "alert-1" if create_alert else None,
+            "alert_id": alert_id,
             "created_at": NOW,
         }
 
@@ -77,12 +106,13 @@ class SafetyEventServiceTest(unittest.TestCase):
         self.repository = FakeSafetyEventRepository()
         self.service = SafetyEventService(self.repository)
 
-    def test_successful_ingestion_creates_alert_for_high_severity(self):
+    def test_successful_ingestion_stores_candidate_without_immediate_alert(self):
         result = self.service.ingest(SafetyEventIngestRequest(**payload()))
 
         self.assertEqual(result["safety_event_id"], "safety-event-1")
-        self.assertEqual(result["alert_id"], "alert-1")
-        self.assertTrue(self.repository.ingested[0][1])
+        self.assertIsNone(result["alert_id"])
+        self.assertEqual(self.repository.ingested[0][1], "drowsiness")
+        self.assertEqual(self.repository.ingested[0][2], 30)
 
     def test_duplicate_event_id_prevention(self):
         self.repository.raise_duplicate = True
@@ -100,16 +130,84 @@ class SafetyEventServiceTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             SafetyEventIngestRequest(**payload(details=[]))
 
-    def test_medium_severity_creates_warning_alert_but_low_does_not(self):
-        low = self.service.ingest(SafetyEventIngestRequest(**payload(event_id="event-low", severity="low")))
-        medium = self.service.ingest(
-            SafetyEventIngestRequest(**payload(event_id="event-medium", severity="medium"))
+    def test_two_drowsiness_candidates_within_window_create_warning_alert(self):
+        first = self.service.ingest(
+            SafetyEventIngestRequest(**payload(event_id="event-drowsy-1", occurred_at=NOW))
+        )
+        second = self.service.ingest(
+            SafetyEventIngestRequest(**payload(event_id="event-drowsy-2", occurred_at=NOW + timedelta(seconds=20)))
         )
 
-        self.assertIsNone(low["alert_id"])
-        self.assertEqual(medium["alert_id"], "alert-1")
-        self.assertFalse(self.repository.ingested[0][1])
-        self.assertTrue(self.repository.ingested[1][1])
+        self.assertIsNone(first["alert_id"])
+        self.assertEqual(second["alert_id"], "alert-1")
+        self.assertEqual(self.repository.alerts[0]["severity"], "warning")
+
+    def test_drowsiness_escalates_when_next_alert_is_within_60_seconds(self):
+        times = [
+            NOW,
+            NOW + timedelta(seconds=10),
+            NOW + timedelta(seconds=30),
+            NOW + timedelta(seconds=40),
+        ]
+
+        results = [
+            self.service.ingest(
+                SafetyEventIngestRequest(**payload(event_id=f"event-{index}", occurred_at=occurred_at))
+            )
+            for index, occurred_at in enumerate(times)
+        ]
+
+        self.assertEqual(results[1]["alert_id"], "alert-1")
+        self.assertEqual(results[3]["alert_id"], "alert-2")
+        self.assertEqual([alert["severity"] for alert in self.repository.alerts], ["warning", "critical"])
+
+    def test_drowsiness_escalation_resets_after_60_seconds(self):
+        times = [
+            NOW,
+            NOW + timedelta(seconds=10),
+            NOW + timedelta(seconds=120),
+            NOW + timedelta(seconds=130),
+        ]
+
+        for index, occurred_at in enumerate(times):
+            self.service.ingest(
+                SafetyEventIngestRequest(**payload(event_id=f"event-reset-{index}", occurred_at=occurred_at))
+            )
+
+        self.assertEqual([alert["severity"] for alert in self.repository.alerts], ["warning", "warning"])
+
+    def test_two_yawns_create_warning_and_never_critical(self):
+        times = [
+            NOW,
+            NOW + timedelta(seconds=10),
+            NOW + timedelta(seconds=20),
+            NOW + timedelta(seconds=25),
+        ]
+
+        for index, occurred_at in enumerate(times):
+            self.service.ingest(
+                SafetyEventIngestRequest(
+                    **payload(
+                        event_id=f"event-yawn-{index}",
+                        event_type="yawning_detected",
+                        severity="medium",
+                        occurred_at=occurred_at,
+                    )
+                )
+            )
+
+        self.assertEqual([alert["kind"] for alert in self.repository.alerts], ["yawning", "yawning"])
+        self.assertEqual([alert["severity"] for alert in self.repository.alerts], ["warning", "warning"])
+
+    def test_head_nodding_event_is_stored_without_alert_aggregation(self):
+        result = self.service.ingest(
+            SafetyEventIngestRequest(
+                **payload(event_id="event-head", event_type="head_nodding_detected", severity="medium")
+            )
+        )
+
+        self.assertIsNone(result["alert_id"])
+        self.assertIsNone(self.repository.ingested[0][1])
 
     def test_missing_references_are_rejected_when_provided(self):
         self.repository.trips.clear()

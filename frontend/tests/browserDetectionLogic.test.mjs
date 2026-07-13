@@ -44,28 +44,30 @@ test("eye closure at 2 seconds activates warning until eyes reopen", () => {
   assert.equal(cleared.alarmOn, false);
 });
 
-test("two separate drowsiness warning events within 30 seconds emit one backend event", () => {
+test("continuous drowsiness warning emits one candidate until eyes reopen", () => {
   const state = createBrowserDetectionState();
 
   sample(state, { now: 0, ear: 0.12 });
   const first = sample(state, { now: 2_000, ear: 0.12 });
+  const continuous = sample(state, { now: 3_000, ear: 0.12 });
+
+  assert.equal(first.events.length, 1);
+  assert.equal(first.events[0].eventType, "drowsiness_detected");
+  assert.equal(first.events[0].severity, "medium");
+  assert.deepEqual(continuous.events, []);
+});
+
+test("reopening eyes allows another drowsiness candidate", () => {
+  const state = createBrowserDetectionState();
+
+  sample(state, { now: 0, ear: 0.12 });
+  sample(state, { now: 2_000, ear: 0.12 });
   sample(state, { now: 2_100, ear: 0.34 });
   sample(state, { now: 5_000, ear: 0.12 });
   const second = sample(state, { now: 7_000, ear: 0.12 });
 
-  assert.deepEqual(first.events, []);
   assert.equal(second.events.length, 1);
   assert.equal(second.events[0].eventType, "drowsiness_detected");
-  assert.equal(second.events[0].severity, "high");
-});
-
-test("a single drowsiness warning event emits no backend event", () => {
-  const state = createBrowserDetectionState();
-
-  sample(state, { now: 0, ear: 0.12 });
-  const decision = sample(state, { now: 2_000, ear: 0.12 });
-
-  assert.deepEqual(decision.events, []);
 });
 
 test("continuous mouth-open period counts as one yawn", () => {
@@ -75,17 +77,30 @@ test("continuous mouth-open period counts as one yawn", () => {
   const continuous = sample(state, { now: 500, mar: 0.95 });
 
   assert.equal(first.yawnWarningActive, true);
-  assert.deepEqual(first.events, []);
+  assert.equal(first.events.length, 1);
+  assert.equal(first.events[0].eventType, "yawning_detected");
   assert.deepEqual(continuous.events, []);
 });
 
-test("two separate yawns within 20 seconds emit one backend event", () => {
+test("MAR at or below 0.8 does not emit a yawn candidate", () => {
   const state = createBrowserDetectionState();
 
-  sample(state, { now: 0, mar: 0.81 });
+  const threshold = sample(state, { now: 0, mar: 0.8 });
+  const below = sample(state, { now: 200, mar: 0.79 });
+
+  assert.equal(threshold.yawnWarningActive, false);
+  assert.deepEqual(threshold.events, []);
+  assert.deepEqual(below.events, []);
+});
+
+test("closing mouth allows another yawn candidate", () => {
+  const state = createBrowserDetectionState();
+
+  const first = sample(state, { now: 0, mar: 0.81 });
   sample(state, { now: 200, mar: 0.2 });
   const second = sample(state, { now: 1_000, mar: 0.82 });
 
+  assert.equal(first.events.length, 1);
   assert.equal(second.events.length, 1);
   assert.equal(second.events[0].eventType, "yawning_detected");
   assert.equal(second.events[0].severity, "medium");

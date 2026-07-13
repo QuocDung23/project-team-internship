@@ -844,8 +844,7 @@ class TripRepository:
                     text(
                         """
                         SELECT
-                            COUNT(*) AS total_events,
-                            COUNT(*) FILTER (WHERE severity = 'high') AS critical_events
+                            COUNT(*) AS total_events
                         FROM safety_events
                         WHERE trip_id = :trip_id
                         """
@@ -857,19 +856,28 @@ class TripRepository:
             )
             alert_row = (
                 connection.execute(
-                    text("SELECT COUNT(*) AS alert_count FROM alerts WHERE trip_id = :trip_id"),
+                    text(
+                        """
+                        SELECT
+                            COUNT(*) AS alert_count,
+                            COUNT(*) FILTER (WHERE severity = 'critical') AS critical_alerts
+                        FROM alerts
+                        WHERE trip_id = :trip_id
+                        """
+                    ),
                     {"trip_id": trip_id},
                 )
                 .mappings()
                 .one()
             )
         total_events = int(event_row["total_events"])
-        critical_events = int(event_row["critical_events"])
+        alert_count = int(alert_row["alert_count"])
+        critical_alerts = int(alert_row["critical_alerts"])
         return {
             "total_events": total_events,
-            "critical_events": critical_events,
-            "warning_events": max(0, total_events - critical_events),
-            "alert_count": int(alert_row["alert_count"]),
+            "critical_events": critical_alerts,
+            "warning_events": max(0, alert_count - critical_alerts),
+            "alert_count": alert_count,
         }
 
     def find_safety_score(self, trip_id: str) -> dict[str, Any] | None:

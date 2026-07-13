@@ -26,7 +26,7 @@ function FleetHeader({ now, viewMode, onViewModeChange }: FleetHeaderProps) {
           Đội xe
         </h1>
         <p className="mt-0.5 text-[12px] text-zinc-400">
-          Quản lý xe · cập nhật liên tục từ central backend
+          Quản lý xe 
         </p>
       </div>
       <div className="flex items-center gap-3">
