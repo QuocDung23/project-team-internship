@@ -182,8 +182,15 @@ def acknowledge_alert(alert_id: str, *, current_user: dict):
             COALESCE(d.email, driver_identity.email, owner_driver.email),
             COALESCE(d.license_number, driver_identity.license_number, owner_driver.license_number)
         FROM alerts a
-        LEFT JOIN alert_safety_events ase ON ase.alert_id = a.alert_id
-        LEFT JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
+        LEFT JOIN LATERAL (
+            SELECT linked_se.*
+            FROM alert_safety_events linked_ase
+            JOIN safety_events linked_se
+                ON linked_se.safety_event_id = linked_ase.safety_event_id
+            WHERE linked_ase.alert_id = a.alert_id
+            ORDER BY linked_se.occurred_at DESC, linked_se.created_at DESC
+            LIMIT 1
+        ) se ON TRUE
         LEFT JOIN drivers d ON d.driver_id = a.driver_id
         LEFT JOIN LATERAL (
             SELECT assigned_driver.full_name, assigned_driver.email, assigned_driver.license_number
@@ -268,6 +275,8 @@ def get_alerts(
     if status:
         where_clauses.append("a.status=%s")
         params.append(status)
+    else:
+        where_clauses.append("a.status <> 'ignored'")
 
     current_role = current_user.get("role") if current_user else None
     current_role_value = getattr(current_role, "value", current_role)
@@ -312,8 +321,15 @@ def get_alerts(
             COALESCE(d.email, driver_identity.email, owner_driver.email),
             COALESCE(d.license_number, driver_identity.license_number, owner_driver.license_number)
         FROM alerts a
-        LEFT JOIN alert_safety_events ase ON ase.alert_id = a.alert_id
-        LEFT JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
+        LEFT JOIN LATERAL (
+            SELECT linked_se.*
+            FROM alert_safety_events linked_ase
+            JOIN safety_events linked_se
+                ON linked_se.safety_event_id = linked_ase.safety_event_id
+            WHERE linked_ase.alert_id = a.alert_id
+            ORDER BY linked_se.occurred_at DESC, linked_se.created_at DESC
+            LIMIT 1
+        ) se ON TRUE
         LEFT JOIN trips t ON t.trip_id = a.trip_id
         LEFT JOIN drivers d ON d.driver_id = a.driver_id
         LEFT JOIN LATERAL (

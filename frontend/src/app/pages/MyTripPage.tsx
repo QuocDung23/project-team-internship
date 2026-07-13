@@ -3,7 +3,7 @@ import {
   bulkIngestSafetyEvents,
   completeTrip,
   fetchMyTrips,
-  startMyTrip,
+  startOrResumeMyTrip,
   buildSafetySummaryFromTrips,
   type BackendTrip,
   type SafetyScore,
@@ -12,7 +12,7 @@ import {
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useMyDriverProfile } from "../hook/useBackendData";
 import { useBrowserCNN } from "../hook/useBrowserCNN";
-import { mapClientSafetyEventToMonitorAlert } from "../services/clientSafetyEvents";
+import { buildLiveMonitoringAlerts } from "../services/clientSafetyEvents";
 import type { MonitoringAlert } from "../types/monitoring";
 import type { ReactNode } from "react";
 import { SafetyScoreValue } from "../utils/safetyScore";
@@ -58,7 +58,7 @@ export function MyTripPage() {
     start: cnnStart,
     stop: cnnStop,
   } = useBrowserCNN();
-  const liveAlerts = cnnEvents.map(mapClientSafetyEventToMonitorAlert).reverse().slice(0, 5);
+  const liveAlerts = buildLiveMonitoringAlerts(cnnEvents).reverse().slice(0, 5);
   const safetySummary = buildSafetySummaryFromTrips(trips);
   const canCloseDialog = !activeTrip && !isBusy;
   const effectiveDialogOpen = dialogOpen || Boolean(activeTrip);
@@ -134,9 +134,10 @@ export function MyTripPage() {
     setIsBusy(true);
     setError("");
     try {
-      const newTrip = await startMyTrip(tripForm);
-      setTrips((current) => [newTrip, ...current.filter((trip) => trip.trip_id !== newTrip.trip_id)]);
-      await refresh();
+      const result = await startOrResumeMyTrip(tripForm);
+      setTrips(result.trips);
+      setDialogOpen(true);
+      if (!result.resumed) await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start trip");
     } finally {

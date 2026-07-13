@@ -175,6 +175,9 @@ class WorkflowTripRepository:
     def find_by_id(self, trip_id):
         return self.state.trip if self.state.trip and trip_id == self.state.trip["trip_id"] else None
 
+    def trip_code_exists(self, code):
+        return self.state.trip is not None and self.state.trip.get("code") == code
+
     def find_driver_by_id(self, driver_id):
         if self.state.driver and driver_id == self.state.driver["driver_id"]:
             return {

@@ -23,6 +23,7 @@ class WorkflowState:
         self.events = {}
         self.alerts = []
         self.unlinked_drowsiness_events = []
+        self.active_drowsiness_warning = None
 
 
 class WorkflowSafetyEventService:
@@ -53,24 +54,65 @@ class WorkflowSafetyEventService:
                 ).total_seconds()
                 <= 30
             ]
-        if len(self.state.unlinked_drowsiness_events) >= 2:
-            alert = {
-                "alert_id": f"alert-{len(self.state.alerts) + 1}",
-                "trip_id": payload.trip_id,
-                "driver_id": payload.driver_id,
-                "alert_type": "drowsiness",
-                "severity": "warning",
-                "detection_method": payload.details.get("detection_method", "ai_camera"),
-                "ear_value": payload.details.get("ear"),
-                "consecutive_frame_count": payload.details.get("consecutive_frame_count"),
-                "cnn_confidence": payload.confidence,
-                "cnn_label": payload.details.get("cnn_label"),
-                "alarm_triggered": True,
-                "occurred_at": payload.occurred_at.isoformat(),
-            }
-            self.state.alerts.append(alert)
-            event["alert_id"] = alert["alert_id"]
-            del self.state.unlinked_drowsiness_events[:2]
+            if self.state.active_drowsiness_warning is not None:
+                linked_events = [
+                    self.state.events[event_id]
+                    for event_id in self.state.active_drowsiness_warning["linked_event_ids"]
+                ]
+                first_occurred_at = min(
+                    datetime.fromisoformat(event["occurred_at"].replace("Z", "+00:00"))
+                    for event in linked_events
+                )
+                if (payload.occurred_at - first_occurred_at).total_seconds() <= 60:
+                    self.state.active_drowsiness_warning["status"] = "ignored"
+                    alert = {
+                        "alert_id": f"alert-{len(self.state.alerts) + 1}",
+                        "trip_id": payload.trip_id,
+                        "driver_id": payload.driver_id,
+                        "alert_type": "drowsiness",
+                        "severity": "critical",
+                        "status": "open",
+                        "linked_event_ids": [
+                            *self.state.active_drowsiness_warning["linked_event_ids"],
+                            payload.event_id,
+                        ],
+                        "detection_method": payload.details.get("detection_method", "ai_camera"),
+                        "ear_value": payload.details.get("ear"),
+                        "consecutive_frame_count": payload.details.get("consecutive_frame_count"),
+                        "cnn_confidence": payload.confidence,
+                        "cnn_label": payload.details.get("cnn_label"),
+                        "alarm_triggered": True,
+                        "occurred_at": payload.occurred_at.isoformat(),
+                    }
+                    self.state.alerts.append(alert)
+                    event["alert_id"] = alert["alert_id"]
+                    self.state.unlinked_drowsiness_events.clear()
+                self.state.active_drowsiness_warning = None
+            if event["alert_id"] is None and len(self.state.unlinked_drowsiness_events) >= 2:
+                linked_event_ids = [
+                    candidate["event_id"]
+                    for candidate in self.state.unlinked_drowsiness_events[:2]
+                ]
+                alert = {
+                    "alert_id": f"alert-{len(self.state.alerts) + 1}",
+                    "trip_id": payload.trip_id,
+                    "driver_id": payload.driver_id,
+                    "alert_type": "drowsiness",
+                    "severity": "warning",
+                    "status": "open",
+                    "linked_event_ids": linked_event_ids,
+                    "detection_method": payload.details.get("detection_method", "ai_camera"),
+                    "ear_value": payload.details.get("ear"),
+                    "consecutive_frame_count": payload.details.get("consecutive_frame_count"),
+                    "cnn_confidence": payload.confidence,
+                    "cnn_label": payload.details.get("cnn_label"),
+                    "alarm_triggered": True,
+                    "occurred_at": payload.occurred_at.isoformat(),
+                }
+                self.state.alerts.append(alert)
+                event["alert_id"] = alert["alert_id"]
+                self.state.active_drowsiness_warning = alert
+                del self.state.unlinked_drowsiness_events[:2]
 
         return event
 
@@ -95,7 +137,9 @@ class EndToEndWorkflowTest(unittest.TestCase):
             alert_routes,
             "get_trip_alerts",
             lambda trip_id: [
-                alert for alert in self.state.alerts if alert["trip_id"] == trip_id
+                alert
+                for alert in self.state.alerts
+                if alert["trip_id"] == trip_id and alert.get("status") != "ignored"
             ],
         )
         self.alerts_patch.start()
@@ -106,7 +150,11 @@ class EndToEndWorkflowTest(unittest.TestCase):
         app.dependency_overrides.clear()
 
     def complete_trip(self, trip_id, current_user):
-        trip_alerts = [alert for alert in self.state.alerts if alert["trip_id"] == trip_id]
+        trip_alerts = [
+            alert
+            for alert in self.state.alerts
+            if alert["trip_id"] == trip_id and alert.get("status") != "ignored"
+        ]
         critical_count = sum(1 for alert in trip_alerts if alert["severity"] == "critical")
         warning_count = max(0, len(trip_alerts) - critical_count)
         score = calculate_safety_score(len(trip_alerts), critical_count)
@@ -165,9 +213,15 @@ class EndToEndWorkflowTest(unittest.TestCase):
             "event_id": "ai-event-2",
             "occurred_at": (NOW + timedelta(seconds=10)).isoformat(),
         }
+        third_payload = {
+            **payload,
+            "event_id": "ai-event-3",
+            "occurred_at": (NOW + timedelta(seconds=30)).isoformat(),
+        }
 
         ingested = self.client.post("/api/v1/safety-events/ingest", json=payload)
         second_ingested = self.client.post("/api/v1/safety-events/ingest", json=second_payload)
+        third_ingested = self.client.post("/api/v1/safety-events/ingest", json=third_payload)
         duplicate = self.client.post("/api/v1/safety-events/ingest", json=payload)
         alerts = self.client.get(f"/api/v1/trips/{TRIP_ID}/alerts")
         invalid_alerts = self.client.get("/api/v1/trips/trip-1/alerts")
@@ -178,17 +232,22 @@ class EndToEndWorkflowTest(unittest.TestCase):
         self.assertIsNone(ingested.json()["alert_id"])
         self.assertEqual(second_ingested.status_code, 201)
         self.assertEqual(second_ingested.json()["alert_id"], "alert-1")
+        self.assertEqual(third_ingested.status_code, 201)
+        self.assertEqual(third_ingested.json()["alert_id"], "alert-2")
         self.assertIn("ai-event-1", self.state.events)
+        self.assertEqual(self.state.alerts[0]["status"], "ignored")
+        self.assertEqual(self.state.alerts[1]["linked_event_ids"], ["ai-event-1", "ai-event-2", "ai-event-3"])
         self.assertEqual(duplicate.status_code, 409)
         self.assertEqual(alerts.status_code, 200)
+        self.assertEqual(len(alerts.json()), 1)
         self.assertEqual(alerts.json()[0]["alert_type"], "drowsiness")
-        self.assertEqual(alerts.json()[0]["severity"], "warning")
+        self.assertEqual(alerts.json()[0]["severity"], "critical")
         self.assertEqual(invalid_alerts.status_code, 422)
         self.assertEqual(score.status_code, 200)
         self.assertEqual(score.json()["safety_score"]["alert_count"], 1)
-        self.assertEqual(score.json()["safety_score"]["warning_events"], 1)
-        self.assertEqual(score.json()["safety_score"]["critical_events"], 0)
-        self.assertEqual(score.json()["safety_score"]["score"], 95.0)
+        self.assertEqual(score.json()["safety_score"]["warning_events"], 0)
+        self.assertEqual(score.json()["safety_score"]["critical_events"], 1)
+        self.assertEqual(score.json()["safety_score"]["score"], 90.0)
         self.assertEqual(score.json()["safety_score"]["grade"], "A")
 
 

@@ -227,6 +227,136 @@ class SafetyEventRepository:
         kind: str,
         window_seconds: int,
     ) -> str | None:
+        if kind == "drowsiness":
+            self._lock_aggregation(connection, trip_id=event["trip_id"], kind=kind)
+            alert_id = self._maybe_escalate_drowsiness_alert(connection, event=event)
+            if alert_id is not None:
+                return alert_id
+
+        return self._maybe_create_pair_alert(
+            connection,
+            event=event,
+            kind=kind,
+            window_seconds=window_seconds,
+        )
+
+    def _lock_aggregation(self, connection, *, trip_id: str, kind: str) -> None:
+        connection.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key)::bigint)"),
+            {"lock_key": f"safety-event-aggregation:{trip_id}:{kind}"},
+        )
+
+    def _maybe_escalate_drowsiness_alert(self, connection, *, event: dict[str, Any]) -> str | None:
+        event_types = self._candidate_event_types("drowsiness")
+        warning_row = (
+            connection.execute(
+                text(
+                    """
+                    SELECT a.alert_id
+                    FROM alerts a
+                    JOIN alert_safety_events ase ON ase.alert_id = a.alert_id
+                    JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
+                    WHERE a.trip_id = :trip_id
+                      AND a.alert_type = 'drowsiness'
+                      AND a.severity = 'warning'
+                      AND a.status <> 'ignored'
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM alert_safety_events linked_ase
+                        JOIN safety_events linked_se
+                          ON linked_se.safety_event_id = linked_ase.safety_event_id
+                        WHERE linked_ase.alert_id = a.alert_id
+                          AND linked_se.event_type::text NOT IN :event_types
+                      )
+                    GROUP BY a.alert_id, a.opened_at
+                    HAVING COUNT(*) = 2
+                       AND MIN(se.occurred_at) >= :occurred_at - (:window_seconds * INTERVAL '1 second')
+                       AND MAX(se.occurred_at) <= :occurred_at
+                    ORDER BY MAX(se.occurred_at) DESC, a.opened_at DESC
+                    LIMIT 1
+                    """
+                ).bindparams(bindparam("event_types", expanding=True)),
+                {
+                    "trip_id": event["trip_id"],
+                    "event_types": tuple(event_type.value for event_type in event_types),
+                    "occurred_at": event["occurred_at"],
+                    "window_seconds": DROWSINESS_ESCALATION_WINDOW_SECONDS,
+                },
+            )
+            .mappings()
+            .first()
+        )
+        if warning_row is None:
+            return None
+
+        linked_rows = (
+            connection.execute(
+                text(
+                    """
+                    SELECT
+                        se.safety_event_id,
+                        se.event_type::text AS event_type,
+                        se.occurred_at,
+                        se.confidence,
+                        se.driver_id,
+                        se.vehicle_id
+                    FROM alert_safety_events ase
+                    JOIN safety_events se ON se.safety_event_id = ase.safety_event_id
+                    WHERE ase.alert_id = :alert_id
+                    ORDER BY se.occurred_at ASC, se.created_at ASC
+                    """
+                ),
+                {"alert_id": warning_row["alert_id"]},
+            )
+            .mappings()
+            .all()
+        )
+        if len(linked_rows) != 2:
+            return None
+
+        updated = (
+            connection.execute(
+                text(
+                    """
+                    UPDATE alerts
+                    SET status = 'ignored',
+                        ignored_at = COALESCE(ignored_at, now()),
+                        lifecycle_note = 'Superseded by critical drowsiness escalation.',
+                        updated_at = now()
+                    WHERE alert_id = :alert_id
+                      AND status <> 'ignored'
+                    RETURNING alert_id
+                    """
+                ),
+                {"alert_id": warning_row["alert_id"]},
+            )
+            .mappings()
+            .first()
+        )
+        if updated is None:
+            return None
+
+        rows = list(linked_rows)
+        rows.append(
+            {
+                "safety_event_id": event["safety_event_id"],
+                "event_type": event["event_type"].value,
+                "occurred_at": event["occurred_at"],
+                "confidence": event["confidence"],
+                "driver_id": event["driver_id"],
+                "vehicle_id": event["vehicle_id"],
+            }
+        )
+        return self._insert_aggregated_alert(connection, event=event, kind="drowsiness", severity="critical", rows=rows)
+
+    def _maybe_create_pair_alert(
+        self,
+        connection,
+        *,
+        event: dict[str, Any],
+        kind: str,
+        window_seconds: int,
+    ) -> str | None:
         event_types = self._candidate_event_types(kind)
         rows = (
             connection.execute(
@@ -266,7 +396,17 @@ class SafetyEventRepository:
         if len(rows) < 2:
             return None
 
-        severity = self._aggregated_alert_severity(connection, event=event, kind=kind)
+        return self._insert_aggregated_alert(connection, event=event, kind=kind, severity="warning", rows=rows)
+
+    def _insert_aggregated_alert(
+        self,
+        connection,
+        *,
+        event: dict[str, Any],
+        kind: str,
+        severity: str,
+        rows: list[Any],
+    ) -> str:
         alert_type = "drowsiness"
         alert_row = (
             connection.execute(
@@ -322,31 +462,6 @@ class SafetyEventRepository:
             )
         return alert_id
 
-    def _aggregated_alert_severity(self, connection, *, event: dict[str, Any], kind: str) -> str:
-        if kind != "drowsiness":
-            return "warning"
-        row = (
-            connection.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM alerts
-                    WHERE trip_id = :trip_id
-                      AND alert_type = 'drowsiness'
-                      AND opened_at >= now() - (:window_seconds * INTERVAL '1 second')
-                    ORDER BY opened_at DESC
-                    LIMIT 1
-                    """
-                ),
-                {
-                    "trip_id": event["trip_id"],
-                    "window_seconds": DROWSINESS_ESCALATION_WINDOW_SECONDS,
-                },
-            )
-            .first()
-        )
-        return "critical" if row is not None else "warning"
-
     def _candidate_event_types(self, kind: str) -> set[SafetyEventType]:
         if kind == "drowsiness":
             return {SafetyEventType.DROWSINESS_DETECTED, SafetyEventType.EYES_CLOSED}
@@ -364,6 +479,8 @@ class SafetyEventRepository:
         label = "critical" if severity == "critical" else "warning"
         if kind == "yawning":
             return f"Two separate yawning events were detected within 20 seconds; created a {label} alert."
+        if severity == "critical":
+            return "Three separate drowsiness events were detected within 60 seconds; created a critical alert."
         return f"Two separate drowsiness events were detected within 30 seconds; created a {label} alert."
 
     def _exists(self, table: str, column: str, value: str) -> bool:

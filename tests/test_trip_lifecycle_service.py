@@ -77,6 +77,7 @@ class FakeTripRepository:
         self.driver_active_session = False
         self.driver_active_assignment = False
         self.vehicle_active_assignment = False
+        self.existing_trip_codes = set()
 
     def create_trip(self, **kwargs):
         self.trip = trip(**kwargs, trip_id="trip-2", created_at=NOW, updated_at=NOW)
@@ -100,6 +101,9 @@ class FakeTripRepository:
     def find_by_id(self, trip_id):
         return self.trip if trip_id == self.trip["trip_id"] else None
 
+    def trip_code_exists(self, code):
+        return code in self.existing_trip_codes or self.trip.get("code") == code
+
     def find_driver_by_id(self, driver_id):
         return self.driver if driver_id == self.driver["driver_id"] else None
 
@@ -120,6 +124,8 @@ class FakeTripRepository:
             created_by=created_by,
             actual_start_at=NOW,
         )
+        if code is not None:
+            self.existing_trip_codes.add(code)
         return self.trip
 
     def ensure_active_monitoring_session(self, trip_id):
@@ -373,6 +379,16 @@ class TripLifecycleServiceTest(unittest.TestCase):
         self.assertEqual(started["monitoring_session"]["monitoring_session_id"], "monitoring-1")
         with self.assertRaises(TripConflictError):
             self.service.start_my_trip(StartMyTripRequest(), current_user=self.driver_user)
+
+    def test_driver_trip_code_gets_suffix_when_code_already_exists(self):
+        self.repository.existing_trip_codes.add("DEMO-001")
+
+        started = self.service.start_my_trip(
+            StartMyTripRequest(code="DEMO-001"),
+            current_user=self.driver_user,
+        )
+
+        self.assertEqual(started["code"], "DEMO-001A")
 
     def test_driver_can_read_start_and_complete_only_own_trip(self):
         self.service.assign_trip(

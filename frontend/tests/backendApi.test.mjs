@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  BackendApiError,
   buildSafetySummaryFromTrips,
   createDriver,
   deriveDriverStatuses,
@@ -11,6 +12,7 @@ import {
   mapBackendTripToVehicle,
   normalizeBackendSettings,
   startMyTrip,
+  startOrResumeMyTrip,
   updateDriver,
 } from "../src/app/services/backendApi.ts";
 
@@ -220,6 +222,95 @@ test("startMyTrip sends optional trip fields", async () => {
     origin: "Garage",
     destination: "Depot",
   });
+});
+
+test("startMyTrip preserves backend error details", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: "Driver already has an active trip." }), {
+    status: 409,
+    headers: { "Content-Type": "application/json" },
+  });
+
+  try {
+    await assert.rejects(
+      () => startMyTrip({ code: "DEMO-409" }),
+      (error) => {
+        assert.ok(error instanceof BackendApiError);
+        assert.equal(error.status, 409);
+        assert.equal(error.detail, "Driver already has an active trip.");
+        assert.equal(error.message, "Driver already has an active trip.");
+        assert.equal(error.path, "/trips/start-my-trip");
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("startOrResumeMyTrip resumes an already active trip before posting", async () => {
+  const requests = [];
+  const activeTrip = { trip_id: "trip-active", status: "in_progress", code: "ACTIVE-001" };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url, init });
+    return new Response(JSON.stringify({ trips: [activeTrip] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await startOrResumeMyTrip({ code: "NEW-001" });
+    assert.equal(result.resumed, true);
+    assert.equal(result.trip.trip_id, "trip-active");
+    assert.deepEqual(result.trips, [activeTrip]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, "/api/v1/trips/my");
+});
+
+test("startOrResumeMyTrip recovers when backend reports active trip conflict", async () => {
+  const requests = [];
+  const activeTrip = { trip_id: "trip-recovered", status: "in_progress", code: "ACTIVE-002" };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url, init });
+    if (url === "/api/v1/trips/my" && requests.filter((request) => request.url === "/api/v1/trips/my").length === 1) {
+      return new Response(JSON.stringify({ trips: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (url === "/api/v1/trips/start-my-trip") {
+      return new Response(JSON.stringify({ detail: "Driver already has an active trip." }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ trips: [activeTrip] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await startOrResumeMyTrip({ code: "NEW-002" });
+    assert.equal(result.resumed, true);
+    assert.equal(result.trip.trip_id, "trip-recovered");
+    assert.deepEqual(result.trips, [activeTrip]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(requests.map((request) => request.url), [
+    "/api/v1/trips/my",
+    "/api/v1/trips/start-my-trip",
+    "/api/v1/trips/my",
+  ]);
 });
 
 test("createDriver sends optional management fields", async () => {

@@ -11,6 +11,9 @@ from backend.services.safety_service import calculate_safety_score, safety_grade
 from backend.services.safety_policy import CRITICAL_ALERT_PENALTY, WARNING_ALERT_PENALTY
 
 
+TRIP_CODE_MAX_LENGTH = 50
+
+
 class TripNotFoundError(Exception):
     """Raised when a trip cannot be found."""
 
@@ -94,8 +97,9 @@ class TripLifecycleService:
         if self.trip_repository.find_active_trip_for_user(user_id=user_id, driver_email=email):
             raise TripConflictError("Driver already has an active trip.")
         try:
+            code = self._available_trip_code(payload.code)
             trip = self.trip_repository.create_active_trip_for_user(
-                code=payload.code,
+                code=code,
                 origin=payload.origin,
                 destination=payload.destination,
                 created_by=user_id,
@@ -280,6 +284,31 @@ class TripLifecycleService:
             "total_alerts_count": counts["alert_count"],
             "critical_alerts_count": counts["critical_events"],
         }
+
+    def _available_trip_code(self, code: str | None) -> str | None:
+        if code is None:
+            return None
+        normalized = code.strip()
+        if not normalized:
+            return None
+        if not self.trip_repository.trip_code_exists(normalized):
+            return normalized
+        for index in range(1, 703):
+            candidate = self._append_trip_code_suffix(normalized, index)
+            if not self.trip_repository.trip_code_exists(candidate):
+                return candidate
+        raise TripConflictError("Trip code already exists.")
+
+    @staticmethod
+    def _append_trip_code_suffix(code: str, index: int) -> str:
+        suffix = ""
+        value = index
+        while value > 0:
+            value -= 1
+            suffix = f"{chr(ord('A') + (value % 26))}{suffix}"
+            value //= 26
+        base = code[: TRIP_CODE_MAX_LENGTH - len(suffix)]
+        return f"{base}{suffix}"
 
     def _validate_transition(self, current: TripStatus, requested: TripStatus) -> None:
         if requested not in ALLOWED_TRANSITIONS[current]:

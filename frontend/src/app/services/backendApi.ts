@@ -88,6 +88,12 @@ export interface StartMyTripPayload {
   destination?: string;
 }
 
+export interface StartMyTripResult {
+  trip: BackendTrip;
+  trips: BackendTrip[];
+  resumed: boolean;
+}
+
 export interface BackendSettings {
   setting_id?: string;
   scope?: string;
@@ -415,6 +421,40 @@ interface JsonRequestInit {
   headers?: Record<string, string>;
 }
 
+export class BackendApiError extends Error {
+  status: number;
+  detail: string;
+  path: string;
+
+  constructor({ status, detail, path }: { status: number; detail: string; path: string }) {
+    super(detail || `Backend request failed: ${status}`);
+    this.name = "BackendApiError";
+    this.status = status;
+    this.detail = detail;
+    this.path = path;
+  }
+}
+
+function backendErrorDetail(input: unknown, fallback: string): string {
+  if (input && typeof input === "object" && "detail" in input) {
+    const detail = (input as { detail?: unknown }).detail;
+    if (typeof detail === "string" && detail.trim() !== "") return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail
+        .map((item) => {
+          if (item && typeof item === "object" && "msg" in item) {
+            const message = (item as { msg?: unknown }).msg;
+            return typeof message === "string" ? message : "";
+          }
+          return typeof item === "string" ? item : "";
+        })
+        .filter(Boolean)
+        .join("; ") || fallback;
+    }
+  }
+  return fallback;
+}
+
 async function requestJson<T>(path: string, init?: JsonRequestInit): Promise<T> {
   const controller = new AbortController();
   const timeoutId = globalThis.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
@@ -438,7 +478,17 @@ async function requestJson<T>(path: string, init?: JsonRequestInit): Promise<T> 
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);
       window.dispatchEvent(new Event("drowsiness:unauthorized"));
     }
-    throw new Error(`Backend request failed: ${response.status}`);
+    let errorBody: unknown;
+    try {
+      errorBody = await response.json();
+    } catch {
+      errorBody = null;
+    }
+    throw new BackendApiError({
+      status: response.status,
+      detail: backendErrorDetail(errorBody, `Backend request failed: ${response.status}`),
+      path,
+    });
   }
   return (await response.json()) as T;
 }
@@ -527,6 +577,39 @@ export async function startMyTrip(payload: StartMyTripPayload = {}): Promise<Bac
     method: "POST",
     body: JSON.stringify(compactOptionalTextPayload(payload)),
   });
+}
+
+export function findActiveTrip(trips: BackendTrip[]): BackendTrip | null {
+  return trips.find((trip) => trip.status === "in_progress") ?? null;
+}
+
+export function isDriverActiveTripConflict(error: unknown): boolean {
+  return (
+    error instanceof BackendApiError
+    && error.status === 409
+    && error.detail.toLocaleLowerCase().includes("driver already has an active trip")
+  );
+}
+
+export async function startOrResumeMyTrip(payload: StartMyTripPayload = {}): Promise<StartMyTripResult> {
+  const existingTrips = await fetchMyTrips();
+  const existingActiveTrip = findActiveTrip(existingTrips);
+  if (existingActiveTrip) {
+    return { trip: existingActiveTrip, trips: existingTrips, resumed: true };
+  }
+
+  try {
+    const trip = await startMyTrip(payload);
+    return { trip, trips: [trip, ...existingTrips.filter((item) => item.trip_id !== trip.trip_id)], resumed: false };
+  } catch (error) {
+    if (!isDriverActiveTripConflict(error)) throw error;
+    const recoveredTrips = await fetchMyTrips();
+    const recoveredActiveTrip = findActiveTrip(recoveredTrips);
+    if (recoveredActiveTrip) {
+      return { trip: recoveredActiveTrip, trips: recoveredTrips, resumed: true };
+    }
+    throw error;
+  }
 }
 
 export async function completeTrip(tripId: string): Promise<BackendTrip> {

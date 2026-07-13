@@ -82,6 +82,7 @@ def end_trip(trip_id):
             COUNT(*) FILTER (WHERE severity = 'critical') AS critical_alerts
         FROM alerts
         WHERE trip_id=%s
+          AND status <> 'ignored'
     """,(trip_id,))
 
     count_row=cur.fetchone()

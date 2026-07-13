@@ -42,7 +42,7 @@ class FakeSafetyEventRepository:
         self.raise_duplicate = False
         self.ingested = []
         self.unlinked_candidates = {"drowsiness": [], "yawning": []}
-        self.last_drowsiness_alert_at = None
+        self.active_drowsiness_warning = None
         self.alerts = []
 
     def trip_exists(self, trip_id):
@@ -85,14 +85,37 @@ class FakeSafetyEventRepository:
             ]
             if len(candidates) >= 2:
                 severity = "warning"
-                if aggregation_kind == "drowsiness" and self.last_drowsiness_alert_at is not None:
-                    if (occurred_at - self.last_drowsiness_alert_at).total_seconds() <= 60:
-                        severity = "critical"
-                if aggregation_kind == "drowsiness":
-                    self.last_drowsiness_alert_at = occurred_at
-                self.alerts.append({"kind": aggregation_kind, "severity": severity})
+                linked_event_ids = [candidate["event_id"] for candidate in candidates[:2]]
+                self.alerts.append({
+                    "kind": aggregation_kind,
+                    "severity": severity,
+                    "status": "open",
+                    "linked_event_ids": linked_event_ids,
+                })
                 alert_id = f"alert-{len(self.alerts)}"
+                if aggregation_kind == "drowsiness":
+                    self.active_drowsiness_warning = self.alerts[-1]
                 del candidates[:2]
+            if aggregation_kind == "drowsiness" and alert_id is None and self.active_drowsiness_warning:
+                linked_events = [
+                    ingested
+                    for ingested, _, _ in self.ingested
+                    if ingested["event_id"] in self.active_drowsiness_warning["linked_event_ids"]
+                ]
+                if linked_events:
+                    first_occurred_at = min(self._occurred_at(linked_event) for linked_event in linked_events)
+                    if (occurred_at - first_occurred_at).total_seconds() <= 60:
+                        self.active_drowsiness_warning["status"] = "ignored"
+                        linked_event_ids = [*self.active_drowsiness_warning["linked_event_ids"], data["event_id"]]
+                        self.alerts.append({
+                            "kind": aggregation_kind,
+                            "severity": "critical",
+                            "status": "open",
+                            "linked_event_ids": linked_event_ids,
+                        })
+                        alert_id = f"alert-{len(self.alerts)}"
+                        candidates.clear()
+                    self.active_drowsiness_warning = None
         return {
             **data,
             "safety_event_id": "safety-event-1",
@@ -142,12 +165,11 @@ class SafetyEventServiceTest(unittest.TestCase):
         self.assertEqual(second["alert_id"], "alert-1")
         self.assertEqual(self.repository.alerts[0]["severity"], "warning")
 
-    def test_drowsiness_escalates_when_next_alert_is_within_60_seconds(self):
+    def test_third_drowsiness_event_supersedes_warning_with_critical(self):
         times = [
             NOW,
             NOW + timedelta(seconds=10),
             NOW + timedelta(seconds=30),
-            NOW + timedelta(seconds=40),
         ]
 
         results = [
@@ -158,8 +180,10 @@ class SafetyEventServiceTest(unittest.TestCase):
         ]
 
         self.assertEqual(results[1]["alert_id"], "alert-1")
-        self.assertEqual(results[3]["alert_id"], "alert-2")
+        self.assertEqual(results[2]["alert_id"], "alert-2")
         self.assertEqual([alert["severity"] for alert in self.repository.alerts], ["warning", "critical"])
+        self.assertEqual([alert["status"] for alert in self.repository.alerts], ["ignored", "open"])
+        self.assertEqual(self.repository.alerts[1]["linked_event_ids"], ["event-0", "event-1", "event-2"])
 
     def test_drowsiness_escalation_resets_after_60_seconds(self):
         times = [

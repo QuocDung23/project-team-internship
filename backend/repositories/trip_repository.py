@@ -204,6 +204,24 @@ class TripRepository:
         trip = _row_to_trip(row)
         return self._with_latest_assignment(trip) if trip else None
 
+    def trip_code_exists(self, code: str) -> bool:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT 1
+                        FROM trips
+                        WHERE code = :code
+                        LIMIT 1
+                        """
+                    ),
+                    {"code": code},
+                )
+                .first()
+            )
+        return row is not None
+
     def create_trip(
         self,
         *,
@@ -863,6 +881,7 @@ class TripRepository:
                             COUNT(*) FILTER (WHERE severity = 'critical') AS critical_alerts
                         FROM alerts
                         WHERE trip_id = :trip_id
+                          AND status <> 'ignored'
                         """
                     ),
                     {"trip_id": trip_id},
