@@ -1,19 +1,13 @@
 import { FormEvent, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { AdminDialog } from "../component/admin/AdminDialog";
 import { AdminErrorBanner, AdminPage } from "../component/admin/AdminShell";
+import DriverDialogFooter from "../component/drivers/DriverDialogFooter";
 import DriverFilters from "../component/drivers/DriverFilters";
+import DriverFormSections from "../component/drivers/DriverFormSections";
 import DriverStatsBar from "../component/drivers/DriverStatsBar";
 import DriverTable from "../component/drivers/DriverTable";
-import DriverFormSections from "../component/drivers/DriverFormSections";
 import DriversHeroPanel from "../component/drivers/DriversHeroPanel";
-import DriverDialogFooter from "../component/drivers/DriverDialogFooter";
-import {
-  EMPTY_FORM,
-  SPRING,
-  driverFormFromBackend,
-  type DriverFormState,
-} from "../utils/drivers/driverFormHelpers";
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useBackendDrivers, useBackendTrips } from "../hook/useBackendData";
 import {
@@ -27,10 +21,17 @@ import type {
   DriverStats,
   DriverStatusFilter,
 } from "../types/drivers";
+import {
+  EMPTY_FORM,
+  SPRING,
+  driverFormFromBackend,
+  type DriverFormState,
+} from "../utils/drivers/driverFormHelpers";
 
-export default function DriversPage() {
+function DriversPage() {
   const backendDrivers = useBackendDrivers();
   const backendTrips = useBackendTrips(false);
+  const allDriverAlerts = useBackendAlerts(undefined, { status: "all" });
   const [search, setSearch] = useState("");
   const [eyeFilter, setEyeFilter] = useState<DriverEyeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<DriverStatusFilter>("all");
@@ -62,18 +63,22 @@ export default function DriversPage() {
 
   const filtered = useMemo(
     () =>
-      allDrivers.filter((d) => {
+      allDrivers.filter((driver) => {
         const needle = search.trim().toLowerCase();
         if (
           needle &&
-          !d.name.toLowerCase().includes(needle) &&
-          !d.id.toLowerCase().includes(needle) &&
-          !d.licensePlate.toLowerCase().includes(needle)
+          !driver.name.toLowerCase().includes(needle) &&
+          !driver.id.toLowerCase().includes(needle) &&
+          !driver.driverCode.toLowerCase().includes(needle) &&
+          !driver.licenseNumber.toLowerCase().includes(needle) &&
+          !driver.licensePlate.toLowerCase().includes(needle) &&
+          !driver.email.toLowerCase().includes(needle) &&
+          !driver.phone.toLowerCase().includes(needle)
         ) {
           return false;
         }
-        if (eyeFilter !== "all" && d.eyeState !== eyeFilter) return false;
-        if (statusFilter !== "all" && d.status !== statusFilter) return false;
+        if (eyeFilter !== "all" && driver.eyeState !== eyeFilter) return false;
+        if (statusFilter !== "all" && driver.status !== statusFilter) return false;
         return true;
       }),
     [allDrivers, search, eyeFilter, statusFilter],
@@ -82,13 +87,12 @@ export default function DriversPage() {
   const stats: DriverStats = useMemo(
     () => ({
       total: allDrivers.length,
-      driving: allDrivers.filter((d) => d.status === "driving").length,
-      idle: allDrivers.filter((d) => d.status === "idle").length,
-      disable: allDrivers.filter((d) => d.status === "disable").length,
-      eyesOpen: allDrivers.filter((d) => d.eyeState === "open").length,
-      eyesClosed: allDrivers.filter((d) => d.eyeState === "closed").length,
-      yawning: allDrivers.filter((d) => d.eyeState === "yawning").length,
-      onPhone: allDrivers.filter((d) => d.onPhone).length,
+      driving: allDrivers.filter((driver) => driver.status === "driving").length,
+      idle: allDrivers.filter((driver) => driver.status === "idle").length,
+      disable: allDrivers.filter((driver) => driver.status === "disable").length,
+      eyesOpen: allDrivers.filter((driver) => driver.eyeState === "open").length,
+      eyesClosed: allDrivers.filter((driver) => driver.eyeState === "closed").length,
+      yawning: allDrivers.filter((driver) => driver.eyeState === "yawning").length,
     }),
     [allDrivers],
   );
@@ -113,6 +117,10 @@ export default function DriversPage() {
   const selectedDriverSafety = useMemo(
     () => buildSafetySummaryFromTrips(selectedDriverTrips),
     [selectedDriverTrips],
+  );
+  const isDrivingForSelected = useMemo(
+    () => allDrivers.find((driver) => driver.id === selectedDriverId)?.status === "driving",
+    [allDrivers, selectedDriverId],
   );
 
   const openCreateDialog = () => {
@@ -210,26 +218,15 @@ export default function DriversPage() {
         total={stats.total}
         driving={stats.driving}
         idle={stats.idle}
-        onPhone={stats.onPhone}
         disable={stats.disable}
         onAdd={openCreateDialog}
       />
-
-      <AdminErrorBanner
-        label="Drivers unavailable"
-        message={backendDrivers.error}
-      />
-      <AdminErrorBanner
-        label="Trips unavailable"
-        message={backendTrips.error}
-      />
-      <AdminErrorBanner
-        label="Driver alerts unavailable"
-        message={selectedDriverAlerts.error}
-      />
+      <AdminErrorBanner label="Drivers unavailable" message={backendDrivers.error} />
+      <AdminErrorBanner label="Trips unavailable" message={backendTrips.error} />
+      <AdminErrorBanner label="Alerts unavailable" message={allDriverAlerts.error} />
+      <AdminErrorBanner label="Driver alerts unavailable" message={selectedDriverAlerts.error} />
 
       <DriverStatsBar stats={stats} />
-
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -262,14 +259,12 @@ export default function DriversPage() {
       <AnimatePresence>
         {dialogOpen ? (
           <AdminDialog
-            title={
-              dialogMode === "manage" ? "Quản lý tài xế" : "Tạo tài xế mới"
-            }
+            title={dialogMode === "manage" ? "Quan ly tai xe" : "Tao tai xe moi"}
             width={dialogMode === "manage" ? "lg" : "md"}
             description={
               dialogMode === "manage"
-                ? "Cập nhật thông tin hồ sơ và trạng thái hoạt động của tài xế."
-                : "Tạo hồ sơ tài xế để gán ca và giám sát hoạt động."
+                ? "Cap nhat thong tin ho so va trang thai hoat dong cua tai xe."
+                : "Tao ho so tai xe de gan ca va giam sat hoat dong."
             }
             onClose={closeDialog}
             footer={
@@ -285,9 +280,7 @@ export default function DriversPage() {
               form={form}
               setForm={setForm}
               isDrivingForSelected={isDrivingForSelected}
-              selectedBackendDriverStatus={
-                selectedBackendDriver?.status ?? undefined
-              }
+              selectedBackendDriverStatus={selectedBackendDriver?.status ?? undefined}
               selectedDriverId={selectedDriverId}
               selectedDriverTrips={selectedDriverTrips}
               selectedDriverAlerts={selectedDriverAlerts.fleetEvents ?? []}
@@ -304,3 +297,5 @@ export default function DriversPage() {
     </AdminPage>
   );
 }
+
+export default DriversPage;

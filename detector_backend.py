@@ -136,13 +136,18 @@ def post_alert_or_queue(
     return True
 
 
-def fetch_trip_settings(
+def _get_json(
     backend_url: str,
-    trip_id: str,
-    timeout: float = 2.0,
+    path: str,
+    timeout: float,
+    auth_token: str = "",
 ) -> Dict[str, Any]:
+    headers = {}
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
     req = urllib.request.Request(
-        _url(backend_url, f"/trips/{urllib.request.quote(str(trip_id))}/settings"),
+        _url(backend_url, path),
+        headers=headers,
         method="GET",
     )
     with urllib.request.urlopen(req, timeout=max(0.1, float(timeout))) as resp:
@@ -150,6 +155,28 @@ def fetch_trip_settings(
             raise urllib.error.URLError(f"HTTP {resp.status}")
         body = resp.read()
     return json.loads(body.decode("utf-8")) if body else {}
+
+
+def fetch_global_settings(
+    backend_url: str,
+    timeout: float = 2.0,
+    auth_token: str = "",
+) -> Dict[str, Any]:
+    return _get_json(backend_url, "/settings", timeout, auth_token=auth_token)
+
+
+def fetch_trip_settings(
+    backend_url: str,
+    trip_id: str,
+    timeout: float = 2.0,
+    auth_token: str = "",
+) -> Dict[str, Any]:
+    return _get_json(
+        backend_url,
+        f"/trips/{urllib.request.quote(str(trip_id))}/settings",
+        timeout,
+        auth_token=auth_token,
+    )
 
 
 def build_alert_frame_path(alert_frame_dir: str, alert_type: str, now: Optional[float] = None) -> Optional[str]:

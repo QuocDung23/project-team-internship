@@ -8,6 +8,7 @@ import type { ClientSafetyEvent } from "../types/monitoring";
 
 export interface BackendDriver {
   driver_id: string;
+  driver_code?: string | null;
   full_name: string;
   license_number: string;
   phone?: string | null;
@@ -56,6 +57,8 @@ export interface BackendTrip {
   planned_start_at?: string | null;
   end_time?: string | null;
   actual_end_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   origin?: string | null;
   destination?: string | null;
   status: string;
@@ -85,9 +88,17 @@ export interface StartMyTripPayload {
   destination?: string;
 }
 
+export interface StartMyTripResult {
+  trip: BackendTrip;
+  trips: BackendTrip[];
+  resumed: boolean;
+}
+
 export interface BackendSettings {
   setting_id?: string;
   scope?: string;
+  alarm_sound_id?: string;
+  alarm_sound_catalog?: AlarmSoundOption[];
   ear_threshold: number;
   ear_consec_frames: number;
   cnn_confidence_threshold: number;
@@ -104,6 +115,13 @@ export interface BackendSettings {
   safety_grade_a_min_score?: number;
   safety_grade_b_min_score?: number;
   extra_config?: Record<string, unknown>;
+}
+
+export interface AlarmSoundOption {
+  id: string;
+  label: string;
+  browser_path: string;
+  runtime_path: string;
 }
 
 export interface BackendMonitoringSnapshot {
@@ -229,11 +247,15 @@ export function mapBackendDriverToDriver(input: BackendDriver): Driver {
   const alerts = asNumber(input.total_alerts_count, 0);
   const status = backendStatusToDriver(input.status);
   const ear = asNumber(input.baseline_ear, 0.3);
+  const fallbackCode = asString(input.driver_id, "driver").slice(0, 8).toUpperCase();
   return {
     id: asString(input.driver_id, "driver"),
+    driverCode: asString(input.driver_code, fallbackCode),
     name: asString(input.full_name, "Unknown driver"),
+    email: asString(input.email, "-"),
     phone: asString(input.phone, "-"),
-    licensePlate: asString(input.license_number, "-"),
+    licenseNumber: asString(input.license_number, "-"),
+    licensePlate: "Unassigned",
     team: "Backend",
     status,
     ear,
@@ -241,6 +263,7 @@ export function mapBackendDriverToDriver(input: BackendDriver): Driver {
     position: { lat: 0, lng: 0 },
     lastUpdate: Date.now(),
     totalAlerts: alerts,
+    criticalAlerts: 0,
     onPhone: false,
     seatbelt: true,
   };
@@ -289,14 +312,26 @@ function activeTripDriverId(trip: BackendTrip): string | null {
 }
 
 export function deriveDriverStatuses(drivers: Driver[], trips: BackendTrip[]): Driver[] {
-  const drivingDriverIds = new Set(
-    trips.map(activeTripDriverId).filter((driverId): driverId is string => Boolean(driverId)),
-  );
   return drivers.map((driver) => {
-    if (driver.status === "disable") return driver;
+    const linkedTrips = getTripsForDriver(driver.id, trips);
+    const activeTrip = linkedTrips.find((trip) => trip.status === "in_progress");
+    const vehiclePlate = displayVehiclePlate(activeTrip ?? latestTripWithPlate(linkedTrips));
+    const totalAlerts = linkedTrips.reduce((sum, trip) => sum + asNumber(trip.total_alerts_count, 0), 0);
+    const criticalAlerts = linkedTrips.reduce((sum, trip) => sum + asNumber(trip.critical_alerts_count, 0), 0);
+    if (driver.status === "disable") {
+      return {
+        ...driver,
+        licensePlate: vehiclePlate,
+        totalAlerts,
+        criticalAlerts,
+      };
+    }
     return {
       ...driver,
-      status: drivingDriverIds.has(driver.id) ? "driving" : "idle",
+      status: activeTrip && activeTripDriverId(activeTrip) === driver.id ? "driving" : "idle",
+      licensePlate: vehiclePlate,
+      totalAlerts,
+      criticalAlerts,
     };
   });
 }
@@ -306,6 +341,33 @@ export function getTripsForDriver(driverId: string | null | undefined, trips: Ba
   return trips.filter((trip) => (
     trip.driver_id === driverId || trip.assignment?.driver_id === driverId
   ));
+}
+
+function latestTripWithPlate(trips: BackendTrip[]): BackendTrip | null {
+  const datedTrips = trips
+    .filter((trip) => Boolean(trip.vehicle_plate))
+    .map((trip) => ({ trip, time: tripTime(trip) }))
+    .sort((a, b) => b.time - a.time);
+  return datedTrips[0]?.trip ?? null;
+}
+
+function tripTime(trip: BackendTrip): number {
+  const raw = trip.actual_start_at ?? trip.planned_start_at ?? trip.actual_end_at ?? trip.updated_at ?? trip.created_at;
+  const parsed = raw ? Date.parse(raw) : NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function displayVehiclePlate(trip: BackendTrip | null): string {
+  return formatVietnamesePlate(trip?.vehicle_plate) ?? "Unassigned";
+}
+
+export function formatVietnamesePlate(value: string | null | undefined): string | null {
+  const raw = value?.trim().toUpperCase();
+  if (!raw) return null;
+  const compact = raw.replace(/[^0-9A-Z]/g, "");
+  const match = compact.match(/^(\d{2})([A-Z]{1,2})(\d{3})(\d{2})$/);
+  if (!match) return raw;
+  return `${match[1]}${match[2]}-${match[3]}.${match[4]}`;
 }
 
 export interface SafetySummary {
@@ -340,9 +402,20 @@ export function buildSafetySummaryFromTrips(trips: BackendTrip[]): SafetySummary
 }
 
 export function normalizeBackendSettings(input: Partial<BackendSettings>): BackendSettings {
+  const fallbackSoundCatalog: AlarmSoundOption[] = [
+    { id: "classic", label: "Classic alarm", browser_path: "/alert.wav", runtime_path: "audio/alert.wav" },
+    { id: "soft", label: "Soft chime", browser_path: "/alert-soft.wav", runtime_path: "audio/alert-soft.wav" },
+    { id: "urgent", label: "Urgent pulse", browser_path: "/alert-urgent.wav", runtime_path: "audio/alert-urgent.wav" },
+  ];
+  const soundCatalog = Array.isArray(input.alarm_sound_catalog) && input.alarm_sound_catalog.length > 0
+    ? input.alarm_sound_catalog
+    : fallbackSoundCatalog;
+  const soundId = asString(input.alarm_sound_id, asString(input.extra_config?.alarm_sound_id, "classic"));
   return {
     setting_id: input.setting_id,
     scope: input.scope,
+    alarm_sound_id: soundCatalog.some((sound) => sound.id === soundId) ? soundId : "classic",
+    alarm_sound_catalog: soundCatalog,
     ear_threshold: asNumber(input.ear_threshold, 0.3),
     ear_consec_frames: asNumber(input.ear_consec_frames, 15),
     cnn_confidence_threshold: asNumber(input.cnn_confidence_threshold, 0.8),
@@ -354,9 +427,9 @@ export function normalizeBackendSettings(input: Partial<BackendSettings>): Backe
     camera_index: asNumber(input.camera_index, 0),
     frame_width: asNumber(input.frame_width, 640),
     frame_height: asNumber(input.frame_height, 480),
-    warning_alert_penalty: asNumber(input.warning_alert_penalty, 3),
-    critical_alert_penalty: asNumber(input.critical_alert_penalty, 8),
-    safety_grade_a_min_score: asNumber(input.safety_grade_a_min_score, 85),
+    warning_alert_penalty: 5,
+    critical_alert_penalty: 10,
+    safety_grade_a_min_score: asNumber(input.safety_grade_a_min_score, 80),
     safety_grade_b_min_score: asNumber(input.safety_grade_b_min_score, 60),
     extra_config: input.extra_config ?? {},
   };
@@ -366,6 +439,40 @@ interface JsonRequestInit {
   method?: string;
   body?: string;
   headers?: Record<string, string>;
+}
+
+export class BackendApiError extends Error {
+  status: number;
+  detail: string;
+  path: string;
+
+  constructor({ status, detail, path }: { status: number; detail: string; path: string }) {
+    super(detail || `Backend request failed: ${status}`);
+    this.name = "BackendApiError";
+    this.status = status;
+    this.detail = detail;
+    this.path = path;
+  }
+}
+
+function backendErrorDetail(input: unknown, fallback: string): string {
+  if (input && typeof input === "object" && "detail" in input) {
+    const detail = (input as { detail?: unknown }).detail;
+    if (typeof detail === "string" && detail.trim() !== "") return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail
+        .map((item) => {
+          if (item && typeof item === "object" && "msg" in item) {
+            const message = (item as { msg?: unknown }).msg;
+            return typeof message === "string" ? message : "";
+          }
+          return typeof item === "string" ? item : "";
+        })
+        .filter(Boolean)
+        .join("; ") || fallback;
+    }
+  }
+  return fallback;
 }
 
 async function requestJson<T>(path: string, init?: JsonRequestInit): Promise<T> {
@@ -391,7 +498,17 @@ async function requestJson<T>(path: string, init?: JsonRequestInit): Promise<T> 
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);
       window.dispatchEvent(new Event("drowsiness:unauthorized"));
     }
-    throw new Error(`Backend request failed: ${response.status}`);
+    let errorBody: unknown;
+    try {
+      errorBody = await response.json();
+    } catch {
+      errorBody = null;
+    }
+    throw new BackendApiError({
+      status: response.status,
+      detail: backendErrorDetail(errorBody, `Backend request failed: ${response.status}`),
+      path,
+    });
   }
   return (await response.json()) as T;
 }
@@ -480,6 +597,39 @@ export async function startMyTrip(payload: StartMyTripPayload = {}): Promise<Bac
     method: "POST",
     body: JSON.stringify(compactOptionalTextPayload(payload)),
   });
+}
+
+export function findActiveTrip(trips: BackendTrip[]): BackendTrip | null {
+  return trips.find((trip) => trip.status === "in_progress") ?? null;
+}
+
+export function isDriverActiveTripConflict(error: unknown): boolean {
+  return (
+    error instanceof BackendApiError
+    && error.status === 409
+    && error.detail.toLocaleLowerCase().includes("driver already has an active trip")
+  );
+}
+
+export async function startOrResumeMyTrip(payload: StartMyTripPayload = {}): Promise<StartMyTripResult> {
+  const existingTrips = await fetchMyTrips();
+  const existingActiveTrip = findActiveTrip(existingTrips);
+  if (existingActiveTrip) {
+    return { trip: existingActiveTrip, trips: existingTrips, resumed: true };
+  }
+
+  try {
+    const trip = await startMyTrip(payload);
+    return { trip, trips: [trip, ...existingTrips.filter((item) => item.trip_id !== trip.trip_id)], resumed: false };
+  } catch (error) {
+    if (!isDriverActiveTripConflict(error)) throw error;
+    const recoveredTrips = await fetchMyTrips();
+    const recoveredActiveTrip = findActiveTrip(recoveredTrips);
+    if (recoveredActiveTrip) {
+      return { trip: recoveredActiveTrip, trips: recoveredTrips, resumed: true };
+    }
+    throw error;
+  }
 }
 
 export async function completeTrip(tripId: string): Promise<BackendTrip> {

@@ -22,38 +22,33 @@ function DriverTable({
   return (
     <div className="panel flex flex-1 flex-col gap-0 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-[12px]">
+        <table className="w-full min-w-[920px] text-left text-[12px]">
           <thead className="sticky top-0 z-10 border-b border-hairline bg-surface-1 text-[10px] uppercase tracking-wider text-zinc-500">
             <tr>
-              <th className="py-2 px-3 font-medium">Mã</th>
-              <th className="py-2 pr-3 font-medium">Tài xế</th>
-              <th className="py-2 pr-3 font-medium">Biển số</th>
-              <th className="py-2 pr-3 font-medium">Khu vực</th>
-              <th className="py-2 pr-3 font-medium">EAR</th>
-              <th className="py-2 pr-3 font-medium">Trạng thái</th>
-              <th className="py-2 pr-3 font-medium">Cờ</th>
-              <th className="py-2 pr-3 font-medium">Cảnh báo</th>
-              <th className="py-2 pr-3 font-medium">Điện thoại</th>
-              <th className="py-2 pl-3 font-medium">Cập nhật</th>
-              <th className="py-2 pl-3 font-medium">Actions</th>
+              <th className="px-4 py-3 font-medium">Driver</th>
+              <th className="py-3 pr-4 font-medium">Vehicle plate</th>
+              <th className="py-3 pr-4 font-medium">Status</th>
+              <th className="py-3 pr-4 font-medium">Alerts</th>
+              <th className="py-3 pr-4 font-medium">Contact</th>
+              <th className="py-3 pl-3 pr-4 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline/50">
             {drivers.length === 0 ? (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={6}
                   className="py-12 text-center text-[12px] text-zinc-500"
                 >
-                  Không tìm thấy tài xế nào phù hợp
+                  No matching drivers found.
                 </td>
               </tr>
             ) : (
-              drivers.map((d) => (
+              drivers.map((driver) => (
                 <DriverRow
-                  key={d.id}
-                  driver={d}
-                  isUpdating={updatingDriverId === d.id}
+                  key={driver.id}
+                  driver={driver}
+                  isUpdating={updatingDriverId === driver.id}
                   onSelect={onSelectDriver}
                   onSetAvailability={onSetAvailability}
                 />
@@ -62,15 +57,15 @@ function DriverTable({
           </tbody>
         </table>
       </div>
-      <div className="border-t border-hairline px-4 py-2 text-[10px] text-zinc-500">
-        Hiển thị {drivers.length} / {totalCount} tài xế
+      <div className="border-t border-hairline px-4 py-3 text-[11px] text-zinc-500">
+        Showing {drivers.length} / {totalCount} drivers
         {filteredOut && (
           <button
             type="button"
             onClick={onClearFilters}
             className="ml-2 text-emerald-400 hover:text-emerald-300"
           >
-            Xoá bộ lọc
+            Clear filters
           </button>
         )}
       </div>

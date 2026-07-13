@@ -17,6 +17,7 @@ NOW = datetime.now(timezone.utc)
 def driver_response(**overrides):
     data = {
         "driver_id": "driver-1",
+        "driver_code": "DRV-001",
         "full_name": "Dana Driver",
         "license_number": "LIC-001",
         "phone": None,
@@ -121,6 +122,7 @@ class DriverApiTest(unittest.TestCase):
         listed = self.client.get("/api/v1/drivers")
 
         self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.json()["driver_code"], "DRV-001")
         self.assertEqual(created.json()["full_name"], "Dana Driver")
         self.assertNotIn("password", created.json())
         self.assertEqual(listed.status_code, 200)

@@ -46,6 +46,7 @@ from ai_runtime.publishers import (
     LocalJsonlPublisher,
 )
 from ai_runtime.monitoring_publisher import AsyncMonitoringPublisher
+from detector_backend import fetch_global_settings, fetch_trip_settings
 
 
 _shutdown_requested = False
@@ -282,6 +283,8 @@ EAR_CONSEC_FRAMES = 20          # [FIX-2] cũ: 40 → quá cao, mắt nhắm lâ
 # MAR (ngáp)
 MAR_THRESHOLD = 0.55
 MAR_CONSEC_FRAMES = 8           # [FIX-4] cũ: 12 → chậm
+YAWN_EVENT_MAR_THRESHOLD = 0.8
+DROWSINESS_EVENT_MIN_SECONDS = 2.0
 
 # Head pose — chỉ báo khi THỰC SỰ cúi đầu (pitch âm = cúi)
 # [FIX-1] Dùng pitch đã normalize, không dùng abs().
@@ -318,8 +321,90 @@ FACE_CHANGE_AREA_RATIO = 0.55  # hoặc diện tích mặt mới <55% hoặc > (
 CALIBRATION_FRAMES = 75
 
 # [FIX-3] Resize frame xuống 480p để giảm tải dlib + solvePnP
-PROCESS_WIDTH = int(ARGS.process_width)
-PROCESS_HEIGHT = int(ARGS.process_height)
+ALARM_SOUND_FILES = {
+    "classic": "audio/alert.wav",
+    "soft": "audio/alert-soft.wav",
+    "urgent": "audio/alert-urgent.wav",
+}
+
+
+def _sound_id_from_settings(settings: dict) -> str | None:
+    sound_id = str(settings.get("alarm_sound_id") or "").strip()
+    if sound_id in ALARM_SOUND_FILES:
+        return sound_id
+    legacy_file = str(settings.get("alarm_audio_file") or "").strip()
+    for candidate, path in ALARM_SOUND_FILES.items():
+        if legacy_file in {path, Path(path).name}:
+            return candidate
+    return None
+
+
+def _positive_setting_int(settings: dict, key: str) -> int | None:
+    value = settings.get(key)
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _resolve_runtime_settings() -> dict:
+    resolved = {
+        "alarm_sound_id": "classic",
+        "frame_width": max(1, int(ARGS.process_width)),
+        "frame_height": max(1, int(ARGS.process_height)),
+    }
+
+    sources = []
+    try:
+        sources.append((
+            "global",
+            fetch_global_settings(
+                ARGS.monitoring_backend_url,
+                timeout=1.0,
+                auth_token=ARGS.safety_backend_token,
+            ),
+        ))
+    except Exception as exc:
+        print(f"Warning: global settings unavailable; using defaults if needed: {exc}")
+
+    if ARGS.trip_id:
+        try:
+            sources.append((
+                "trip",
+                fetch_trip_settings(
+                    ARGS.monitoring_backend_url,
+                    ARGS.trip_id,
+                    timeout=1.0,
+                    auth_token=ARGS.safety_backend_token,
+                ),
+            ))
+        except Exception as exc:
+            print(f"Warning: trip settings unavailable; using global/default if needed: {exc}")
+
+    for _name, settings in sources:
+        width = _positive_setting_int(settings, "frame_width")
+        height = _positive_setting_int(settings, "frame_height")
+        sound_id = _sound_id_from_settings(settings)
+        if width is not None:
+            resolved["frame_width"] = width
+        if height is not None:
+            resolved["frame_height"] = height
+        if sound_id is not None:
+            resolved["alarm_sound_id"] = sound_id
+
+    resolved["alarm_audio_file"] = ALARM_SOUND_FILES.get(
+        resolved["alarm_sound_id"],
+        ALARM_SOUND_FILES["classic"],
+    )
+    return resolved
+
+
+RUNTIME_SETTINGS = _resolve_runtime_settings()
+PROCESS_WIDTH = int(RUNTIME_SETTINGS["frame_width"])
+PROCESS_HEIGHT = int(RUNTIME_SETTINGS["frame_height"])
 
 # ─────────────────────────────────────────────────────────────
 # 3) KHỞI TẠO
@@ -331,7 +416,17 @@ ALERT_BEEP_MS = 700          # độ dài beep (ms)
 ALERT_COOLDOWN_SEC = 1.6     # tối thiểu bao lâu mới beep lại
 _alert_last_play_ts = 0.0
 
-_alert_sound = pygame.mixer.Sound("audio/alert.wav")
+def _load_alarm_sound():
+    selected = str(RUNTIME_SETTINGS.get("alarm_audio_file") or ALARM_SOUND_FILES["classic"])
+    try:
+        return pygame.mixer.Sound(selected)
+    except Exception as exc:
+        fallback = ALARM_SOUND_FILES["classic"]
+        print(f"Warning: cannot load selected alarm sound '{selected}', using '{fallback}': {exc}")
+        return pygame.mixer.Sound(fallback)
+
+
+_alert_sound = _load_alarm_sound()
 _alert_channel = pygame.mixer.Channel(0)
 
 _detector = dlib.get_frontal_face_detector()
@@ -1000,6 +1095,11 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, PROCESS_HEIGHT)
 
 actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+if actual_w != PROCESS_WIDTH or actual_h != PROCESS_HEIGHT:
+    print(
+        "Warning: camera backend did not apply requested resolution "
+        f"{PROCESS_WIDTH}x{PROCESS_HEIGHT}; actual={actual_w}x{actual_h}"
+    )
 print(f"📷 Camera resolution: {actual_w}×{actual_h}")
 
 if bool(ARGS.threaded_capture):
@@ -1011,6 +1111,9 @@ prev_time = time.time()
 prev_eye_alert = False
 prev_mar_alert = False
 prev_pose_alert = False
+eye_event_started_at = None
+eye_event_published = False
+yawn_event_open = False
 last_camera_frame_at = time.monotonic()
 camera_loss_reported = False
 
@@ -1327,12 +1430,26 @@ try:
                 frame,
             )
 
-        if ear_alert and not prev_eye_alert:
+        if ear_alert:
+            if eye_event_started_at is None:
+                eye_event_started_at = curr_time
+            eye_event_duration = curr_time - eye_event_started_at
+        else:
+            eye_event_started_at = None
+            eye_event_published = False
+            eye_event_duration = 0.0
+
+        if (
+            ear_alert
+            and not eye_event_published
+            and eye_event_duration >= DROWSINESS_EVENT_MIN_SECONDS
+        ):
+            eye_event_published = True
             publish_safety_event(
                 event_type="drowsiness_detected",
-                severity="high",
+                severity="medium",
                 confidence=(float(_ema_cnn_conf) if USE_CNN else min(1.0, EAR_COUNTER / max(1, EAR_CONSEC_FRAMES))),
-                duration_ms=int((EAR_COUNTER / max(1.0, fps)) * 1000),
+                duration_ms=int(eye_event_duration * 1000),
                 detection_method=("cnn_classifier" if USE_CNN else "ear_dlib"),
                 ear_value=float(ear),
                 mar_value=float(mar),
@@ -1340,7 +1457,14 @@ try:
                 consecutive_frame_count=int(EAR_COUNTER),
                 alarm_triggered=True,
             )
-        if mar_alert and not prev_mar_alert:
+        if mar > YAWN_EVENT_MAR_THRESHOLD:
+            should_publish_yawn = not yawn_event_open
+            yawn_event_open = True
+        else:
+            should_publish_yawn = False
+            yawn_event_open = False
+
+        if should_publish_yawn:
             publish_safety_event(
                 event_type="yawning_detected",
                 severity="medium",

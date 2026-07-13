@@ -1,7 +1,6 @@
 import {
   Plus,
   ArrowRight,
-  Phone,
   Gauge,
   ShieldCheck,
   Activity,
@@ -15,14 +14,12 @@ export default function DriversHeroPanel({
   total,
   driving,
   idle,
-  onPhone,
   disable,
   onAdd,
 }: {
   total: number;
   driving: number;
   idle: number;
-  onPhone: number;
   disable: number;
   onAdd: () => void;
 }) {
@@ -48,18 +45,11 @@ export default function DriversHeroPanel({
       delay: 0.15,
     },
     {
-      icon: <Phone size={14} strokeWidth={2} />,
-      label: "On phone",
-      value: onPhone,
-      tone: "rose",
-      delay: 0.2,
-    },
-    {
       icon: <ShieldCheck size={14} strokeWidth={2} />,
       label: "Disabled",
       value: disable,
-      tone: "amber",
-      delay: 0.25,
+      tone: "rose",
+      delay: 0.2,
     },
   ];
 
@@ -137,7 +127,7 @@ export default function DriversHeroPanel({
           </div>
 
           {/* Asymmetric stat strip (4 stat tiles, varying prominence) */}
-          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:min-w-[460px]">
+          <div className="grid w-full grid-cols-3 gap-2 lg:w-auto lg:min-w-[360px]">
             {tiles.map((tile) => (
               <DriverStatTile
                 key={tile.label}

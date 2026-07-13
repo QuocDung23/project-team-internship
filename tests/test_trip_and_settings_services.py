@@ -40,9 +40,9 @@ class FakeCursor:
                 0,
                 640,
                 480,
-                3,
-                8,
-                85,
+                5,
+                10,
+                80,
                 60,
                 {},
             )
@@ -84,27 +84,59 @@ class TripAndSettingsServiceTest(unittest.TestCase):
         self.assertNotIn("detection_events", sql)
         self.assertNotIn("actual_end_time", sql)
         self.assertNotIn("safety_rating", sql)
+        self.assertIn("alert_type = 'drowsiness'", sql)
+        self.assertIn("status IS DISTINCT FROM 'ignored'", sql)
         self.assertEqual(result["alerts"], 4)
         self.assertEqual(result["critical_alerts"], 1)
         self.assertEqual(result["safety_grade"], "B")
         self.assertTrue(conn.committed)
         self.assertTrue(conn.closed)
 
-    def test_settings_service_reads_and_updates_settings_table(self):
+    def test_settings_service_reads_and_updates_supported_settings(self):
         conn = FakeConnection()
 
         with patch.object(setting_service, "get_connection", return_value=conn):
             current = setting_service.get_global_settings()
-            result = setting_service.update_global_settings({"ear_threshold": 0.25})
+            result = setting_service.update_global_settings({
+                "alarm_sound_id": "soft",
+                "frame_width": 800,
+                "frame_height": 600,
+                "safety_grade_a_min_score": 82,
+                "safety_grade_b_min_score": 61,
+            })
 
         sql = "\n".join(call[0] for call in conn.cursor_obj.calls)
         self.assertIn("FROM settings", sql)
         self.assertIn("UPDATE settings", sql)
         self.assertNotIn("detection_settings", sql)
         self.assertEqual(current["ear_threshold"], 0.3)
+        self.assertEqual(current["alarm_sound_id"], "classic")
         self.assertEqual(result["ear_threshold"], 0.3)
         self.assertTrue(conn.committed)
         self.assertTrue(conn.closed)
+
+    def test_settings_service_rejects_protected_settings(self):
+        conn = FakeConnection()
+
+        with patch.object(setting_service, "get_connection", return_value=conn):
+            with self.assertRaises(ValueError):
+                setting_service.update_global_settings({"ear_threshold": 0.25})
+
+        self.assertFalse(conn.committed)
+
+    def test_settings_service_validates_frame_and_grade_values(self):
+        conn = FakeConnection()
+
+        with patch.object(setting_service, "get_connection", return_value=conn):
+            with self.assertRaises(ValueError):
+                setting_service.update_global_settings({"frame_width": 0})
+            with self.assertRaises(ValueError):
+                setting_service.update_global_settings({
+                    "safety_grade_a_min_score": 50,
+                    "safety_grade_b_min_score": 60,
+                })
+
+        self.assertFalse(conn.committed)
 
 
 if __name__ == "__main__":

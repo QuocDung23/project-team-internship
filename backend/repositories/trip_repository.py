@@ -204,6 +204,24 @@ class TripRepository:
         trip = _row_to_trip(row)
         return self._with_latest_assignment(trip) if trip else None
 
+    def trip_code_exists(self, code: str) -> bool:
+        with self.engine.connect() as connection:
+            row = (
+                connection.execute(
+                    text(
+                        """
+                        SELECT 1
+                        FROM trips
+                        WHERE code = :code
+                        LIMIT 1
+                        """
+                    ),
+                    {"code": code},
+                )
+                .first()
+            )
+        return row is not None
+
     def create_trip(
         self,
         *,
@@ -844,8 +862,7 @@ class TripRepository:
                     text(
                         """
                         SELECT
-                            COUNT(*) AS total_events,
-                            COUNT(*) FILTER (WHERE severity = 'high') AS critical_events
+                            COUNT(*) AS total_events
                         FROM safety_events
                         WHERE trip_id = :trip_id
                         """
@@ -857,19 +874,30 @@ class TripRepository:
             )
             alert_row = (
                 connection.execute(
-                    text("SELECT COUNT(*) AS alert_count FROM alerts WHERE trip_id = :trip_id"),
+                    text(
+                        """
+                        SELECT
+                            COUNT(*) AS alert_count,
+                            COUNT(*) FILTER (WHERE severity = 'critical') AS critical_alerts
+                        FROM alerts
+                        WHERE trip_id = :trip_id
+                          AND alert_type = 'drowsiness'
+                          AND status IS DISTINCT FROM 'ignored'
+                        """
+                    ),
                     {"trip_id": trip_id},
                 )
                 .mappings()
                 .one()
             )
         total_events = int(event_row["total_events"])
-        critical_events = int(event_row["critical_events"])
+        alert_count = int(alert_row["alert_count"])
+        critical_alerts = int(alert_row["critical_alerts"])
         return {
             "total_events": total_events,
-            "critical_events": critical_events,
-            "warning_events": max(0, total_events - critical_events),
-            "alert_count": int(alert_row["alert_count"]),
+            "critical_events": critical_alerts,
+            "warning_events": max(0, alert_count - critical_alerts),
+            "alert_count": alert_count,
         }
 
     def find_safety_score(self, trip_id: str) -> dict[str, Any] | None:
@@ -1036,6 +1064,7 @@ class TripRepository:
     def _with_latest_assignment(self, trip: dict[str, Any]) -> dict[str, Any]:
         trip["assignment"] = self.find_latest_assignment_for_trip(trip["trip_id"])
         self._attach_driver_summary(trip)
+        self._attach_vehicle_summary(trip)
         return trip
 
     def _attach_driver_summary(self, trip: dict[str, Any]) -> None:
@@ -1049,6 +1078,14 @@ class TripRepository:
         trip["driver_id"] = driver["driver_id"] if driver else None
         trip["driver_name"] = driver["full_name"] if driver else None
         trip["driver_email"] = driver["email"] if driver else None
+
+    def _attach_vehicle_summary(self, trip: dict[str, Any]) -> None:
+        assignment = trip.get("assignment")
+        if assignment is None:
+            trip["vehicle_plate"] = None
+            return
+        vehicle = self.find_vehicle_by_id(assignment["vehicle_id"])
+        trip["vehicle_plate"] = vehicle["plate_number"] if vehicle else None
 
     def _driver_summary_by_id(self, driver_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as connection:

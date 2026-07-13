@@ -1,3 +1,11 @@
+from backend.services.safety_policy import (
+    CRITICAL_ALERT_PENALTY,
+    GRADE_A_MIN,
+    GRADE_B_MIN,
+    WARNING_ALERT_PENALTY,
+)
+
+
 def calculate_safety(alert_count):
 
     if alert_count <= 3:
@@ -12,8 +20,8 @@ def calculate_safety(alert_count):
 def calculate_safety_score(
     total_alerts:int,
     critical_alerts:int,
-    warning_penalty:float=3,
-    critical_penalty:float=8,
+    warning_penalty:float=WARNING_ALERT_PENALTY,
+    critical_penalty:float=CRITICAL_ALERT_PENALTY,
 ) -> float:
     warning_alerts = max(0, int(total_alerts) - int(critical_alerts))
     score = 100.0 - (warning_alerts * float(warning_penalty)) - (
@@ -22,7 +30,7 @@ def calculate_safety_score(
     return max(0.0, min(100.0, round(score, 2)))
 
 
-def safety_grade(score:float, grade_a_min:float=85, grade_b_min:float=60) -> str:
+def safety_grade(score:float, grade_a_min:float=GRADE_A_MIN, grade_b_min:float=GRADE_B_MIN) -> str:
     if float(score) >= float(grade_a_min):
         return "A"
     if float(score) >= float(grade_b_min):

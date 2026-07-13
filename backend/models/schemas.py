@@ -44,6 +44,7 @@ class TripStart(BaseModel):
 
 class SettingUpdate(BaseModel):
 
+    alarm_sound_id:Optional[str]=None
     ear_threshold:Optional[float]=None
     ear_consec_frames:Optional[int]=None
     cnn_confidence_threshold:Optional[float]=None

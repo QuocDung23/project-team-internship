@@ -11,6 +11,10 @@ This repository combines a realtime drowsiness detector, a FastAPI backend, and 
 - `tests/` holds Python unit/integration tests. `frontend/tests/` holds Node-based frontend tests.
 - `database/drowsiness_safety_db_schema.sql` is the canonical PostgreSQL schema. Model and runtime assets live at the repo root and in `audio/`.
 
+## Session Handoff
+
+At the start of every new agent session, read `HANDOFF.md` before making changes or running task-specific commands. Treat it as the current working context for active tasks, dirty git state, verification status, blockers, and next steps.
+
 ## Build, Test, and Development Commands
 
 Install dependencies:

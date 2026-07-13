@@ -27,6 +27,8 @@ export interface DriverSnapshot {
   marAlert: boolean;
   poseAlert: boolean;
   alarmOn: boolean;
+  drowsinessWarningActive: boolean;
+  yawnWarningActive: boolean;
 }
 
 export interface MonitoringAlert {

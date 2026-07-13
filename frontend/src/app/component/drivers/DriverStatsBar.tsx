@@ -9,7 +9,7 @@ function DriverStatsBar({ stats }: DriverStatsBarProps) {
     { label: "Driving", value: stats.driving, tone: "text-emerald-400" },
     { label: "Idle", value: stats.idle, tone: "text-zinc-400" },
     { label: "Disable", value: stats.disable, tone: "text-red-400" },
-    { label: "Dùng điện thoại", value: stats.onPhone, tone: "text-red-400" },
+    { label: "Eyes closed", value: stats.eyesClosed, tone: "text-amber-400" },
   ];
 
   return (

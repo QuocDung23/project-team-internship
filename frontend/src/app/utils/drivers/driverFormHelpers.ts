@@ -58,7 +58,7 @@ export function driverFormFromBackend(
 ): DriverFormState {
   return {
     fullName: backendDriver?.full_name ?? driver.name,
-    licenseNumber: backendDriver?.license_number ?? driver.licensePlate,
+    licenseNumber: backendDriver?.license_number ?? driver.licenseNumber,
     phone: backendDriver?.phone ?? driver.phone,
     email: backendDriver?.email ?? "",
     password: "",

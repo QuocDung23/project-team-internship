@@ -10,6 +10,7 @@ from backend.models.driver import DriverSessionStatus, DriverStatus
 
 DRIVER_COLUMNS = """
     driver_id,
+    driver_code,
     full_name,
     license_number,
     phone,
@@ -54,8 +55,10 @@ def _row_to_session(row: Any) -> dict[str, Any] | None:
 class DriverRepository:
     def __init__(self, engine: Engine | None = None):
         self.engine = engine or get_engine()
+        self._driver_code_schema_ready = False
 
     def list_drivers(self, *, status: DriverStatus | None = None) -> list[dict[str, Any]]:
+        self._ensure_driver_code_schema()
         params: dict[str, Any] = {}
         where_sql = ""
         if status is not None:
@@ -81,11 +84,13 @@ class DriverRepository:
         return [driver for row in rows if (driver := _row_to_driver(row)) is not None]
 
     def find_by_id(self, driver_id: str) -> dict[str, Any] | None:
+        self._ensure_driver_code_schema()
         with self.engine.connect() as connection:
             row = self._find_by_id(connection, driver_id)
         return _row_to_driver(row)
 
     def find_by_email(self, email: str) -> dict[str, Any] | None:
+        self._ensure_driver_code_schema()
         with self.engine.connect() as connection:
             row = (
                 connection.execute(
@@ -136,12 +141,15 @@ class DriverRepository:
         status: DriverStatus,
         baseline_ear: Any,
     ) -> dict[str, Any]:
+        self._ensure_driver_code_schema()
         with self.engine.begin() as connection:
+            driver_code = self._next_driver_code(connection)
             row = (
                 connection.execute(
                     text(
                         f"""
                         INSERT INTO drivers (
+                            driver_code,
                             full_name,
                             license_number,
                             phone,
@@ -150,6 +158,7 @@ class DriverRepository:
                             baseline_ear
                         )
                         VALUES (
+                            :driver_code,
                             :full_name,
                             :license_number,
                             :phone,
@@ -161,6 +170,7 @@ class DriverRepository:
                         """
                     ),
                     {
+                        "driver_code": driver_code,
                         "full_name": full_name,
                         "license_number": license_number,
                         "phone": phone,
@@ -190,7 +200,9 @@ class DriverRepository:
         user_role: UserRole = UserRole.DRIVER,
         user_status: str = "active",
     ) -> dict[str, Any]:
+        self._ensure_driver_code_schema()
         with self.engine.begin() as connection:
+            driver_code = self._next_driver_code(connection)
             connection.execute(
                 text(
                     """
@@ -217,6 +229,7 @@ class DriverRepository:
                     text(
                         f"""
                         INSERT INTO drivers (
+                            driver_code,
                             full_name,
                             license_number,
                             phone,
@@ -225,6 +238,7 @@ class DriverRepository:
                             baseline_ear
                         )
                         VALUES (
+                            :driver_code,
                             :full_name,
                             :license_number,
                             :phone,
@@ -236,6 +250,7 @@ class DriverRepository:
                         """
                     ),
                     {
+                        "driver_code": driver_code,
                         "full_name": full_name,
                         "license_number": license_number,
                         "phone": phone,
@@ -253,6 +268,7 @@ class DriverRepository:
         return driver
 
     def update_driver(self, driver_id: str, changes: dict[str, Any]) -> dict[str, Any] | None:
+        self._ensure_driver_code_schema()
         if not changes:
             return self.find_by_id(driver_id)
 
@@ -418,3 +434,56 @@ class DriverRepository:
             ),
             {"driver_id": driver_id},
         ).first()
+
+    def _next_driver_code(self, connection: Connection) -> str:
+        row = connection.execute(
+            text(
+                """
+                SELECT driver_code
+                FROM drivers
+                WHERE driver_code ~ '^DRV-[0-9]+$'
+                ORDER BY CAST(SUBSTRING(driver_code FROM 5) AS integer) DESC
+                LIMIT 1
+                """
+            )
+        ).first()
+        current = 0
+        if row is not None and row[0]:
+            current = int(str(row[0]).split("-")[-1])
+        return f"DRV-{current + 1:03d}"
+
+    def _ensure_driver_code_schema(self) -> None:
+        if self._driver_code_schema_ready:
+            return
+        if self.engine.dialect.name != "postgresql":
+            self._driver_code_schema_ready = True
+            return
+        with self.engine.begin() as connection:
+            connection.execute(text("ALTER TABLE drivers ADD COLUMN IF NOT EXISTS driver_code VARCHAR(20)"))
+            connection.execute(
+                text(
+                    """
+                    WITH numbered AS (
+                        SELECT
+                            driver_id,
+                            row_number() OVER (ORDER BY created_at, full_name, driver_id) AS row_num
+                        FROM drivers
+                    )
+                    UPDATE drivers d
+                    SET driver_code = 'DRV-' || lpad(numbered.row_num::text, 3, '0')
+                    FROM numbered
+                    WHERE d.driver_id = numbered.driver_id
+                      AND d.driver_code IS NULL
+                    """
+                )
+            )
+            connection.execute(text("ALTER TABLE drivers ALTER COLUMN driver_code SET NOT NULL"))
+            connection.execute(
+                text(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_drivers_driver_code
+                    ON drivers(driver_code)
+                    """
+                )
+            )
+        self._driver_code_schema_ready = True

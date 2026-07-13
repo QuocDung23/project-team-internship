@@ -35,6 +35,7 @@ def trip_response(**overrides):
         "driver_id": None,
         "driver_name": None,
         "driver_email": None,
+        "vehicle_plate": None,
         "status": TripStatus.SCHEDULED,
         "planned_start_at": None,
         "planned_end_at": None,
@@ -68,6 +69,7 @@ class FakeTripLifecycleService:
                 driver_id="driver-1",
                 driver_name="Driver One",
                 driver_email="driver@example.com",
+                vehicle_plate="51A-12345",
                 safety_score=self.calculate_or_get_safety_score("trip-1"),
                 total_alerts_count=3,
                 critical_alerts_count=1,
@@ -205,6 +207,7 @@ class TripLifecycleApiTest(unittest.TestCase):
         self.assertEqual(listed.json()["trips"][0]["driver_id"], "driver-1")
         self.assertEqual(listed.json()["trips"][0]["driver_name"], "Driver One")
         self.assertEqual(listed.json()["trips"][0]["driver_email"], "driver@example.com")
+        self.assertEqual(listed.json()["trips"][0]["vehicle_plate"], "51A-12345")
         self.assertEqual(listed.json()["trips"][0]["safety_score"]["score"], 92.0)
         self.assertEqual(listed.json()["trips"][0]["total_alerts_count"], 3)
         self.assertEqual(listed.json()["trips"][0]["critical_alerts_count"], 1)

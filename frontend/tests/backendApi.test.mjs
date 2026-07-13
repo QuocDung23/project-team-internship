@@ -2,20 +2,24 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  BackendApiError,
   buildSafetySummaryFromTrips,
   createDriver,
   deriveDriverStatuses,
+  formatVietnamesePlate,
   getTripsForDriver,
   mapBackendDriverToDriver,
   mapBackendTripToVehicle,
   normalizeBackendSettings,
   startMyTrip,
+  startOrResumeMyTrip,
   updateDriver,
 } from "../src/app/services/backendApi.ts";
 
 test("maps backend driver object into dashboard driver model", () => {
   const driver = mapBackendDriverToDriver({
     driver_id: "driver-1",
+    driver_code: "DRV-001",
     full_name: "Nguyen Van A",
     phone: "0900000000",
     license_number: "GPLX-1",
@@ -25,8 +29,11 @@ test("maps backend driver object into dashboard driver model", () => {
   });
 
   assert.equal(driver.id, "driver-1");
+  assert.equal(driver.driverCode, "DRV-001");
   assert.equal(driver.name, "Nguyen Van A");
   assert.equal(driver.phone, "0900000000");
+  assert.equal(driver.licenseNumber, "GPLX-1");
+  assert.equal(driver.licensePlate, "Unassigned");
   assert.equal(driver.status, "idle");
   assert.equal(driver.totalAlerts, 2);
 });
@@ -58,12 +65,25 @@ test("derives driver display statuses from active trips and availability", () =>
       trip_id: "trip-1",
       status: "in_progress",
       driver_id: "driver-1",
+      vehicle_plate: "43A12345",
+      total_alerts_count: 4,
+      critical_alerts_count: 1,
     },
   ]);
 
   assert.equal(next[0].status, "driving");
+  assert.equal(next[0].licensePlate, "43A-123.45");
+  assert.equal(next[0].totalAlerts, 4);
+  assert.equal(next[0].criticalAlerts, 1);
   assert.equal(next[1].status, "idle");
   assert.equal(next[2].status, "disable");
+});
+
+test("formats Vietnamese vehicle plates when possible", () => {
+  assert.equal(formatVietnamesePlate("43A12345"), "43A-123.45");
+  assert.equal(formatVietnamesePlate("43A-12345"), "43A-123.45");
+  assert.equal(formatVietnamesePlate("51H-123.45"), "51H-123.45");
+  assert.equal(formatVietnamesePlate(null), null);
 });
 
 test("maps backend active trip into fleet vehicle snapshot", () => {
@@ -172,6 +192,10 @@ test("normalizes backend settings with schema field names", () => {
   assert.equal(settings.ear_consec_frames, 18);
   assert.equal(settings.cnn_confidence_threshold, 0.82);
   assert.equal(settings.alarm_audio_file, "alarm.wav");
+  assert.equal(settings.alarm_sound_id, "classic");
+  assert.equal(settings.warning_alert_penalty, 5);
+  assert.equal(settings.critical_alert_penalty, 10);
+  assert.equal(settings.safety_grade_a_min_score, 80);
 });
 
 test("startMyTrip sends optional trip fields", async () => {
@@ -202,6 +226,95 @@ test("startMyTrip sends optional trip fields", async () => {
     origin: "Garage",
     destination: "Depot",
   });
+});
+
+test("startMyTrip preserves backend error details", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: "Driver already has an active trip." }), {
+    status: 409,
+    headers: { "Content-Type": "application/json" },
+  });
+
+  try {
+    await assert.rejects(
+      () => startMyTrip({ code: "DEMO-409" }),
+      (error) => {
+        assert.ok(error instanceof BackendApiError);
+        assert.equal(error.status, 409);
+        assert.equal(error.detail, "Driver already has an active trip.");
+        assert.equal(error.message, "Driver already has an active trip.");
+        assert.equal(error.path, "/trips/start-my-trip");
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("startOrResumeMyTrip resumes an already active trip before posting", async () => {
+  const requests = [];
+  const activeTrip = { trip_id: "trip-active", status: "in_progress", code: "ACTIVE-001" };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url, init });
+    return new Response(JSON.stringify({ trips: [activeTrip] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await startOrResumeMyTrip({ code: "NEW-001" });
+    assert.equal(result.resumed, true);
+    assert.equal(result.trip.trip_id, "trip-active");
+    assert.deepEqual(result.trips, [activeTrip]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, "/api/v1/trips/my");
+});
+
+test("startOrResumeMyTrip recovers when backend reports active trip conflict", async () => {
+  const requests = [];
+  const activeTrip = { trip_id: "trip-recovered", status: "in_progress", code: "ACTIVE-002" };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url, init });
+    if (url === "/api/v1/trips/my" && requests.filter((request) => request.url === "/api/v1/trips/my").length === 1) {
+      return new Response(JSON.stringify({ trips: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (url === "/api/v1/trips/start-my-trip") {
+      return new Response(JSON.stringify({ detail: "Driver already has an active trip." }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ trips: [activeTrip] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await startOrResumeMyTrip({ code: "NEW-002" });
+    assert.equal(result.resumed, true);
+    assert.equal(result.trip.trip_id, "trip-recovered");
+    assert.deepEqual(result.trips, [activeTrip]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(requests.map((request) => request.url), [
+    "/api/v1/trips/my",
+    "/api/v1/trips/start-my-trip",
+    "/api/v1/trips/my",
+  ]);
 });
 
 test("createDriver sends optional management fields", async () => {
