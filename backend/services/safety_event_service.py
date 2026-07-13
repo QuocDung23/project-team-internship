@@ -22,6 +22,8 @@ class SafetyEventService:
     def ingest(self, payload: SafetyEventIngestRequest, *, current_user: dict | None = None) -> dict:
         self._validate_references(payload, current_user=current_user)
         kind = aggregation_kind(payload.event_type)
+        if kind == "yawning":
+            kind = None
 
         try:
             return self.repository.ingest_event(

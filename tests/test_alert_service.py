@@ -97,6 +97,14 @@ class AlertServiceTest(unittest.TestCase):
         self.assertEqual(insert_params[0:5], ("trip-1", "driver-1", "vehicle-1", "critical", "drowsiness"))
         self.assertIn("CNN=closed:0.93", insert_params[-1])
 
+    def test_create_alert_rejects_yawning_alert_type(self):
+        with self.assertRaises(ValueError):
+            alert_service.create_alert(
+                trip_id="trip-1",
+                alert_type="yawning_detected",
+                detection_method="mar_dlib",
+            )
+
     def test_acknowledge_alert_marks_alert_acknowledged(self):
         conn = FakeConnection()
         conn.cursor_obj.fetchone_results = [

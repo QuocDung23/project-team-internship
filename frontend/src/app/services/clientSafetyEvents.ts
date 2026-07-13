@@ -2,6 +2,7 @@ import type { ClientSafetyEvent, MonitoringAlert } from "../types/monitoring";
 
 const DROWSINESS_PAIR_WINDOW_MS = 30_000;
 const DROWSINESS_ESCALATION_WINDOW_MS = 60_000;
+const YAWNING_PAIR_WINDOW_MS = 20_000;
 
 function eventTitle(eventType: ClientSafetyEvent["event_type"]): string {
   switch (eventType) {
@@ -53,9 +54,25 @@ interface DrowsinessWarningState {
 export function buildLiveMonitoringAlerts(events: ClientSafetyEvent[]): MonitoringAlert[] {
   const alerts: MonitoringAlert[] = [];
   let pendingDrowsiness: ClientSafetyEvent[] = [];
+  let pendingYawning: ClientSafetyEvent[] = [];
   let warning: DrowsinessWarningState | null = null;
 
   for (const event of events) {
+    if (event.event_type === "yawning_detected") {
+      const eventTs = eventTimestamp(event.occurred_at);
+      pendingYawning.push(event);
+      pendingYawning = pendingYawning.filter(
+        (candidate) => eventTs - eventTimestamp(candidate.occurred_at) <= YAWNING_PAIR_WINDOW_MS,
+      );
+
+      if (pendingYawning.length >= 2) {
+        const second = pendingYawning[1]!;
+        alerts.push(mapClientSafetyEventToMonitorAlert(withSeverity(second, "medium", `yawning-warning-${second.event_id}`)));
+        pendingYawning = pendingYawning.slice(2);
+      }
+      continue;
+    }
+
     if (event.event_type !== "drowsiness_detected") {
       alerts.push(mapClientSafetyEventToMonitorAlert(event));
       continue;

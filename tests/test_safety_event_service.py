@@ -200,7 +200,7 @@ class SafetyEventServiceTest(unittest.TestCase):
 
         self.assertEqual([alert["severity"] for alert in self.repository.alerts], ["warning", "warning"])
 
-    def test_two_yawns_create_warning_and_never_critical(self):
+    def test_yawns_are_stored_without_backend_alert_aggregation(self):
         times = [
             NOW,
             NOW + timedelta(seconds=10),
@@ -208,7 +208,7 @@ class SafetyEventServiceTest(unittest.TestCase):
             NOW + timedelta(seconds=25),
         ]
 
-        for index, occurred_at in enumerate(times):
+        results = [
             self.service.ingest(
                 SafetyEventIngestRequest(
                     **payload(
@@ -219,9 +219,12 @@ class SafetyEventServiceTest(unittest.TestCase):
                     )
                 )
             )
+            for index, occurred_at in enumerate(times)
+        ]
 
-        self.assertEqual([alert["kind"] for alert in self.repository.alerts], ["yawning", "yawning"])
-        self.assertEqual([alert["severity"] for alert in self.repository.alerts], ["warning", "warning"])
+        self.assertEqual([result["alert_id"] for result in results], [None, None, None, None])
+        self.assertEqual(self.repository.alerts, [])
+        self.assertTrue(all(kind is None for _data, kind, _window in self.repository.ingested))
 
     def test_head_nodding_event_is_stored_without_alert_aggregation(self):
         result = self.service.ingest(

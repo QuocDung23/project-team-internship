@@ -250,6 +250,46 @@ class EndToEndWorkflowTest(unittest.TestCase):
         self.assertEqual(score.json()["safety_score"]["score"], 90.0)
         self.assertEqual(score.json()["safety_score"]["grade"], "A")
 
+    def test_yawning_events_do_not_create_alert_history_or_score_penalty(self):
+        payload = {
+            "event_id": "yawn-event-1",
+            "event_type": "yawning_detected",
+            "severity": "medium",
+            "source": "ai_camera",
+            "occurred_at": NOW.isoformat(),
+            "trip_id": TRIP_ID,
+            "driver_id": "driver-1",
+            "vehicle_id": "vehicle-1",
+            "confidence": 0.84,
+            "duration_ms": 800,
+            "details": {
+                "detection_method": "mar_dlib",
+                "mar": 0.86,
+            },
+        }
+        second_payload = {
+            **payload,
+            "event_id": "yawn-event-2",
+            "occurred_at": (NOW + timedelta(seconds=10)).isoformat(),
+        }
+
+        first_ingested = self.client.post("/api/v1/safety-events/ingest", json=payload)
+        second_ingested = self.client.post("/api/v1/safety-events/ingest", json=second_payload)
+        alerts = self.client.get(f"/api/v1/trips/{TRIP_ID}/alerts")
+        score = self.client.post(f"/api/v1/trips/{TRIP_ID}/complete")
+
+        self.assertEqual(first_ingested.status_code, 201)
+        self.assertIsNone(first_ingested.json()["alert_id"])
+        self.assertEqual(second_ingested.status_code, 201)
+        self.assertIsNone(second_ingested.json()["alert_id"])
+        self.assertEqual(alerts.status_code, 200)
+        self.assertEqual(alerts.json(), [])
+        self.assertEqual(score.status_code, 200)
+        self.assertEqual(score.json()["safety_score"]["alert_count"], 0)
+        self.assertEqual(score.json()["safety_score"]["warning_events"], 0)
+        self.assertEqual(score.json()["safety_score"]["critical_events"], 0)
+        self.assertEqual(score.json()["safety_score"]["score"], 100.0)
+
 
 if __name__ == "__main__":
     unittest.main()

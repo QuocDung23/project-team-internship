@@ -39,7 +39,52 @@ test("live drowsiness aggregation follows zero warning critical flow", () => {
   assert.equal(criticalAlerts[0].severity, "critical");
 });
 
-test("live drowsiness aggregation leaves yawning and head nodding alerts independent", () => {
+test("live monitoring shows yawning notification only after two yawns within 20 seconds", () => {
+  const firstYawn = {
+    ...baseEvent,
+    event_id: "yawn-1",
+    event_type: "yawning_detected",
+    severity: "medium",
+    occurred_at: "2026-07-12T08:15:00.000Z",
+  };
+  const secondYawn = {
+    ...baseEvent,
+    event_id: "yawn-2",
+    event_type: "yawning_detected",
+    severity: "medium",
+    occurred_at: "2026-07-12T08:15:10.000Z",
+  };
+
+  assert.deepEqual(buildLiveMonitoringAlerts([firstYawn]), []);
+
+  const alerts = buildLiveMonitoringAlerts([firstYawn, secondYawn]);
+
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].id, "yawning-warning-yawn-2");
+  assert.equal(alerts[0].severity, "warn");
+  assert.equal(alerts[0].title, "Ng\u00e1p");
+});
+
+test("live monitoring does not show yawning notification outside 20 seconds", () => {
+  const firstYawn = {
+    ...baseEvent,
+    event_id: "yawn-1",
+    event_type: "yawning_detected",
+    severity: "medium",
+    occurred_at: "2026-07-12T08:15:00.000Z",
+  };
+  const secondYawn = {
+    ...baseEvent,
+    event_id: "yawn-2",
+    event_type: "yawning_detected",
+    severity: "medium",
+    occurred_at: "2026-07-12T08:15:21.000Z",
+  };
+
+  assert.deepEqual(buildLiveMonitoringAlerts([firstYawn, secondYawn]), []);
+});
+
+test("live drowsiness aggregation leaves head nodding alerts independent", () => {
   const first = {
     ...baseEvent,
     event_id: "drowsy-1",
@@ -52,13 +97,6 @@ test("live drowsiness aggregation leaves yawning and head nodding alerts indepen
     severity: "medium",
     occurred_at: "2026-07-12T08:15:10.000Z",
   };
-  const yawn = {
-    ...baseEvent,
-    event_id: "yawn-1",
-    event_type: "yawning_detected",
-    severity: "medium",
-    occurred_at: "2026-07-12T08:15:12.000Z",
-  };
   const headNod = {
     ...baseEvent,
     event_id: "head-1",
@@ -67,12 +105,11 @@ test("live drowsiness aggregation leaves yawning and head nodding alerts indepen
     occurred_at: "2026-07-12T08:15:14.000Z",
   };
 
-  const alerts = buildLiveMonitoringAlerts([first, second, yawn, headNod]);
+  const alerts = buildLiveMonitoringAlerts([first, second, headNod]);
 
-  assert.equal(alerts.length, 3);
+  assert.equal(alerts.length, 2);
   assert.equal(alerts[0].id, "drowsiness-warning-drowsy-2");
-  assert.equal(alerts[1].id, "yawn-1");
-  assert.equal(alerts[2].id, "head-1");
+  assert.equal(alerts[1].id, "head-1");
 });
 
 const baseEvent = {

@@ -16,6 +16,7 @@ import { buildLiveMonitoringAlerts } from "../services/clientSafetyEvents";
 import type { MonitoringAlert } from "../types/monitoring";
 import type { ReactNode } from "react";
 import { SafetyScoreValue } from "../utils/safetyScore";
+import TripHeroHeader from "../component/myTrips/TripHeroHeader";
 
 const TRIP_CODE_MAX_LENGTH = 50;
 const ROUTE_POINT_MAX_LENGTH = 120;
@@ -170,28 +171,15 @@ export function MyTripPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <section className="panel flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-        <div>
-          <h1 className="text-base font-semibold tracking-tight text-zinc-100">My Trips</h1>
-          <p className="mt-0.5 text-[12px] text-zinc-400">
-            {activeTrip ? "Active trip in progress" : `${trips.length} trips recorded`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <TripSummary label="Completed" value={String(completedTrips.length)} />
-          <TripSummary label="Active" value={activeTrip ? "1" : "0"} />
-          <TripSummary label="Avg score" value={safetySummary.averageScore === null ? "-" : String(safetySummary.averageScore)} />
-          <TripSummary label="Alerts" value={`${safetySummary.totalAlerts}/${safetySummary.criticalAlerts}`} />
-          <button
-            type="button"
-            className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-zinc-950 disabled:opacity-50"
-            disabled={isBusy || Boolean(activeTrip)}
-            onClick={openNewTripDialog}
-          >
-            New Trip
-          </button>
-        </div>
-      </section>
+      <TripHeroHeader
+        activeTripCount={activeTrip ? 1 : 0}
+        completedCount={completedTrips.length}
+        avgScore={safetySummary.averageScore}
+        totalAlerts={safetySummary.totalAlerts}
+        criticalAlerts={safetySummary.criticalAlerts}
+        canStartNew={!isBusy && !activeTrip}
+        onNewTrip={openNewTripDialog}
+      />
 
       {error ? (
         <section className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
@@ -712,15 +700,6 @@ function TripHistoryDialog({
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function TripSummary({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
-      <p className="font-mono-num text-sm font-semibold text-zinc-100">{value}</p>
     </div>
   );
 }

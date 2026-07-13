@@ -496,6 +496,8 @@ class SafetyEventRepository:
         return row is not None
 
     def _alert_type(self, event_type: SafetyEventType) -> str:
+        if event_type in {SafetyEventType.YAWNING, SafetyEventType.YAWNING_DETECTED}:
+            raise ValueError("yawning safety events are notification-only and do not create backend alerts")
         if event_type in {SafetyEventType.CAMERA_BLOCKED, SafetyEventType.NO_FACE_DETECTED}:
             return "camera_issue"
         if event_type in {SafetyEventType.DISTRACTION, SafetyEventType.HEAD_NOD, SafetyEventType.HEAD_NODDING_DETECTED}:

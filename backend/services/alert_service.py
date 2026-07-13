@@ -361,6 +361,8 @@ def get_alerts(
 
 
 def _canonical_alert_type(alert_type: str) -> str:
+    if alert_type in {"yawn", "yawning", "yawning_detected", "yawn_alert"}:
+        raise ValueError("yawning is notification-only and cannot be persisted as an alert")
     if alert_type in {"camera_issue", "no_face_detected", "camera_blocked"}:
         return "camera_issue"
     if alert_type in {"driver_inattention", "head_nod", "head_nodding_detected", "distraction"}:
