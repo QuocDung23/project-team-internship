@@ -51,6 +51,26 @@ export function AlertsPage() {
     [acknowledgingId, backendAlerts],
   );
 
+  const handleAcknowledgeGroup = useCallback(
+    async (groupEvents: FleetAlertEvent[], groupId: string) => {
+      if (acknowledgingId) return;
+      const pendingEvents = groupEvents.filter((event) => !event.acknowledged);
+      if (pendingEvents.length === 0) return;
+
+      setAcknowledgingId(groupId);
+      setActionError(null);
+      try {
+        await Promise.all(pendingEvents.map((event) => acknowledgeAlert(event.id)));
+        await backendAlerts.refresh();
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Failed to acknowledge alert group");
+      } finally {
+        setAcknowledgingId(null);
+      }
+    },
+    [acknowledgingId, backendAlerts],
+  );
+
   const filtered = useMemo(
     () =>
       events.filter((e) => {
@@ -130,6 +150,7 @@ export function AlertsPage() {
         events={filtered}
         acknowledgingId={acknowledgingId}
         onAcknowledge={handleAcknowledge}
+        onAcknowledgeGroup={handleAcknowledgeGroup}
       />
     </AdminPage>
   );

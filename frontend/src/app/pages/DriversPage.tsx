@@ -17,7 +17,6 @@ import {
 import type { Driver } from "../types";
 import type { FleetAlertEvent } from "../types/alerts";
 import type {
-  DriverEyeFilter,
   DriverStats,
   DriverStatusFilter,
 } from "../types/drivers";
@@ -44,8 +43,8 @@ const EMPTY_FORM: DriverFormState = {
 function DriversPage() {
   const backendDrivers = useBackendDrivers();
   const backendTrips = useBackendTrips(false);
+  const allDriverAlerts = useBackendAlerts(undefined, { status: "all" });
   const [search, setSearch] = useState("");
-  const [eyeFilter, setEyeFilter] = useState<DriverEyeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<DriverStatusFilter>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "manage">("create");
@@ -72,15 +71,18 @@ function DriversPage() {
           needle &&
           !d.name.toLowerCase().includes(needle) &&
           !d.id.toLowerCase().includes(needle) &&
-          !d.licensePlate.toLowerCase().includes(needle)
+          !d.driverCode.toLowerCase().includes(needle) &&
+          !d.licenseNumber.toLowerCase().includes(needle) &&
+          !d.licensePlate.toLowerCase().includes(needle) &&
+          !d.email.toLowerCase().includes(needle) &&
+          !d.phone.toLowerCase().includes(needle)
         ) {
           return false;
         }
-        if (eyeFilter !== "all" && d.eyeState !== eyeFilter) return false;
         if (statusFilter !== "all" && d.status !== statusFilter) return false;
         return true;
       }),
-    [allDrivers, search, eyeFilter, statusFilter],
+    [allDrivers, search, statusFilter],
   );
 
   const stats: DriverStats = useMemo(
@@ -92,14 +94,12 @@ function DriversPage() {
       eyesOpen: allDrivers.filter((d) => d.eyeState === "open").length,
       eyesClosed: allDrivers.filter((d) => d.eyeState === "closed").length,
       yawning: allDrivers.filter((d) => d.eyeState === "yawning").length,
-      onPhone: allDrivers.filter((d) => d.onPhone).length,
     }),
     [allDrivers],
   );
 
   const handleClearFilters = () => {
     setSearch("");
-    setEyeFilter("all");
     setStatusFilter("all");
   };
 
@@ -213,15 +213,14 @@ function DriversPage() {
       />
       <AdminErrorBanner label="Drivers unavailable" message={backendDrivers.error} />
       <AdminErrorBanner label="Trips unavailable" message={backendTrips.error} />
+      <AdminErrorBanner label="Alerts unavailable" message={allDriverAlerts.error} />
       <AdminErrorBanner label="Driver alerts unavailable" message={selectedDriverAlerts.error} />
 
       <DriverStatsBar stats={stats} />
       <DriverFilters
         search={search}
-        eyeFilter={eyeFilter}
         statusFilter={statusFilter}
         onSearchChange={setSearch}
-        onEyeFilterChange={setEyeFilter}
         onStatusFilterChange={setStatusFilter}
       />
       <DriverTable
@@ -274,6 +273,11 @@ function DriversPage() {
             {dialogMode === "manage" ? (
               <div className="rounded-md border border-hairline bg-zinc-950/40 px-3 py-2 text-[11px] text-zinc-500">
                 Driver ID: <span className="font-mono-num text-zinc-300">{selectedDriverId}</span>
+                {selectedBackendDriver?.driver_code ? (
+                  <span className="ml-3">
+                    Code: <span className="font-mono-num text-zinc-300">{selectedBackendDriver.driver_code}</span>
+                  </span>
+                ) : null}
               </div>
             ) : null}
             <DriverTextField
@@ -457,7 +461,7 @@ function tripTitle(trip: BackendTrip): string {
 function driverFormFromBackend(backendDriver: BackendDriver | undefined, driver: Driver): DriverFormState {
   return {
     fullName: backendDriver?.full_name ?? driver.name,
-    licenseNumber: backendDriver?.license_number ?? driver.licensePlate,
+    licenseNumber: backendDriver?.license_number ?? driver.licenseNumber,
     phone: backendDriver?.phone ?? driver.phone,
     email: backendDriver?.email ?? "",
     password: "",

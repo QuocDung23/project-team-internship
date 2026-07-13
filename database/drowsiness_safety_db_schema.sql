@@ -178,6 +178,7 @@ COMMENT ON TABLE users IS 'System users such as admins and drivers.';
 
 CREATE TABLE drivers (
     driver_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    driver_code     VARCHAR(20) NOT NULL UNIQUE,
     full_name       VARCHAR(150) NOT NULL,
     license_number  VARCHAR(50) NOT NULL UNIQUE,
     phone           VARCHAR(30),
@@ -196,7 +197,19 @@ CREATE TRIGGER trg_drivers_updated_at
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 COMMENT ON TABLE drivers IS 'Driver profile and calibration data.';
+COMMENT ON COLUMN drivers.driver_code IS 'Short operator-facing driver code such as DRV-001.';
 COMMENT ON COLUMN drivers.baseline_ear IS 'Optional calibrated eye aspect ratio baseline for this driver.';
+
+-- Existing deployments can backfill driver_code before enforcing NOT NULL:
+-- WITH numbered AS (
+--     SELECT driver_id, row_number() OVER (ORDER BY created_at, full_name, driver_id) AS row_num
+--     FROM drivers
+-- )
+-- UPDATE drivers d
+-- SET driver_code = 'DRV-' || lpad(numbered.row_num::text, 3, '0')
+-- FROM numbered
+-- WHERE d.driver_id = numbered.driver_id
+--   AND d.driver_code IS NULL;
 
 -- ============================================================================
 -- DRIVER SESSIONS

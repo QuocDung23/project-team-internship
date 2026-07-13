@@ -1,18 +1,11 @@
-import { ClockClockwise } from "@phosphor-icons/react";
-import { formatTime } from "../../hook/useTicker";
+import { Warning } from "@phosphor-icons/react";
 import { StatusBadge } from "../monitoring/StatusBadge";
 import type { Driver } from "../../types";
 import DriverConstants from "../../constants/drivers";
 
 const {
-  EYE_ICONS,
   STATUS_LABEL,
   STATUS_TONE,
-  PHONE_ON_ICON,
-  PHONE_OFF_ICON,
-  SEATBELT_ON_ICON,
-  SEATBELT_OFF_ICON,
-  WARN_ICON,
 } = DriverConstants;
 
 interface DriverRowProps {
@@ -20,18 +13,6 @@ interface DriverRowProps {
   isUpdating?: boolean;
   onSelect?: (driver: Driver) => void;
   onSetAvailability?: (driver: Driver, enabled: boolean) => void;
-}
-
-function earColor(ear: number): string {
-  if (ear < 0.17) return "text-red-400";
-  if (ear < 0.22) return "text-amber-400";
-  return "text-emerald-400";
-}
-
-function earHint(ear: number): string {
-  if (ear < 0.17) return "Mắt nhắm nghiêm trọng";
-  if (ear < 0.22) return "Mắt hơi khép";
-  return "Mắt mở bình thường";
 }
 
 function avatarTone(status: Driver["status"]): string {
@@ -51,7 +32,6 @@ function DriverRow({
   onSelect,
   onSetAvailability,
 }: DriverRowProps) {
-  const ear = driver.ear;
   const canToggleAvailability = Boolean(onSetAvailability) && driver.status !== "driving";
   return (
     <tr
@@ -64,98 +44,69 @@ function DriverRow({
           onSelect(driver);
         }
       }}
-      className={`border-b border-hairline/50 transition-colors hover:bg-surface-2/30 ${
-        onSelect ? "cursor-pointer focus-within:bg-surface-2/40 focus:outline-none" : ""
+      className={`border-b border-hairline/50 transition-colors hover:bg-surface-2/40 ${
+        onSelect ? "cursor-pointer focus-within:bg-surface-2/50 focus:outline-none" : ""
       }`}
     >
-      <td className="py-2.5 px-3 pr-3 text-[11px] text-zinc-500">
-        -
-      </td>
-      <td className="py-2.5 pr-3">
-        <div className="flex items-center gap-2">
+      <td className="px-4 py-4 align-middle">
+        <div className="flex items-center gap-3">
           <div
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold ${avatarTone(driver.status)}`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[14px] font-semibold ${avatarTone(driver.status)}`}
           >
             {driver.name.charAt(0)}
           </div>
-          <span className="text-[12px] font-medium text-zinc-100">
-            {driver.name}
-          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-mono-num text-[11px] font-semibold text-emerald-300">
+                {driver.driverCode}
+              </span>
+              <span className="truncate text-[13px] font-semibold text-zinc-100">
+                {driver.name}
+              </span>
+            </div>
+            <p className="mt-1 truncate text-[11px] text-zinc-500">
+              License {driver.licenseNumber} | {driver.email}
+            </p>
+          </div>
         </div>
       </td>
-      <td className="py-2.5 pr-3 font-mono-num text-[11px] text-zinc-400">
-        {driver.licensePlate}
+      <td className="py-4 pr-4 align-middle">
+        <span className="font-mono-num text-[13px] font-semibold text-zinc-200">
+          {driver.licensePlate}
+        </span>
       </td>
-      <td className="py-2.5 pr-3 text-[11px] text-zinc-400">{driver.team}</td>
-      <td className="py-2.5 pr-3">
-        <div className="flex items-center gap-1.5" title={earHint(ear)}>
-          <span className={`font-mono-num text-[12px] font-medium ${earColor(ear)}`}>
-            {ear.toFixed(3)}
-          </span>
-          {EYE_ICONS[driver.eyeState]}
-        </div>
-      </td>
-      <td className="py-2.5 pr-3">
+      <td className="py-4 pr-4 align-middle">
         <StatusBadge
           tone={STATUS_TONE[driver.status]}
           label={STATUS_LABEL[driver.status]}
         />
       </td>
-      <td className="py-2.5 pr-3">
-        <div className="flex items-center gap-1.5">
-          {driver.onPhone ? (
-            <span
-              title="Đang dùng điện thoại"
-              className="flex items-center justify-center rounded bg-red-500/10 p-1 text-red-400"
-            >
-              {PHONE_ON_ICON}
-            </span>
-          ) : (
-            <span className="flex items-center justify-center rounded bg-emerald-500/10 p-1 text-emerald-400/40">
-              {PHONE_OFF_ICON}
-            </span>
-          )}
-          {driver.seatbelt ? (
-            <span
-              title="Đai an toàn"
-              className="flex items-center justify-center rounded bg-emerald-500/10 p-1 text-emerald-400/40"
-            >
-              {SEATBELT_ON_ICON}
-            </span>
-          ) : (
-            <span
-              title="Không đai an toàn"
-              className="flex items-center justify-center rounded bg-red-500/10 p-1 text-red-400"
-            >
-              {SEATBELT_OFF_ICON}
-            </span>
-          )}
-        </div>
-      </td>
-      <td className="py-2.5 pr-3">
-        {driver.totalAlerts > 0 ? (
+      <td className="py-4 pr-4 align-middle">
+        <div className="flex flex-wrap items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1 font-mono-num text-[11px] font-medium ${
-              driver.totalAlerts >= 5 ? "text-red-300" : "text-amber-300"
+            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono-num text-[11px] font-semibold ${
+              driver.totalAlerts > 0
+                ? "bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/20"
+                : "bg-zinc-800/40 text-zinc-500 ring-1 ring-zinc-700/40"
             }`}
           >
-            {WARN_ICON}
+            <Warning size={13} />
             {driver.totalAlerts}
           </span>
-        ) : (
-          <span className="font-mono-num text-[11px] text-zinc-600">0</span>
-        )}
-      </td>
-      <td className="py-2.5 pr-3 font-mono-num text-[11px] text-zinc-500">
-        {driver.phone}
-      </td>
-      <td className="py-2.5 pl-3 font-mono-num text-[10px] text-zinc-500">
-        <div className="flex items-center gap-1">
-          <ClockClockwise size={10} className="text-zinc-600" />
-          {formatTime(driver.lastUpdate)}
+          {driver.criticalAlerts > 0 ? (
+            <span className="rounded-md bg-red-500/10 px-2 py-1 font-mono-num text-[11px] font-semibold text-red-300 ring-1 ring-red-500/20">
+              {driver.criticalAlerts} critical
+            </span>
+          ) : null}
         </div>
       </td>
-      <td className="py-2.5 pl-3">
+      <td className="py-4 pr-4 align-middle">
+        <div className="grid gap-1 text-[11px] text-zinc-500">
+          <span className="font-mono-num text-zinc-300">{driver.phone}</span>
+          <span className="truncate">{driver.email}</span>
+        </div>
+      </td>
+      <td className="py-4 pl-3 pr-4 align-middle">
         {onSetAvailability ? (
           <button
             type="button"
@@ -164,7 +115,7 @@ function DriverRow({
               event.stopPropagation();
               onSetAvailability(driver, driver.status === "disable");
             }}
-            className="rounded-md border border-hairline px-2 py-1 text-[10px] font-semibold text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-hairline px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isUpdating ? "Saving" : driver.status === "disable" ? "Enable" : "Disable"}
           </button>

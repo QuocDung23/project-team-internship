@@ -90,6 +90,7 @@ class DriverUpdate(BaseModel):
 
 class DriverResponse(BaseModel):
     driver_id: str
+    driver_code: str
     full_name: str
     license_number: str
     phone: str | None = None

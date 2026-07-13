@@ -5,6 +5,7 @@ import {
   buildSafetySummaryFromTrips,
   createDriver,
   deriveDriverStatuses,
+  formatVietnamesePlate,
   getTripsForDriver,
   mapBackendDriverToDriver,
   mapBackendTripToVehicle,
@@ -16,6 +17,7 @@ import {
 test("maps backend driver object into dashboard driver model", () => {
   const driver = mapBackendDriverToDriver({
     driver_id: "driver-1",
+    driver_code: "DRV-001",
     full_name: "Nguyen Van A",
     phone: "0900000000",
     license_number: "GPLX-1",
@@ -25,8 +27,11 @@ test("maps backend driver object into dashboard driver model", () => {
   });
 
   assert.equal(driver.id, "driver-1");
+  assert.equal(driver.driverCode, "DRV-001");
   assert.equal(driver.name, "Nguyen Van A");
   assert.equal(driver.phone, "0900000000");
+  assert.equal(driver.licenseNumber, "GPLX-1");
+  assert.equal(driver.licensePlate, "Unassigned");
   assert.equal(driver.status, "idle");
   assert.equal(driver.totalAlerts, 2);
 });
@@ -58,12 +63,25 @@ test("derives driver display statuses from active trips and availability", () =>
       trip_id: "trip-1",
       status: "in_progress",
       driver_id: "driver-1",
+      vehicle_plate: "43A12345",
+      total_alerts_count: 4,
+      critical_alerts_count: 1,
     },
   ]);
 
   assert.equal(next[0].status, "driving");
+  assert.equal(next[0].licensePlate, "43A-123.45");
+  assert.equal(next[0].totalAlerts, 4);
+  assert.equal(next[0].criticalAlerts, 1);
   assert.equal(next[1].status, "idle");
   assert.equal(next[2].status, "disable");
+});
+
+test("formats Vietnamese vehicle plates when possible", () => {
+  assert.equal(formatVietnamesePlate("43A12345"), "43A-123.45");
+  assert.equal(formatVietnamesePlate("43A-12345"), "43A-123.45");
+  assert.equal(formatVietnamesePlate("51H-123.45"), "51H-123.45");
+  assert.equal(formatVietnamesePlate(null), null);
 });
 
 test("maps backend active trip into fleet vehicle snapshot", () => {

@@ -1036,6 +1036,7 @@ class TripRepository:
     def _with_latest_assignment(self, trip: dict[str, Any]) -> dict[str, Any]:
         trip["assignment"] = self.find_latest_assignment_for_trip(trip["trip_id"])
         self._attach_driver_summary(trip)
+        self._attach_vehicle_summary(trip)
         return trip
 
     def _attach_driver_summary(self, trip: dict[str, Any]) -> None:
@@ -1049,6 +1050,14 @@ class TripRepository:
         trip["driver_id"] = driver["driver_id"] if driver else None
         trip["driver_name"] = driver["full_name"] if driver else None
         trip["driver_email"] = driver["email"] if driver else None
+
+    def _attach_vehicle_summary(self, trip: dict[str, Any]) -> None:
+        assignment = trip.get("assignment")
+        if assignment is None:
+            trip["vehicle_plate"] = None
+            return
+        vehicle = self.find_vehicle_by_id(assignment["vehicle_id"])
+        trip["vehicle_plate"] = vehicle["plate_number"] if vehicle else None
 
     def _driver_summary_by_id(self, driver_id: str) -> dict[str, Any] | None:
         with self.engine.connect() as connection:

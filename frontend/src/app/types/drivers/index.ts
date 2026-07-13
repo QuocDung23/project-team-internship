@@ -12,7 +12,6 @@ export interface DriverStats {
   eyesOpen: number;
   eyesClosed: number;
   yawning: number;
-  onPhone: number;
 }
 
 export type { Driver };

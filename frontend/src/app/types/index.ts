@@ -9,8 +9,11 @@ export interface GeoPoint {
 
 export interface Driver {
   id: string;
+  driverCode: string;
   name: string;
+  email: string;
   phone: string;
+  licenseNumber: string;
   licensePlate: string;
   team: string;
   status: DriverStatus;
@@ -19,6 +22,7 @@ export interface Driver {
   position: GeoPoint;
   lastUpdate: number; // epoch ms
   totalAlerts: number; // accumulated alerts over current shift
+  criticalAlerts: number;
   onPhone: boolean; // derived: driver holding phone
   seatbelt: boolean; // derived: seatbelt fastened
 }

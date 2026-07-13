@@ -34,6 +34,7 @@ class WorkflowDriverService:
     def create_driver(self, payload):
         self.state.driver = {
             "driver_id": "driver-1",
+            "driver_code": "DRV-001",
             "full_name": payload.full_name,
             "license_number": payload.license_number,
             "phone": payload.phone,
@@ -145,6 +146,7 @@ class WorkflowTripRepository:
             "created_at": NOW,
             "updated_at": NOW,
             "assignment": None,
+            "vehicle_plate": None,
         }
         return self.state.trip
 
@@ -229,6 +231,7 @@ class WorkflowTripRepository:
         }
         self.state.trip["status"] = TripStatus.ASSIGNED
         self.state.trip["assignment"] = self.state.assignment
+        self.state.trip["vehicle_plate"] = self.state.vehicle["plate_number"]
         self.state.vehicle["status"] = VehicleStatus.ASSIGNED
         return self.state.trip
 

@@ -8,6 +8,7 @@ import type { ClientSafetyEvent } from "../types/monitoring";
 
 export interface BackendDriver {
   driver_id: string;
+  driver_code?: string | null;
   full_name: string;
   license_number: string;
   phone?: string | null;
@@ -56,6 +57,8 @@ export interface BackendTrip {
   planned_start_at?: string | null;
   end_time?: string | null;
   actual_end_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   origin?: string | null;
   destination?: string | null;
   status: string;
@@ -229,11 +232,15 @@ export function mapBackendDriverToDriver(input: BackendDriver): Driver {
   const alerts = asNumber(input.total_alerts_count, 0);
   const status = backendStatusToDriver(input.status);
   const ear = asNumber(input.baseline_ear, 0.3);
+  const fallbackCode = asString(input.driver_id, "driver").slice(0, 8).toUpperCase();
   return {
     id: asString(input.driver_id, "driver"),
+    driverCode: asString(input.driver_code, fallbackCode),
     name: asString(input.full_name, "Unknown driver"),
+    email: asString(input.email, "-"),
     phone: asString(input.phone, "-"),
-    licensePlate: asString(input.license_number, "-"),
+    licenseNumber: asString(input.license_number, "-"),
+    licensePlate: "Unassigned",
     team: "Backend",
     status,
     ear,
@@ -241,6 +248,7 @@ export function mapBackendDriverToDriver(input: BackendDriver): Driver {
     position: { lat: 0, lng: 0 },
     lastUpdate: Date.now(),
     totalAlerts: alerts,
+    criticalAlerts: 0,
     onPhone: false,
     seatbelt: true,
   };
@@ -289,14 +297,26 @@ function activeTripDriverId(trip: BackendTrip): string | null {
 }
 
 export function deriveDriverStatuses(drivers: Driver[], trips: BackendTrip[]): Driver[] {
-  const drivingDriverIds = new Set(
-    trips.map(activeTripDriverId).filter((driverId): driverId is string => Boolean(driverId)),
-  );
   return drivers.map((driver) => {
-    if (driver.status === "disable") return driver;
+    const linkedTrips = getTripsForDriver(driver.id, trips);
+    const activeTrip = linkedTrips.find((trip) => trip.status === "in_progress");
+    const vehiclePlate = displayVehiclePlate(activeTrip ?? latestTripWithPlate(linkedTrips));
+    const totalAlerts = linkedTrips.reduce((sum, trip) => sum + asNumber(trip.total_alerts_count, 0), 0);
+    const criticalAlerts = linkedTrips.reduce((sum, trip) => sum + asNumber(trip.critical_alerts_count, 0), 0);
+    if (driver.status === "disable") {
+      return {
+        ...driver,
+        licensePlate: vehiclePlate,
+        totalAlerts,
+        criticalAlerts,
+      };
+    }
     return {
       ...driver,
-      status: drivingDriverIds.has(driver.id) ? "driving" : "idle",
+      status: activeTrip && activeTripDriverId(activeTrip) === driver.id ? "driving" : "idle",
+      licensePlate: vehiclePlate,
+      totalAlerts,
+      criticalAlerts,
     };
   });
 }
@@ -306,6 +326,33 @@ export function getTripsForDriver(driverId: string | null | undefined, trips: Ba
   return trips.filter((trip) => (
     trip.driver_id === driverId || trip.assignment?.driver_id === driverId
   ));
+}
+
+function latestTripWithPlate(trips: BackendTrip[]): BackendTrip | null {
+  const datedTrips = trips
+    .filter((trip) => Boolean(trip.vehicle_plate))
+    .map((trip) => ({ trip, time: tripTime(trip) }))
+    .sort((a, b) => b.time - a.time);
+  return datedTrips[0]?.trip ?? null;
+}
+
+function tripTime(trip: BackendTrip): number {
+  const raw = trip.actual_start_at ?? trip.planned_start_at ?? trip.actual_end_at ?? trip.updated_at ?? trip.created_at;
+  const parsed = raw ? Date.parse(raw) : NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function displayVehiclePlate(trip: BackendTrip | null): string {
+  return formatVietnamesePlate(trip?.vehicle_plate) ?? "Unassigned";
+}
+
+export function formatVietnamesePlate(value: string | null | undefined): string | null {
+  const raw = value?.trim().toUpperCase();
+  if (!raw) return null;
+  const compact = raw.replace(/[^0-9A-Z]/g, "");
+  const match = compact.match(/^(\d{2})([A-Z]{1,2})(\d{3})(\d{2})$/);
+  if (!match) return raw;
+  return `${match[1]}${match[2]}-${match[3]}.${match[4]}`;
 }
 
 export interface SafetySummary {

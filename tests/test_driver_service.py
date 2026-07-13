@@ -20,6 +20,7 @@ NOW = datetime.now(timezone.utc)
 def driver(**overrides):
     data = {
         "driver_id": "driver-1",
+        "driver_code": "DRV-001",
         "full_name": "Dana Driver",
         "license_number": "LIC-001",
         "phone": None,
@@ -50,6 +51,7 @@ def session(**overrides):
 
 class FakeDriverRepository:
     def __init__(self):
+        self.ensure_count = 0
         self.driver = driver()
         self.active_session = None
         self.created_sessions = []
@@ -58,14 +60,17 @@ class FakeDriverRepository:
         self.email_taken = False
 
     def list_drivers(self, status=None):
+        self.ensure_count += 1
         if status and self.driver["status"] != status:
             return []
         return [self.driver]
 
     def find_by_id(self, driver_id):
+        self.ensure_count += 1
         return self.driver if driver_id == self.driver["driver_id"] else None
 
     def find_by_email(self, email):
+        self.ensure_count += 1
         return self.driver if email.lower() == self.driver["email"] else None
 
     def create_driver(self, **kwargs):
@@ -76,6 +81,7 @@ class FakeDriverRepository:
         return self.email_taken
 
     def create_driver_with_user(self, **kwargs):
+        self.ensure_count += 1
         self.created_user = {
             "full_name": kwargs["full_name"],
             "email": kwargs["email"],
@@ -84,6 +90,7 @@ class FakeDriverRepository:
             "status": kwargs["user_status"],
         }
         self.driver = driver(
+            driver_code="DRV-002",
             full_name=kwargs["full_name"],
             license_number=kwargs["license_number"],
             phone=kwargs["phone"],
@@ -143,6 +150,7 @@ class DriverServiceTest(unittest.TestCase):
         created = self.service.create_driver(payload)
 
         self.assertEqual(created["full_name"], "New Driver")
+        self.assertEqual(created["driver_code"], "DRV-002")
         self.assertEqual(created["license_number"], "LIC-002")
         self.assertEqual(created["email"], "new@example.com")
         self.assertEqual(self.repository.created_user["email"], "new@example.com")

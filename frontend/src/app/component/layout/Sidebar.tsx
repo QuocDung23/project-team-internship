@@ -6,7 +6,6 @@ import {
   Warning,
   Gear,
   SignOut,
-  CaretRight,
   ShieldCheck,
 } from "@phosphor-icons/react";
 import type { ReactElement } from "react";
@@ -64,27 +63,6 @@ export function Sidebar() {
           </p>
         </div>
       </div>
-
-      <button
-        type="button"
-        className="group mb-5 flex items-center gap-3 rounded-lg border border-hairline bg-surface-2/60 px-3 py-2.5 text-left transition hover:border-zinc-700"
-      >
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-800 text-[10px] font-bold text-zinc-300 ring-1 ring-zinc-700">
-          API
-        </div>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-[12px] font-medium text-zinc-200">
-            Production backend
-          </p>
-          <p className="truncate text-[10px] text-zinc-500">
-            Realtime detector data
-          </p>
-        </div>
-        <CaretRight
-          size={12}
-          className="text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-zinc-400"
-        />
-      </button>
 
       <nav className="flex flex-1 flex-col gap-7 overflow-y-auto">
         <SidebarSection label="Operations">
