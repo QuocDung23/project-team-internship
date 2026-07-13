@@ -68,7 +68,10 @@ export default function TripDialog({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22, ease: MOTION_EASE.smooth as Easing }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.80)", backdropFilter: "blur(8px)" }}
+          style={{
+            backgroundColor: "rgba(0,0,0,0.80)",
+            backdropFilter: "blur(8px)",
+          }}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && canClose) onClose();
           }}
@@ -81,7 +84,8 @@ export default function TripDialog({
             transition={{ ...SPRING, ease: MOTION_EASE.smooth as Easing }}
             className="relative flex max-h-[92vh] w-full max-w-4xl flex-col gap-4 overflow-y-auto rounded-[28px] border border-white/[0.08] bg-gradient-to-br from-zinc-950/95 via-zinc-950/90 to-zinc-900/70 p-6 shadow-2xl md:p-7"
             style={{
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 40px 80px -20px rgba(0,0,0,0.7)",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.05), 0 40px 80px -20px rgba(0,0,0,0.7)",
             }}
           >
             {/* Header */}
@@ -103,8 +107,18 @@ export default function TripDialog({
                   disabled={isBusy}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-zinc-400 transition-all duration-200 hover:border-white/[0.15] hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-40"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
               ) : null}
@@ -113,8 +127,20 @@ export default function TripDialog({
             {/* Error */}
             {error ? (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/05 px-4 py-2.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-400">
-                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0 text-amber-400"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
                 <p className="text-xs text-amber-200">{error}</p>
               </div>

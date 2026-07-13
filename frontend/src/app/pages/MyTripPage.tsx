@@ -32,7 +32,8 @@ export default function MyTripPage() {
   const monitoringAttemptedTripIdRef = useRef<string | null>(null);
   const monitoringStartedTripIdRef = useRef<string | null>(null);
 
-  const activeTrip = trips.find((trip) => trip.status === "in_progress") ?? null;
+  const activeTrip =
+    trips.find((trip) => trip.status === "in_progress") ?? null;
   const completedTrips = trips.filter((trip) => trip.status === "completed");
   const myDriver = useMyDriverProfile(true);
   const tripAlerts = useBackendAlerts(activeTrip?.trip_id, {
@@ -48,7 +49,10 @@ export default function MyTripPage() {
     stop: cnnStop,
   } = useBrowserCNN();
 
-  const liveAlerts = cnnEvents.map(mapClientSafetyEventToMonitorAlert).reverse().slice(0, 5);
+  const liveAlerts = cnnEvents
+    .map(mapClientSafetyEventToMonitorAlert)
+    .reverse()
+    .slice(0, 5);
   const safetySummary = buildSafetySummaryFromTrips(trips);
   const canCloseDialog = !activeTrip && !isBusy;
   const effectiveDialogOpen = dialogOpen || Boolean(activeTrip);
@@ -61,7 +65,9 @@ export default function MyTripPage() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void refresh().catch((err) => setError(err instanceof Error ? err.message : "Failed to load trips"));
+      void refresh().catch((err) =>
+        setError(err instanceof Error ? err.message : "Failed to load trips"),
+      );
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [refresh]);
@@ -74,7 +80,11 @@ export default function MyTripPage() {
         await cnnStart(tripId);
         monitoringStartedTripIdRef.current = tripId;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to start camera monitoring");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to start camera monitoring",
+        );
       }
     },
     [cnnStart],

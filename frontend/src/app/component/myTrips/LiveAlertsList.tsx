@@ -28,18 +28,19 @@ export default function LiveAlertsList({ alerts, eventCount }: LiveAlertsListPro
       {/* Alerts */}
       {alerts.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <AnimatePresence initial={false}>
-            {alerts.map((alert, i) => (
+          <AnimatePresence initial={false} mode="popLayout">
+            {alerts.map((alert) => (
               <motion.div
                 key={alert.id}
-                initial={{ opacity: 0, x: 16, scale: 0.97 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -16, scale: 0.97 }}
-                transition={{
-                  ...SPRING,
-                  delay: i * 0.04,
-                  ease: MOTION_EASE.smooth as Easing,
+                layout
+                initial={{ opacity: 0, y: -10, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.95,
+                  transition: { duration: 0.15, ease: MOTION_EASE.smooth as Easing },
                 }}
+                transition={SPRING}
                 className={`rounded-xl border px-3.5 py-2.5 ${
                   alert.severity === "critical"
                     ? "border-rose-500/30 bg-rose-500/05"
