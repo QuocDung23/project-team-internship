@@ -25,4 +25,5 @@ def update_settings(
     try:
         return update_global_settings(setting.dict(exclude_unset=True))
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        status_code = 404 if "not found" in str(exc) else 400
+        raise HTTPException(status_code=status_code, detail=str(exc))

@@ -881,7 +881,8 @@ class TripRepository:
                             COUNT(*) FILTER (WHERE severity = 'critical') AS critical_alerts
                         FROM alerts
                         WHERE trip_id = :trip_id
-                          AND status <> 'ignored'
+                          AND alert_type = 'drowsiness'
+                          AND status IS DISTINCT FROM 'ignored'
                         """
                     ),
                     {"trip_id": trip_id},

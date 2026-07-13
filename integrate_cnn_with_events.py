@@ -46,6 +46,7 @@ from ai_runtime.publishers import (
     LocalJsonlPublisher,
 )
 from ai_runtime.monitoring_publisher import AsyncMonitoringPublisher
+from detector_backend import fetch_global_settings, fetch_trip_settings
 
 
 _shutdown_requested = False
@@ -320,8 +321,90 @@ FACE_CHANGE_AREA_RATIO = 0.55  # hoặc diện tích mặt mới <55% hoặc > (
 CALIBRATION_FRAMES = 75
 
 # [FIX-3] Resize frame xuống 480p để giảm tải dlib + solvePnP
-PROCESS_WIDTH = int(ARGS.process_width)
-PROCESS_HEIGHT = int(ARGS.process_height)
+ALARM_SOUND_FILES = {
+    "classic": "audio/alert.wav",
+    "soft": "audio/alert-soft.wav",
+    "urgent": "audio/alert-urgent.wav",
+}
+
+
+def _sound_id_from_settings(settings: dict) -> str | None:
+    sound_id = str(settings.get("alarm_sound_id") or "").strip()
+    if sound_id in ALARM_SOUND_FILES:
+        return sound_id
+    legacy_file = str(settings.get("alarm_audio_file") or "").strip()
+    for candidate, path in ALARM_SOUND_FILES.items():
+        if legacy_file in {path, Path(path).name}:
+            return candidate
+    return None
+
+
+def _positive_setting_int(settings: dict, key: str) -> int | None:
+    value = settings.get(key)
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _resolve_runtime_settings() -> dict:
+    resolved = {
+        "alarm_sound_id": "classic",
+        "frame_width": max(1, int(ARGS.process_width)),
+        "frame_height": max(1, int(ARGS.process_height)),
+    }
+
+    sources = []
+    try:
+        sources.append((
+            "global",
+            fetch_global_settings(
+                ARGS.monitoring_backend_url,
+                timeout=1.0,
+                auth_token=ARGS.safety_backend_token,
+            ),
+        ))
+    except Exception as exc:
+        print(f"Warning: global settings unavailable; using defaults if needed: {exc}")
+
+    if ARGS.trip_id:
+        try:
+            sources.append((
+                "trip",
+                fetch_trip_settings(
+                    ARGS.monitoring_backend_url,
+                    ARGS.trip_id,
+                    timeout=1.0,
+                    auth_token=ARGS.safety_backend_token,
+                ),
+            ))
+        except Exception as exc:
+            print(f"Warning: trip settings unavailable; using global/default if needed: {exc}")
+
+    for _name, settings in sources:
+        width = _positive_setting_int(settings, "frame_width")
+        height = _positive_setting_int(settings, "frame_height")
+        sound_id = _sound_id_from_settings(settings)
+        if width is not None:
+            resolved["frame_width"] = width
+        if height is not None:
+            resolved["frame_height"] = height
+        if sound_id is not None:
+            resolved["alarm_sound_id"] = sound_id
+
+    resolved["alarm_audio_file"] = ALARM_SOUND_FILES.get(
+        resolved["alarm_sound_id"],
+        ALARM_SOUND_FILES["classic"],
+    )
+    return resolved
+
+
+RUNTIME_SETTINGS = _resolve_runtime_settings()
+PROCESS_WIDTH = int(RUNTIME_SETTINGS["frame_width"])
+PROCESS_HEIGHT = int(RUNTIME_SETTINGS["frame_height"])
 
 # ─────────────────────────────────────────────────────────────
 # 3) KHỞI TẠO
@@ -333,7 +416,17 @@ ALERT_BEEP_MS = 700          # độ dài beep (ms)
 ALERT_COOLDOWN_SEC = 1.6     # tối thiểu bao lâu mới beep lại
 _alert_last_play_ts = 0.0
 
-_alert_sound = pygame.mixer.Sound("audio/alert.wav")
+def _load_alarm_sound():
+    selected = str(RUNTIME_SETTINGS.get("alarm_audio_file") or ALARM_SOUND_FILES["classic"])
+    try:
+        return pygame.mixer.Sound(selected)
+    except Exception as exc:
+        fallback = ALARM_SOUND_FILES["classic"]
+        print(f"Warning: cannot load selected alarm sound '{selected}', using '{fallback}': {exc}")
+        return pygame.mixer.Sound(fallback)
+
+
+_alert_sound = _load_alarm_sound()
 _alert_channel = pygame.mixer.Channel(0)
 
 _detector = dlib.get_frontal_face_detector()
@@ -1002,6 +1095,11 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, PROCESS_HEIGHT)
 
 actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+if actual_w != PROCESS_WIDTH or actual_h != PROCESS_HEIGHT:
+    print(
+        "Warning: camera backend did not apply requested resolution "
+        f"{PROCESS_WIDTH}x{PROCESS_HEIGHT}; actual={actual_w}x{actual_h}"
+    )
 print(f"📷 Camera resolution: {actual_w}×{actual_h}")
 
 if bool(ARGS.threaded_capture):

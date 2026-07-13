@@ -97,6 +97,8 @@ export interface StartMyTripResult {
 export interface BackendSettings {
   setting_id?: string;
   scope?: string;
+  alarm_sound_id?: string;
+  alarm_sound_catalog?: AlarmSoundOption[];
   ear_threshold: number;
   ear_consec_frames: number;
   cnn_confidence_threshold: number;
@@ -113,6 +115,13 @@ export interface BackendSettings {
   safety_grade_a_min_score?: number;
   safety_grade_b_min_score?: number;
   extra_config?: Record<string, unknown>;
+}
+
+export interface AlarmSoundOption {
+  id: string;
+  label: string;
+  browser_path: string;
+  runtime_path: string;
 }
 
 export interface BackendMonitoringSnapshot {
@@ -393,9 +402,20 @@ export function buildSafetySummaryFromTrips(trips: BackendTrip[]): SafetySummary
 }
 
 export function normalizeBackendSettings(input: Partial<BackendSettings>): BackendSettings {
+  const fallbackSoundCatalog: AlarmSoundOption[] = [
+    { id: "classic", label: "Classic alarm", browser_path: "/alert.wav", runtime_path: "audio/alert.wav" },
+    { id: "soft", label: "Soft chime", browser_path: "/alert-soft.wav", runtime_path: "audio/alert-soft.wav" },
+    { id: "urgent", label: "Urgent pulse", browser_path: "/alert-urgent.wav", runtime_path: "audio/alert-urgent.wav" },
+  ];
+  const soundCatalog = Array.isArray(input.alarm_sound_catalog) && input.alarm_sound_catalog.length > 0
+    ? input.alarm_sound_catalog
+    : fallbackSoundCatalog;
+  const soundId = asString(input.alarm_sound_id, asString(input.extra_config?.alarm_sound_id, "classic"));
   return {
     setting_id: input.setting_id,
     scope: input.scope,
+    alarm_sound_id: soundCatalog.some((sound) => sound.id === soundId) ? soundId : "classic",
+    alarm_sound_catalog: soundCatalog,
     ear_threshold: asNumber(input.ear_threshold, 0.3),
     ear_consec_frames: asNumber(input.ear_consec_frames, 15),
     cnn_confidence_threshold: asNumber(input.cnn_confidence_threshold, 0.8),
@@ -407,9 +427,9 @@ export function normalizeBackendSettings(input: Partial<BackendSettings>): Backe
     camera_index: asNumber(input.camera_index, 0),
     frame_width: asNumber(input.frame_width, 640),
     frame_height: asNumber(input.frame_height, 480),
-    warning_alert_penalty: asNumber(input.warning_alert_penalty, 3),
-    critical_alert_penalty: asNumber(input.critical_alert_penalty, 8),
-    safety_grade_a_min_score: asNumber(input.safety_grade_a_min_score, 85),
+    warning_alert_penalty: 5,
+    critical_alert_penalty: 10,
+    safety_grade_a_min_score: asNumber(input.safety_grade_a_min_score, 80),
     safety_grade_b_min_score: asNumber(input.safety_grade_b_min_score, 60),
     extra_config: input.extra_config ?? {},
   };

@@ -1,5 +1,8 @@
+import json
+
 from backend.config.db import get_connection
 from backend.services.safety_service import calculate_safety_score, safety_grade
+from backend.services.setting_service import get_global_settings
 
 
 TRIP_COLUMNS = (
@@ -82,14 +85,23 @@ def end_trip(trip_id):
             COUNT(*) FILTER (WHERE severity = 'critical') AS critical_alerts
         FROM alerts
         WHERE trip_id=%s
-          AND status <> 'ignored'
+          AND alert_type = 'drowsiness'
+          AND status IS DISTINCT FROM 'ignored'
     """,(trip_id,))
 
     count_row=cur.fetchone()
     count=int(count_row[0] or 0)
     critical_count=int(count_row[1] or 0)
     score=calculate_safety_score(count, critical_count)
-    grade=safety_grade(score)
+    try:
+        settings = get_global_settings() or {}
+    except Exception:
+        settings = {}
+    grade=safety_grade(
+        score,
+        grade_a_min=float(settings.get("safety_grade_a_min_score") or 80),
+        grade_b_min=float(settings.get("safety_grade_b_min_score") or 60),
+    )
 
     cur.execute("""
         UPDATE trips
@@ -149,9 +161,26 @@ def get_trip_settings(trip_id):
             s.cnn_confidence_threshold,
             s.preferred_detection_method,
             s.alarm_audio_file,
-            s.alert_cooldown_seconds
+            s.alert_cooldown_seconds,
+            s.frame_width,
+            s.frame_height,
+            s.safety_grade_a_min_score,
+            s.safety_grade_b_min_score,
+            s.extra_config
         FROM trips t
-        JOIN effective_driver_settings s ON s.driver_id = t.driver_id
+        LEFT JOIN LATERAL (
+            SELECT ta.driver_id
+            FROM trip_assignments ta
+            WHERE ta.trip_id = t.trip_id
+            ORDER BY
+                CASE WHEN ta.status IN ('assigned', 'in_progress') THEN 0 ELSE 1 END,
+                ta.created_at DESC
+            LIMIT 1
+        ) assigned_driver ON TRUE
+        LEFT JOIN users owner_user ON owner_user.user_id = t.created_by
+        LEFT JOIN drivers owner_driver ON lower(owner_driver.email) = lower(owner_user.email)
+        JOIN effective_driver_settings s
+            ON s.driver_id = COALESCE(assigned_driver.driver_id, owner_driver.driver_id)
         WHERE t.trip_id=%s
         LIMIT 1
     """,(trip_id,))
@@ -166,5 +195,21 @@ def get_trip_settings(trip_id):
         "preferred_detection_method",
         "alarm_audio_file",
         "alert_cooldown_seconds",
+        "frame_width",
+        "frame_height",
+        "safety_grade_a_min_score",
+        "safety_grade_b_min_score",
+        "extra_config",
     )
-    return {key: value for key, value in zip(keys, row)}
+    settings = {key: value for key, value in zip(keys, row)}
+    extra = settings.get("extra_config")
+    if isinstance(extra, str):
+        try:
+            extra = json.loads(extra)
+        except json.JSONDecodeError:
+            extra = {}
+    if not isinstance(extra, dict):
+        extra = {}
+    sound_id = str(extra.get("alarm_sound_id") or "").strip() or "classic"
+    settings["alarm_sound_id"] = sound_id
+    return settings

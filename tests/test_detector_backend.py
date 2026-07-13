@@ -130,6 +130,30 @@ class DetectorBackendTest(unittest.TestCase):
         self.assertEqual(settings["ear_threshold"], 0.26)
         self.assertEqual(settings["ear_consec_frames"], 12)
 
+    def test_fetch_global_settings_reads_backend_json_with_auth(self):
+        requests = []
+        body = json.dumps({
+            "alarm_sound_id": "soft",
+            "frame_width": 800,
+            "frame_height": 600,
+        }).encode("utf-8")
+
+        def fake_urlopen(req, timeout):
+            requests.append(req)
+            return FakeResponse(body)
+
+        with patch.object(detector_backend.urllib.request, "urlopen", side_effect=fake_urlopen):
+            settings = detector_backend.fetch_global_settings(
+                "http://127.0.0.1:8000/api/v1",
+                timeout=0.1,
+                auth_token="token-1",
+            )
+
+        self.assertEqual(requests[0].full_url, "http://127.0.0.1:8000/api/v1/settings")
+        self.assertEqual(requests[0].headers["Authorization"], "Bearer token-1")
+        self.assertEqual(settings["alarm_sound_id"], "soft")
+        self.assertEqual(settings["frame_width"], 800)
+
 
 if __name__ == "__main__":
     unittest.main()

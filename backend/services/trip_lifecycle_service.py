@@ -9,6 +9,7 @@ from backend.models.vehicle import VehicleStatus
 from backend.repositories.trip_repository import TripRepository
 from backend.services.safety_service import calculate_safety_score, safety_grade
 from backend.services.safety_policy import CRITICAL_ALERT_PENALTY, WARNING_ALERT_PENALTY
+from backend.services.setting_service import get_global_settings
 
 
 TRIP_CODE_MAX_LENGTH = 50
@@ -224,7 +225,8 @@ class TripLifecycleService:
             counts["alert_count"],
             counts["critical_events"],
         )
-        grade = safety_grade(score)
+        grade_a_min, grade_b_min = self._safety_grade_cutoffs()
+        grade = safety_grade(score, grade_a_min=grade_a_min, grade_b_min=grade_b_min)
         explanation = {
             "base_score": 100.0,
             "alert_count": counts["alert_count"],
@@ -233,6 +235,8 @@ class TripLifecycleService:
             "warning_events": counts["warning_events"],
             "warning_penalty": WARNING_ALERT_PENALTY,
             "critical_penalty": CRITICAL_ALERT_PENALTY,
+            "grade_a_min_score": grade_a_min,
+            "grade_b_min_score": grade_b_min,
             "final_score": score,
             "grade": grade,
         }
@@ -246,6 +250,17 @@ class TripLifecycleService:
             alert_count=counts["alert_count"],
             explanation=explanation,
         )
+
+    def _safety_grade_cutoffs(self) -> tuple[float, float]:
+        try:
+            settings = get_global_settings() or {}
+        except Exception:
+            settings = {}
+        grade_a = float(settings.get("safety_grade_a_min_score") or 80)
+        grade_b = float(settings.get("safety_grade_b_min_score") or 60)
+        if grade_a < grade_b:
+            return 80.0, 60.0
+        return grade_a, grade_b
 
     def cancel_trip(self, trip_id: str, *, reason: str) -> dict[str, Any]:
         trip = self._get_trip_or_raise(trip_id)

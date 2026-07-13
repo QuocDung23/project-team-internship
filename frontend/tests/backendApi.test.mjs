@@ -192,6 +192,10 @@ test("normalizes backend settings with schema field names", () => {
   assert.equal(settings.ear_consec_frames, 18);
   assert.equal(settings.cnn_confidence_threshold, 0.82);
   assert.equal(settings.alarm_audio_file, "alarm.wav");
+  assert.equal(settings.alarm_sound_id, "classic");
+  assert.equal(settings.warning_alert_penalty, 5);
+  assert.equal(settings.critical_alert_penalty, 10);
+  assert.equal(settings.safety_grade_a_min_score, 80);
 });
 
 test("startMyTrip sends optional trip fields", async () => {

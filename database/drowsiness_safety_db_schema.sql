@@ -546,9 +546,9 @@ CREATE TABLE settings (
     camera_index               INTEGER NOT NULL DEFAULT 0,
     frame_width                INTEGER NOT NULL DEFAULT 640,
     frame_height               INTEGER NOT NULL DEFAULT 480,
-    warning_alert_penalty      NUMERIC(5,2) NOT NULL DEFAULT 3,
-    critical_alert_penalty     NUMERIC(5,2) NOT NULL DEFAULT 8,
-    safety_grade_a_min_score   NUMERIC(5,2) NOT NULL DEFAULT 85,
+    warning_alert_penalty      NUMERIC(5,2) NOT NULL DEFAULT 5,
+    critical_alert_penalty     NUMERIC(5,2) NOT NULL DEFAULT 10,
+    safety_grade_a_min_score   NUMERIC(5,2) NOT NULL DEFAULT 80,
     safety_grade_b_min_score   NUMERIC(5,2) NOT NULL DEFAULT 60,
     extra_config               JSONB NOT NULL DEFAULT '{}'::jsonb,
 
