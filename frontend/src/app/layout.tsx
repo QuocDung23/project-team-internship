@@ -8,7 +8,8 @@ import FleetPage from "./pages/FleetPage";
 import { AlertsPage } from "./pages/AlertsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { LoginPage } from "./pages/LoginPage";
-import { MyTripPage } from "./pages/MyTripPage";
+import MyTripPage from "./pages/MyTripPage";
+
 
 export function AppLayout(): ReactElement {
   return (
