@@ -178,10 +178,10 @@ function TripDetails({
 
         <div className="mt-4 grid gap-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-[13px] font-semibold text-zinc-100">Recent alerts</h3>
+            <h3 className="text-[13px] font-semibold text-zinc-100">All alerts</h3>
             <span className="font-mono-num text-xs text-zinc-500">{alerts.length}</span>
           </div>
-          {alerts.slice(0, 8).map((alert) => (
+          {alerts.map((alert) => (
             <div key={alert.id} className="rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
               <div className="flex items-center justify-between gap-3">
                 <p className="truncate text-sm font-medium text-zinc-100">{alert.title}</p>

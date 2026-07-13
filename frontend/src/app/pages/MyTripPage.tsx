@@ -19,6 +19,8 @@ const EMPTY_TRIP_FORM: StartMyTripPayload = {
   origin: "",
   destination: "",
 };
+const ALERT_AUDIO_SRC = "/audio/alert.wav";
+const WAKE_AUDIO_SRC = "/audio/hay-tinh-tao.mp3";
 
 export function MyTripPage() {
   const [trips, setTrips] = useState<BackendTrip[]>([]);
@@ -47,6 +49,11 @@ export function MyTripPage() {
   const safetySummary = buildSafetySummaryFromTrips(trips);
   const canCloseDialog = !activeTrip && !isBusy;
   const effectiveDialogOpen = dialogOpen || Boolean(activeTrip);
+  const escalationActive = useDrowsinessAudio(
+    Boolean(cnnMetrics?.drowsinessWarningActive),
+    cnnEvents,
+    activeTrip?.trip_id ?? null,
+  );
 
   const refresh = useCallback(async () => {
     setError("");
@@ -217,10 +224,150 @@ export function MyTripPage() {
           onEndTrip={() => void handleEndTrip()}
           onStartTrip={() => void handleStartTrip()}
           onUpdateForm={updateTripForm}
+          escalationActive={escalationActive}
         />
       ) : null}
     </div>
   );
+}
+
+function useDrowsinessAudio(
+  drowsinessActive: boolean,
+  events: ReturnType<typeof useBrowserCNN>["events"],
+  resetKey: string | null,
+): boolean {
+  const [escalationState, setEscalationState] = useState<{ active: boolean; key: string | null }>({
+    active: false,
+    key: null,
+  });
+  const alertAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wakeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const countedDrowsinessIdsRef = useRef<Set<string>>(new Set());
+  const drowsinessAlertCountRef = useRef(0);
+  const escalationPendingRef = useRef(false);
+  const escalationPlayingRef = useRef(false);
+  const escalationTimeoutRef = useRef<number | null>(null);
+  const activeResetKeyRef = useRef<string | null>(resetKey);
+
+  useEffect(() => {
+    if (!alertAudioRef.current) {
+      const audio = new Audio(ALERT_AUDIO_SRC);
+      audio.loop = true;
+      audio.preload = "auto";
+      alertAudioRef.current = audio;
+    }
+    if (!wakeAudioRef.current) {
+      const audio = new Audio(WAKE_AUDIO_SRC);
+      audio.preload = "auto";
+      wakeAudioRef.current = audio;
+    }
+  }, []);
+
+  useEffect(() => {
+    const alertAudio = alertAudioRef.current;
+    if (!alertAudio) return;
+
+    if (drowsinessActive) {
+      void alertAudio.play().catch(() => undefined);
+      return;
+    }
+
+    alertAudio.pause();
+    alertAudio.currentTime = 0;
+  }, [drowsinessActive]);
+
+  useEffect(() => {
+    if (activeResetKeyRef.current !== resetKey) {
+      activeResetKeyRef.current = resetKey;
+      countedDrowsinessIdsRef.current = new Set();
+      drowsinessAlertCountRef.current = 0;
+      escalationPendingRef.current = false;
+      escalationPlayingRef.current = false;
+    }
+
+    for (const event of events) {
+      if (event.event_type !== "drowsiness_detected") continue;
+      if (countedDrowsinessIdsRef.current.has(event.event_id)) continue;
+      countedDrowsinessIdsRef.current.add(event.event_id);
+      drowsinessAlertCountRef.current += 1;
+      if (drowsinessAlertCountRef.current >= 3) {
+        escalationPendingRef.current = true;
+      }
+    }
+
+    if (
+      escalationPendingRef.current
+      && !drowsinessActive
+      && !escalationPlayingRef.current
+      && escalationTimeoutRef.current === null
+    ) {
+      const escalationKey = resetKey;
+      escalationTimeoutRef.current = window.setTimeout(() => {
+        const wakeAudio = wakeAudioRef.current;
+        let playsRemaining = 2;
+        escalationTimeoutRef.current = null;
+        escalationPlayingRef.current = true;
+        setEscalationState({ active: true, key: escalationKey });
+
+        const finishEscalation = () => {
+          if (wakeAudio) wakeAudio.onended = null;
+          drowsinessAlertCountRef.current = 0;
+          escalationPendingRef.current = false;
+          escalationPlayingRef.current = false;
+          setEscalationState({ active: false, key: escalationKey });
+        };
+
+        const playNext = () => {
+          if (!wakeAudio) {
+            window.setTimeout(finishEscalation, 3_000);
+            return;
+          }
+          if (playsRemaining <= 0) {
+            finishEscalation();
+            return;
+          }
+          playsRemaining -= 1;
+          wakeAudio.pause();
+          wakeAudio.currentTime = 0;
+          wakeAudio.onended = playNext;
+          void wakeAudio.play().catch(() => window.setTimeout(playNext, 500));
+        };
+
+        playNext();
+      }, 3_000);
+    }
+  }, [drowsinessActive, events, resetKey]);
+
+  useEffect(() => {
+    const alertAudio = alertAudioRef.current;
+    const wakeAudio = wakeAudioRef.current;
+    if (escalationTimeoutRef.current !== null) {
+      window.clearTimeout(escalationTimeoutRef.current);
+      escalationTimeoutRef.current = null;
+    }
+    alertAudio?.pause();
+    if (alertAudio) alertAudio.currentTime = 0;
+    wakeAudio?.pause();
+    if (wakeAudio) wakeAudio.currentTime = 0;
+    if (wakeAudio) wakeAudio.onended = null;
+    countedDrowsinessIdsRef.current = new Set();
+    drowsinessAlertCountRef.current = 0;
+    escalationPendingRef.current = false;
+    escalationPlayingRef.current = false;
+  }, [resetKey]);
+
+  useEffect(() => {
+    return () => {
+      alertAudioRef.current?.pause();
+      wakeAudioRef.current?.pause();
+      if (wakeAudioRef.current) wakeAudioRef.current.onended = null;
+      if (escalationTimeoutRef.current !== null) {
+        window.clearTimeout(escalationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  return escalationState.active && escalationState.key === resetKey;
 }
 
 function TripDialog({
@@ -238,6 +385,7 @@ function TripDialog({
   onEndTrip,
   onStartTrip,
   onUpdateForm,
+  escalationActive,
 }: {
   activeTrip: BackendTrip | null;
   canClose: boolean;
@@ -259,6 +407,7 @@ function TripDialog({
   onEndTrip: () => void;
   onStartTrip: () => void;
   onUpdateForm: (field: keyof StartMyTripPayload, value: string) => void;
+  escalationActive: boolean;
 }) {
   return (
     <div
@@ -323,7 +472,7 @@ function TripDialog({
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
             <div className="grid gap-3">
               <div className="grid gap-3 text-sm md:grid-cols-3">
                 <TripMetric label="Trip" value={activeTrip.code || activeTrip.trip_id} />
@@ -331,7 +480,28 @@ function TripDialog({
                 <TripMetric label="Route" value={routeLabel(activeTrip)} />
               </div>
               <div className={`relative aspect-[4/3] w-full overflow-hidden rounded-md bg-zinc-950 ${cnnRunning ? "" : "hidden"}`}>
-                <video ref={cnnVideoRef} autoPlay muted playsInline className="h-full w-full object-contain" />
+                <video ref={cnnVideoRef} autoPlay muted playsInline className="h-full w-full scale-x-[-1] object-contain" />
+                {cnnMetrics?.drowsinessWarningActive ? (
+                  <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
+                    <span className="animate-pulse rounded-md bg-red-600/90 px-4 py-2 text-xl font-black uppercase tracking-wide text-white shadow-lg shadow-red-950/40">
+                      BUỒN NGỦ
+                    </span>
+                  </div>
+                ) : null}
+                {cnnMetrics?.yawnWarningActive ? (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+                    <span className="rounded-md bg-amber-400/90 px-4 py-2 text-lg font-black uppercase tracking-wide text-zinc-950 shadow-lg shadow-amber-950/30">
+                      NGÁP
+                    </span>
+                  </div>
+                ) : null}
+                {escalationActive ? (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-red-950/35 px-4">
+                    <span className="animate-pulse text-center text-4xl font-black uppercase tracking-wide text-red-100 drop-shadow-[0_4px_18px_rgba(127,29,29,0.95)] sm:text-6xl">
+                      HÃY TỈNH TÁO
+                    </span>
+                  </div>
+                ) : null}
               </div>
               {!cnnRunning ? (
                 <div className="rounded-md border border-hairline bg-zinc-950/30 px-3 py-8 text-center text-xs text-zinc-500">

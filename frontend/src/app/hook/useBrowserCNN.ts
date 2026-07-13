@@ -1,18 +1,17 @@
 import { useRef, useState, useCallback, type RefObject } from "react";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type * as TF from "@tensorflow/tfjs";
+import {
+  EAR_THRESHOLD,
+  MAR_THRESHOLD,
+  createBrowserDetectionState,
+  processDetectionSample,
+  resetBrowserDetectionState,
+} from "./browserDetectionLogic";
 
 // tf is loaded as IIFE via /tf.min.js script tag in index.html
 declare const tf: typeof TF;
 import type { DriverSnapshot, ClientSafetyEvent } from "../types/monitoring";
-
-// Detection constants
-const EAR_THRESHOLD = 0.28;
-const MAR_THRESHOLD = 0.55;
-const EAR_CONSEC_FRAMES = 3;
-const MAR_CONSEC_FRAMES = 15;
-const POSE_CONSEC_FRAMES = 10;
-const PITCH_THRESHOLD = 15;
 
 // Landmark indices
 const LEFT_EYE_IDX = [362, 385, 387, 263, 373, 380];
@@ -46,11 +45,10 @@ function mouthAspectRatio(pts: Point2D[]): number {
   return (A + B) / (2.0 * C);
 }
 
-function computeDwsScore(ear: number, mar: number, pitch: number): number {
+function computeDwsScore(ear: number, mar: number): number {
   const earScore = Math.max(0, Math.min(100, ((EAR_THRESHOLD - ear) / EAR_THRESHOLD) * 100));
   const marScore = Math.max(0, Math.min(100, ((mar - MAR_THRESHOLD) / MAR_THRESHOLD) * 100));
-  const pitchScore = Math.max(0, Math.min(100, (Math.abs(pitch) / PITCH_THRESHOLD) * 100));
-  return Math.round(earScore * 0.5 + marScore * 0.3 + pitchScore * 0.2);
+  return Math.round(earScore * 0.65 + marScore * 0.35);
 }
 
 async function runCNN(
@@ -114,16 +112,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
   const streamRef = useRef<MediaStream | null>(null);
   const eventsRef = useRef<ClientSafetyEvent[]>([]);
   const tripIdRef = useRef<string>("");
-
-  // Frame counters
-  const earCounterRef = useRef(0);
-  const marCounterRef = useRef(0);
-  const poseCounterRef = useRef(0);
-
-  // Event dedup flags
-  const inEarEventRef = useRef(false);
-  const inMarEventRef = useRef(false);
-  const inPoseEventRef = useRef(false);
+  const detectionStateRef = useRef(createBrowserDetectionState());
 
   // FPS tracking
   const lastFrameTsRef = useRef<number>(0);
@@ -167,12 +156,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
       eventsRef.current = [];
       setEventCount(0);
       setEvents([]);
-      earCounterRef.current = 0;
-      marCounterRef.current = 0;
-      poseCounterRef.current = 0;
-      inEarEventRef.current = false;
-      inMarEventRef.current = false;
-      inPoseEventRef.current = false;
+      resetBrowserDetectionState(detectionStateRef.current);
 
       // Camera
       let stream: MediaStream;
@@ -262,6 +246,11 @@ export function useBrowserCNN(): BrowserCNNReturn {
           let marAlert = false;
           let poseAlert = false;
           let cnnResult: { label: string; confidence: number } | null = null;
+          let eyesOpen = true;
+          let mouthClosed = true;
+          let alarmOn = false;
+          let drowsinessWarningActive = false;
+          let yawnWarningActive = false;
 
           if (faceDetected) {
             const lm = result.faceLandmarks[0] as Point3D[];
@@ -280,7 +269,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
             // Pitch (simple proxy)
             const noseTip = lm[1]!;
             const chin = lm[152]!;
-            pitch = (noseTip.y - chin.y) * 100;
+            const rawPitch = (noseTip.y - chin.y) * 100;
 
             // CNN
             if (modelRef.current) {
@@ -291,108 +280,57 @@ export function useBrowserCNN(): BrowserCNNReturn {
               }
             }
 
-            // EAR consecutive counter
-            if (ear < EAR_THRESHOLD) {
-              earCounterRef.current += 1;
-            } else {
-              earCounterRef.current = 0;
-              inEarEventRef.current = false;
-            }
+            const decision = processDetectionSample(detectionStateRef.current, {
+              now,
+              ear,
+              mar,
+              rawPitch,
+              faceDetected: true,
+            });
+            pitch = decision.pitch;
+            eyesOpen = decision.eyesOpen;
+            mouthClosed = decision.mouthClosed;
+            earAlert = decision.earAlert;
+            marAlert = decision.marAlert;
+            poseAlert = decision.poseAlert;
+            alarmOn = decision.alarmOn;
+            drowsinessWarningActive = decision.drowsinessWarningActive;
+            yawnWarningActive = decision.yawnWarningActive;
 
-            // MAR consecutive counter
-            if (mar > MAR_THRESHOLD) {
-              marCounterRef.current += 1;
-            } else {
-              marCounterRef.current = 0;
-              inMarEventRef.current = false;
-            }
-
-            // Pose consecutive counter
-            if (Math.abs(pitch) > PITCH_THRESHOLD) {
-              poseCounterRef.current += 1;
-            } else {
-              poseCounterRef.current = 0;
-              inPoseEventRef.current = false;
-            }
-
-            earAlert = earCounterRef.current >= EAR_CONSEC_FRAMES;
-            marAlert = marCounterRef.current >= MAR_CONSEC_FRAMES;
-            poseAlert = poseCounterRef.current >= POSE_CONSEC_FRAMES;
-
-            // Emit events (edge-triggered, not level-triggered)
-            if (earAlert && !inEarEventRef.current) {
-              inEarEventRef.current = true;
-              const conf = cnnResult?.confidence ?? 0.9;
+            for (const aggregateEvent of decision.events) {
               const event: ClientSafetyEvent = {
                 event_id: crypto.randomUUID(),
-                event_type: "drowsiness_detected",
-                severity: "high",
+                event_type: aggregateEvent.eventType,
+                severity: aggregateEvent.severity,
                 occurred_at: new Date().toISOString(),
-                confidence: conf,
-                duration_ms: Math.floor(earCounterRef.current * (1000 / 15)),
+                confidence: cnnResult?.confidence ?? (aggregateEvent.eventType === "drowsiness_detected" ? 0.9 : 0.8),
+                duration_ms: Math.round(aggregateEvent.durationMs),
                 details: {
                   ear_value: ear,
                   mar_value: mar,
                   pitch_value: pitch,
                   cnn_label: cnnResult?.label,
-                  consecutive_frame_count: earCounterRef.current,
-                },
-              };
-              pushEvent(event);
-            }
-
-            if (marAlert && !inMarEventRef.current) {
-              inMarEventRef.current = true;
-              const event: ClientSafetyEvent = {
-                event_id: crypto.randomUUID(),
-                event_type: "yawning_detected",
-                severity: "medium",
-                occurred_at: new Date().toISOString(),
-                confidence: cnnResult?.confidence ?? 0.8,
-                duration_ms: Math.floor(marCounterRef.current * (1000 / 15)),
-                details: {
-                  ear_value: ear,
-                  mar_value: mar,
-                  pitch_value: pitch,
-                  cnn_label: cnnResult?.label,
-                  consecutive_frame_count: marCounterRef.current,
-                },
-              };
-              pushEvent(event);
-            }
-
-            if (poseAlert && !inPoseEventRef.current) {
-              inPoseEventRef.current = true;
-              const event: ClientSafetyEvent = {
-                event_id: crypto.randomUUID(),
-                event_type: "head_nodding_detected",
-                severity: "medium",
-                occurred_at: new Date().toISOString(),
-                confidence: cnnResult?.confidence ?? 0.75,
-                duration_ms: Math.floor(poseCounterRef.current * (1000 / 15)),
-                details: {
-                  ear_value: ear,
-                  mar_value: mar,
-                  pitch_value: pitch,
-                  cnn_label: cnnResult?.label,
-                  consecutive_frame_count: poseCounterRef.current,
+                  consecutive_frame_count: aggregateEvent.durationMs > 0
+                    ? Math.round(aggregateEvent.durationMs / (1000 / (fpsRef.current || 15)))
+                    : undefined,
                 },
               };
               pushEvent(event);
             }
           } else {
             // No face — reset counters
-            earCounterRef.current = 0;
-            marCounterRef.current = 0;
-            poseCounterRef.current = 0;
-            inEarEventRef.current = false;
-            inMarEventRef.current = false;
-            inPoseEventRef.current = false;
+            processDetectionSample(detectionStateRef.current, {
+              now,
+              ear,
+              mar,
+              rawPitch: pitch,
+              faceDetected: false,
+            });
           }
 
-          const dwsScore = computeDwsScore(ear, mar, pitch);
+          const dwsScore = computeDwsScore(ear, mar);
           const status =
-            earAlert || marAlert || poseAlert || !faceDetected
+            earAlert || marAlert || !faceDetected
               ? "critical"
               : dwsScore >= 30
                 ? "warn"
@@ -406,13 +344,15 @@ export function useBrowserCNN(): BrowserCNNReturn {
             fps: fpsRef.current,
             dwsScore,
             status,
-            eyesOpen: ear >= EAR_THRESHOLD,
-            mouthClosed: mar <= MAR_THRESHOLD,
+            eyesOpen,
+            mouthClosed,
             faceDetected: !!faceDetected,
             earAlert,
             marAlert,
             poseAlert,
-            alarmOn: earAlert || marAlert || poseAlert,
+            alarmOn,
+            drowsinessWarningActive,
+            yawnWarningActive,
           };
 
           // Only update state when values change meaningfully (avoid every-frame re-renders)
@@ -425,7 +365,10 @@ export function useBrowserCNN(): BrowserCNNReturn {
             prev.faceDetected !== newMetrics.faceDetected ||
             prev.earAlert !== newMetrics.earAlert ||
             prev.marAlert !== newMetrics.marAlert ||
-            prev.poseAlert !== newMetrics.poseAlert;
+            prev.poseAlert !== newMetrics.poseAlert ||
+            prev.alarmOn !== newMetrics.alarmOn ||
+            prev.drowsinessWarningActive !== newMetrics.drowsinessWarningActive ||
+            prev.yawnWarningActive !== newMetrics.yawnWarningActive;
 
           if (changed) {
             lastMetricsRef.current = newMetrics;
