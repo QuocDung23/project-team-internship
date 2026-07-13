@@ -1,11 +1,11 @@
 import {
-  BatteryLow,
-  ClockClockwise,
-  Gauge,
+  GaugeCircle,
+  Clock4,
   MapPin,
   Thermometer,
   Timer,
-} from "@phosphor-icons/react";
+  Fuel,
+} from "lucide-react";
 import { StatusBadge } from "../monitoring/StatusBadge";
 import { formatTime } from "../../hook/useTicker";
 import type { VehicleSnapshot } from "../../types/fleets";
@@ -39,7 +39,7 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
         <div className="flex flex-col items-end gap-1">
           <StatusBadge tone={cfg.tone} label={cfg.label} />
           <span className="inline-flex items-center gap-1 font-mono-num text-[10px] text-zinc-500">
-            <ClockClockwise size={10} />
+            <Clock4 size={10} />
             {formatTime(vehicle.lastUpdate)}
           </span>
         </div>
@@ -55,14 +55,14 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
 
       <div className="grid grid-cols-2 gap-2 rounded-md bg-surface-2 p-2">
         <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-          <Gauge size={11} className="shrink-0 text-zinc-500" />
+          <GaugeCircle size={11} className="shrink-0 text-zinc-500" />
           <span className="font-mono-num text-zinc-200">
             {vehicle.speedKmh}
           </span>
           <span>km/h</span>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-          <BatteryLow size={11} className="shrink-0 text-zinc-500" />
+          <Fuel size={11} className="shrink-0 text-zinc-500" />
           <span className="font-mono-num text-zinc-200">
             {vehicle.fuelPercent}
           </span>

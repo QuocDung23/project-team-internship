@@ -1,4 +1,9 @@
-import { CheckCircle, Gauge, MapPin, Truck } from "@phosphor-icons/react";
+import {
+  LucideTruck,
+  LucideCheckCircle,
+  LucideMapPin,
+  LucideGauge,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { FleetKpi } from "../../types/fleets";
 
@@ -19,25 +24,25 @@ function FleetKpiRow({ kpi }: FleetKpiRowProps) {
       label: "Tổng xe",
       value: kpi.totalVehicles,
       tone: "text-zinc-100",
-      icon: <Truck size={14} />,
+      icon: <LucideTruck size={18} strokeWidth={2} />,
     },
     {
       label: "Đang chạy",
       value: kpi.activeVehicles,
       tone: "text-emerald-400",
-      icon: <CheckCircle size={14} />,
+      icon: <LucideCheckCircle size={18} strokeWidth={2} />,
     },
     {
       label: "Chuyến hôm nay",
       value: kpi.todayTrips,
       tone: "text-zinc-100",
-      icon: <MapPin size={14} />,
+      icon: <LucideMapPin size={18} strokeWidth={2} />,
     },
     {
       label: "Quãng đường",
       value: `${kpi.totalDistanceKm} km`,
       tone: "text-zinc-100",
-      icon: <Gauge size={14} />,
+      icon: <LucideGauge size={18} strokeWidth={2} />,
     },
   ];
 

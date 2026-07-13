@@ -1,21 +1,21 @@
 import {
   Eye,
-  EyeClosed,
+  EyeOff,
   Phone,
-  PhoneDisconnect,
-  Seatbelt,
-  SmileyXEyes,
-  Warning,
-} from "@phosphor-icons/react";
+  PhoneOff,
+  AlertTriangle,
+  Laugh,
+  Shield,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { Driver, DriverStatus } from "../../types";
 import type { KpiTone } from "../../types/dashboards";
 
 // Eye state → small icon used inside the EAR cell.
 const EYE_ICONS: Record<Driver["eyeState"], ReactNode> = {
-  open: <Eye size={14} className="text-emerald-400" />,
-  closed: <EyeClosed size={14} className="text-red-400" />,
-  yawning: <SmileyXEyes size={14} className="text-amber-400" />,
+  open: <Eye size={14} className="text-emerald-400" strokeWidth={2} />,
+  closed: <EyeOff size={14} className="text-red-400" strokeWidth={2} />,
+  yawning: <Laugh size={14} className="text-amber-400" strokeWidth={2} />,
 };
 
 // Vietnamese labels for the driver status.
@@ -36,11 +36,11 @@ const DriverConstants = {
   EYE_ICONS,
   STATUS_LABEL,
   STATUS_TONE,
-  PHONE_ON_ICON: <Phone size={12} weight="fill" />,
-  PHONE_OFF_ICON: <PhoneDisconnect size={12} />,
-  SEATBELT_ON_ICON: <Seatbelt size={12} />,
-  SEATBELT_OFF_ICON: <Seatbelt size={12} weight="fill" />,
-  WARN_ICON: <Warning size={11} />,
+  PHONE_ON_ICON: <Phone size={12} strokeWidth={2} />,
+  PHONE_OFF_ICON: <PhoneOff size={12} strokeWidth={2} />,
+  SEATBELT_ON_ICON: <Shield size={12} strokeWidth={2} />,
+  SEATBELT_OFF_ICON: <Shield size={12} strokeWidth={2} />,
+  WARN_ICON: <AlertTriangle size={11} strokeWidth={2} />,
 } as const;
 
 export default DriverConstants;

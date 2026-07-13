@@ -1,4 +1,4 @@
-import { ClockClockwise } from "@phosphor-icons/react";
+import { Clock4 } from "lucide-react";
 import { formatTime } from "../../hook/useTicker";
 import { StatusBadge } from "../monitoring/StatusBadge";
 import type { Driver } from "../../types";
@@ -151,7 +151,7 @@ function DriverRow({
       </td>
       <td className="py-2.5 pl-3 font-mono-num text-[10px] text-zinc-500">
         <div className="flex items-center gap-1">
-          <ClockClockwise size={10} className="text-zinc-600" />
+          <Clock4 size={10} className="text-zinc-600" />
           {formatTime(driver.lastUpdate)}
         </div>
       </td>

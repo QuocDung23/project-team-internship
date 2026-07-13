@@ -1,4 +1,4 @@
-import { Plus, SpinnerGap } from "@phosphor-icons/react";
+import { Plus, Loader } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { AdminDialog } from "../component/admin/AdminDialog";
 import { AdminErrorBanner, AdminHeader, AdminPage } from "../component/admin/AdminShell";
@@ -205,7 +205,7 @@ function DriversPage() {
             onClick={openCreateDialog}
             className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-3 py-1.5 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/25 transition-colors hover:bg-emerald-500/25"
           >
-            <Plus size={13} weight="bold" />
+            <Plus size={16} strokeWidth={2.2} />
             New Driver
           </button>
         }
@@ -258,7 +258,11 @@ function DriversPage() {
                 disabled={isSaving}
                 className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-3 py-1.5 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/25 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSaving ? <SpinnerGap size={13} className="animate-spin" /> : <Plus size={13} weight="bold" />}
+                {isSaving ? (
+                  <Loader size={16} className="animate-spin" strokeWidth={2.2} />
+                ) : (
+                  <Plus size={16} strokeWidth={2.2} />
+                )}
                 {dialogMode === "manage" ? "Save" : "Create"}
               </button>
             </>

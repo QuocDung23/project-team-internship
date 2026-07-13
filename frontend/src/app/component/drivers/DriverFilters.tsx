@@ -1,4 +1,4 @@
-import { MagnifyingGlass } from "@phosphor-icons/react";
+import { Search } from "lucide-react";
 import DriverConstants from "../../constants/drivers";
 import type {
   DriverEyeFilter,
@@ -55,7 +55,7 @@ function DriverFilters({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative flex items-center">
-        <MagnifyingGlass
+        <Search
           size={13}
           className="absolute left-2.5 text-zinc-500"
         />

@@ -1,4 +1,4 @@
-import { FloppyDisk, SpinnerGap } from "@phosphor-icons/react";
+import { Save, Loader } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AdminErrorBanner, AdminHeader, AdminPage } from "../component/admin/AdminShell";
 import { useBackendSettings } from "../hook/useBackendData";
@@ -96,9 +96,9 @@ export function SettingsPage() {
               className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/15 px-3 py-1.5 text-[11px] font-medium text-emerald-300 ring-1 ring-emerald-500/25 transition-colors hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {backendSettings.saving ? (
-                <SpinnerGap size={13} className="animate-spin" />
+                <Loader size={13} className="animate-spin" />
               ) : (
-                <FloppyDisk size={13} weight="bold" />
+                <Save size={13} strokeWidth={2.5} />
               )}
               Lưu
             </button>

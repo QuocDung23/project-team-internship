@@ -1,4 +1,4 @@
-import { CheckCircle } from "@phosphor-icons/react";
+import { CheckCircle } from "lucide-react";
 import VehicleCard from "./VehicleCard";
 import type { VehicleSnapshot } from "../../types/fleets";
 

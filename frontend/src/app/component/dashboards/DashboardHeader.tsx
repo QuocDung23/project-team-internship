@@ -1,4 +1,4 @@
-import { ClockClockwise } from "@phosphor-icons/react";
+import { RefreshCw } from "lucide-react";
 import { formatTime } from "../../hook/useTicker";
 
 interface DashboardHeaderProps {
@@ -22,7 +22,7 @@ export default function DashboardHeader({
       </div>
       <div className="flex items-center gap-3 text-[11px]">
         <span className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-surface-2 px-2.5 py-1.5 text-zinc-400">
-          <ClockClockwise size={12} />
+          <RefreshCw size={12} />
           <span className="font-mono-num">{formatTime(now)}</span>
         </span>
         <span

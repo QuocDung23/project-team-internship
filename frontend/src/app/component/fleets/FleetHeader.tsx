@@ -1,4 +1,4 @@
-import { ClockClockwise, Truck } from "@phosphor-icons/react";
+import { RotateCcw, Truck as LucideTruck } from "lucide-react";
 import type { FleetViewMode } from "../../types/fleets";
 
 interface FleetHeaderProps {
@@ -22,7 +22,7 @@ function FleetHeader({ now, viewMode, onViewModeChange }: FleetHeaderProps) {
     <header className="panel flex flex-wrap items-center justify-between gap-4 px-5 py-4">
       <div>
         <h1 className="flex items-center gap-2 text-base font-semibold tracking-tight text-zinc-100">
-          <Truck size={18} weight="duotone" className="text-emerald-400" />
+          <LucideTruck size={18} strokeWidth={2} className="text-emerald-400" />
           Đội xe
         </h1>
         <p className="mt-0.5 text-[12px] text-zinc-400">
@@ -31,7 +31,7 @@ function FleetHeader({ now, viewMode, onViewModeChange }: FleetHeaderProps) {
       </div>
       <div className="flex items-center gap-3">
         <div className="inline-flex items-center gap-1 rounded-md border border-hairline bg-surface-2 px-2.5 py-1.5 text-[11px] text-zinc-400">
-          <ClockClockwise size={12} />
+          <RotateCcw size={12} strokeWidth={2} />
           <span className="font-mono-num">
             {new Date(now).toLocaleTimeString("vi-VN")}
           </span>

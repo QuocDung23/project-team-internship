@@ -1,4 +1,9 @@
-import { ShieldCheck, Truck, Users, Warning } from "@phosphor-icons/react";
+import {
+  ShieldCheck,
+  Truck,
+  Users,
+  AlertTriangle,
+} from "lucide-react";
 import KpiCard from "./KpiCard";
 import type { KpiTone } from "../../types/dashboards";
 
@@ -31,27 +36,27 @@ export default function KpiGrid({ kpis }: KpiGridProps) {
         value={driving}
         hint={`${idle} idle · ${disabled} disable · ${total} tài xế`}
         tone="active"
-        icon={<Truck size={16} weight="duotone" />}
+        icon={<Truck size={18} strokeWidth={1.5} />}
       />
       <KpiCard
         label="Tài xế idle"
         value={idle}
         hint={`${driving} driving · ${disabled} disable`}
-        icon={<Users size={16} weight="duotone" />}
+        icon={<Users size={18} strokeWidth={1.5} />}
       />
       <KpiCard
         label="Cảnh báo ca"
         value={kpis.totalAlerts}
         hint={`${kpis.criticalAlerts} critical alerts`}
         tone={alertsTone}
-        icon={<Warning size={16} weight="duotone" />}
+        icon={<AlertTriangle size={18} strokeWidth={1.5} />}
       />
       <KpiCard
         label="Điểm an toàn TB"
         value={kpis.averageScore === null ? "—" : kpis.averageScore}
         hint="Average completed trip score"
         tone={kpis.averageScore !== null && kpis.averageScore < 60 ? "critical" : "active"}
-        icon={<ShieldCheck size={16} weight="duotone" />}
+        icon={<ShieldCheck size={18} strokeWidth={1.5} />}
       />
     </div>
   );
