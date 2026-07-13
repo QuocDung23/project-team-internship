@@ -193,7 +193,7 @@ export function mapBackendAlertToFleetEvent(
     type: fleetType(alert.alert_type),
     driverId: alert.driver_id ?? alert.trip_id ?? "unknown-driver",
     driverName: alert.driver_name ?? alert.driver_email ?? "Unknown driver",
-    licensePlate: alert.license_number ?? alert.trip_id ?? "No license",
+    licensePlate: alert.license_number ?? "No license",
     ear: alert.ear_value ?? 0,
     timestamp: timestamp(alert.occurred_at),
     acknowledged: isAcknowledged(alert),

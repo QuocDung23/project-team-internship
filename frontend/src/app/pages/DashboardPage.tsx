@@ -10,6 +10,7 @@ import type { Driver } from "../types";
 import type { FleetAlertEvent } from "../types/alerts";
 import { buildSafetySummaryFromTrips, deriveDriverStatuses, type BackendTrip } from "../services/backendApi";
 import DashboardConstants from "../constants/dashboards";
+import { SafetyScoreValue } from "../utils/safetyScore";
 
 const EMPTY_DRIVERS: Driver[] = [];
 const EMPTY_TRIPS: BackendTrip[] = [];
@@ -149,8 +150,12 @@ function AttentionPanel({
             <AttentionItem
               key={trip.trip_id}
               tone="warn"
-              title={trip.code || trip.trip_id}
-              detail={`Safety score ${tripScore(trip)} · ${trip.critical_alerts_count ?? 0} critical`}
+              title={tripTitle(trip)}
+              detail={(
+                <>
+                  Safety score <SafetyScoreValue trip={trip} /> · {trip.critical_alerts_count ?? 0} critical
+                </>
+              )}
             />
           ))}
         </div>
@@ -179,8 +184,8 @@ function ActiveTripsPanel({ trips }: { trips: BackendTrip[] }) {
             <tbody className="divide-y divide-zinc-800/80">
               {trips.slice(0, 6).map((trip) => (
                 <tr key={trip.trip_id} className="hover:bg-surface-2/40">
-                  <td className="py-2.5 pr-3 font-mono-num text-zinc-200">{trip.code || shortId(trip.trip_id)}</td>
-                  <td className="py-2.5 pr-3 text-zinc-400">{trip.driver_name ?? trip.driver_id ?? "-"}</td>
+                  <td className="py-2.5 pr-3 font-mono-num text-zinc-200">{tripTitle(trip)}</td>
+                  <td className="py-2.5 pr-3 text-zinc-400">{driverLabel(trip)}</td>
                   <td className="py-2.5 pr-3 font-mono-num text-zinc-500">{formatDate(trip.actual_start_at ?? trip.start_time)}</td>
                   <td className="py-2.5 pr-3 font-mono-num text-amber-300">{trip.total_alerts_count ?? 0}</td>
                 </tr>
@@ -253,7 +258,7 @@ function PanelHeader({ title, action }: { title: string; action?: ReactElement }
   );
 }
 
-function AttentionItem({ tone, title, detail }: { tone: "warn" | "critical"; title: string; detail: string }) {
+function AttentionItem({ tone, title, detail }: { tone: "warn" | "critical"; title: string; detail: ReactElement | string }) {
   return (
     <div className={`rounded-md border px-3 py-2 ${tone === "critical" ? "border-red-500/20 bg-red-500/5" : "border-amber-500/20 bg-amber-500/5"}`}>
       <p className="text-sm font-medium text-zinc-100">{title}</p>
@@ -276,8 +281,12 @@ function tripScore(trip: BackendTrip): number | null {
   return Number.isFinite(score) ? score : null;
 }
 
-function shortId(value: string): string {
-  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
+function tripTitle(trip: BackendTrip): string {
+  return trip.code || "Trip without code";
+}
+
+function driverLabel(trip: BackendTrip): string {
+  return trip.driver_name ?? trip.driver_email ?? "Unassigned";
 }
 
 function formatDate(value?: string | null): string {

@@ -21,6 +21,7 @@ import type {
   DriverStats,
   DriverStatusFilter,
 } from "../types/drivers";
+import { SafetyScoreValue } from "../utils/safetyScore";
 
 interface DriverFormState {
   fullName: string;
@@ -373,14 +374,14 @@ function DriverActivityPanel({
         {trips.slice(0, 5).map((trip) => (
           <div key={trip.trip_id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-md border border-hairline bg-surface/60 px-3 py-2">
             <div className="min-w-0">
-              <p className="truncate font-mono-num text-[11px] text-zinc-200">{trip.code || shortId(trip.trip_id)}</p>
-              <p className="truncate text-[10px] text-zinc-500">{trip.origin || "-"} → {trip.destination || "-"}</p>
+              <p className="truncate font-mono-num text-[11px] text-zinc-200">{tripTitle(trip)}</p>
+              <p className="truncate text-[10px] text-zinc-500">{routeLabel(trip)}</p>
             </div>
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">{trip.status}</span>
             <span className={tripCriticalAlerts(trip) > 0 ? "font-mono-num text-[11px] text-red-300" : "font-mono-num text-[11px] text-amber-300"}>
               {tripAlertLabel(trip)}
             </span>
-            <span className="font-mono-num text-[11px] text-emerald-300">{tripScoreLabel(trip)}</span>
+            <span className="font-mono-num text-[11px] text-zinc-300"><SafetyScoreValue trip={trip} /></span>
           </div>
         ))}
         {trips.length === 0 ? (
@@ -433,16 +434,6 @@ function DriverActivityStat({
   );
 }
 
-function tripScoreLabel(trip: BackendTrip): string {
-  if (trip.safety_score && typeof trip.safety_score === "object") {
-    return `${trip.safety_score.score} ${trip.safety_score.grade}`;
-  }
-  if (trip.safety_score !== null && trip.safety_score !== undefined) {
-    return trip.safety_grade ? `${trip.safety_score} ${trip.safety_grade}` : String(trip.safety_score);
-  }
-  return "-";
-}
-
 function tripAlertLabel(trip: BackendTrip): string {
   const total = Number(trip.total_alerts_count ?? 0);
   const critical = tripCriticalAlerts(trip);
@@ -454,8 +445,13 @@ function tripCriticalAlerts(trip: BackendTrip): number {
   return Number(trip.critical_alerts_count ?? 0);
 }
 
-function shortId(value: string): string {
-  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
+function routeLabel(trip: BackendTrip): string {
+  if (trip.origin && trip.destination) return `${trip.origin} → ${trip.destination}`;
+  return trip.origin || trip.destination || "Route not provided";
+}
+
+function tripTitle(trip: BackendTrip): string {
+  return trip.code || "Trip without code";
 }
 
 function driverFormFromBackend(backendDriver: BackendDriver | undefined, driver: Driver): DriverFormState {

@@ -56,7 +56,7 @@ export default function AlertRow({ event, isAcknowledging = false, onAcknowledge
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
         <span className="inline-flex items-center gap-1">
           <Truck size={11} />
-          {event.driverId}
+          {event.driverName}
         </span>
         <span className="inline-flex items-center gap-1">
           <MapPin size={11} />

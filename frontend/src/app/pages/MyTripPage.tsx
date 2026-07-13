@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bulkIngestSafetyEvents,
   completeTrip,
@@ -13,7 +13,12 @@ import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useMyDriverProfile } from "../hook/useBackendData";
 import { useBrowserCNN } from "../hook/useBrowserCNN";
 import { mapClientSafetyEventToMonitorAlert } from "../services/clientSafetyEvents";
+import type { MonitoringAlert } from "../types/monitoring";
+import type { ReactNode } from "react";
+import { SafetyScoreValue } from "../utils/safetyScore";
 
+const TRIP_CODE_MAX_LENGTH = 50;
+const ROUTE_POINT_MAX_LENGTH = 120;
 const EMPTY_TRIP_FORM: StartMyTripPayload = {
   code: "",
   origin: "",
@@ -26,15 +31,23 @@ export function MyTripPage() {
   const [trips, setTrips] = useState<BackendTrip[]>([]);
   const [tripForm, setTripForm] = useState<StartMyTripPayload>(EMPTY_TRIP_FORM);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedHistoryTripId, setSelectedHistoryTripId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const monitoringAttemptedTripIdRef = useRef<string | null>(null);
   const monitoringStartedTripIdRef = useRef<string | null>(null);
   const activeTrip = trips.find((trip) => trip.status === "in_progress") ?? null;
+  const selectedHistoryTrip = useMemo(
+    () => trips.find((trip) => trip.trip_id === selectedHistoryTripId) ?? null,
+    [selectedHistoryTripId, trips],
+  );
   const completedTrips = trips.filter((trip) => trip.status === "completed");
   const myDriver = useMyDriverProfile(true);
   const tripAlerts = useBackendAlerts(activeTrip?.trip_id, {
     tripId: activeTrip?.trip_id,
+  });
+  const historyAlerts = useBackendAlerts(selectedHistoryTrip?.trip_id, {
+    tripId: selectedHistoryTrip?.trip_id,
   });
   const {
     videoRef: cnnVideoRef,
@@ -104,7 +117,7 @@ export function MyTripPage() {
 
   function openNewTripDialog() {
     setError("");
-    setTripForm(EMPTY_TRIP_FORM);
+    setTripForm({ ...EMPTY_TRIP_FORM, code: generateTripCode(trips) });
     setDialogOpen(true);
   }
 
@@ -113,6 +126,11 @@ export function MyTripPage() {
   }
 
   async function handleStartTrip() {
+    const warnings = tripFormWarnings(tripForm);
+    if (warnings.some((warning) => warning.blocking)) {
+      setError(warnings.find((warning) => warning.blocking)?.message ?? "Trip details are invalid");
+      return;
+    }
     setIsBusy(true);
     setError("");
     try {
@@ -187,20 +205,21 @@ export function MyTripPage() {
       </section>
 
       <section className="panel overflow-hidden">
-        <div className="grid grid-cols-[1.2fr_0.8fr_1.2fr_1fr_1fr_0.7fr_0.7fr_0.7fr] gap-3 border-b border-hairline px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-500">
-          <span>Trip</span>
-          <span>Status</span>
+        <div className="border-b border-hairline px-5 py-4">
+          <h2 className="text-sm font-semibold text-zinc-100">Trip history</h2>
+          <p className="mt-1 text-xs text-zinc-500">Select a trip to review details and persisted alerts.</p>
+        </div>
+        <div className="grid grid-cols-[1.1fr_1.4fr_1fr_1fr_0.85fr] gap-4 border-b border-hairline bg-zinc-950/20 px-5 py-2 text-[10px] uppercase tracking-wider text-zinc-500">
+          <span>Trip ID</span>
           <span>Route</span>
-          <span>Started</span>
-          <span>Ended</span>
-          <span>Score</span>
-          <span>Alerts</span>
-          <span>Critical</span>
+          <span>Start time</span>
+          <span>End time</span>
+          <span>Safety score</span>
         </div>
         <div className="max-h-[520px] overflow-y-auto">
           {trips.length > 0 ? (
             trips.map((trip) => (
-              <TripRow key={trip.trip_id} trip={trip} />
+              <TripRow key={trip.trip_id} trip={trip} onSelect={setSelectedHistoryTripId} />
             ))
           ) : (
             <div className="px-4 py-12 text-center text-sm text-zinc-500">No trips yet.</div>
@@ -220,11 +239,23 @@ export function MyTripPage() {
           form={tripForm}
           isBusy={isBusy}
           liveAlerts={liveAlerts}
+          driverName={myDriver.row?.full_name ?? activeTrip?.driver_name ?? activeTrip?.driver_email ?? "-"}
           onClose={closeDialog}
           onEndTrip={() => void handleEndTrip()}
           onStartTrip={() => void handleStartTrip()}
           onUpdateForm={updateTripForm}
           escalationActive={escalationActive}
+        />
+      ) : null}
+
+      {selectedHistoryTrip ? (
+        <TripHistoryDialog
+          alerts={historyAlerts.monitorAlerts ?? []}
+          alertsError={historyAlerts.error}
+          driverName={myDriver.row?.full_name ?? selectedHistoryTrip.driver_name ?? selectedHistoryTrip.driver_email ?? "-"}
+          isLoadingAlerts={!historyAlerts.isLive && !historyAlerts.error}
+          onClose={() => setSelectedHistoryTripId(null)}
+          trip={selectedHistoryTrip}
         />
       ) : null}
     </div>
@@ -381,6 +412,7 @@ function TripDialog({
   form,
   isBusy,
   liveAlerts,
+  driverName,
   onClose,
   onEndTrip,
   onStartTrip,
@@ -403,12 +435,14 @@ function TripDialog({
     ts: number;
     detail: string;
   }>;
+  driverName: string;
   onClose: () => void;
   onEndTrip: () => void;
   onStartTrip: () => void;
   onUpdateForm: (field: keyof StartMyTripPayload, value: string) => void;
   escalationActive: boolean;
 }) {
+  const warnings = tripFormWarnings(form);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4"
@@ -447,11 +481,37 @@ function TripDialog({
 
         {!activeTrip ? (
           <div className="grid gap-3">
-            <TextField label="Trip code" value={form.code ?? ""} placeholder="Optional code" onChange={(value) => onUpdateForm("code", value)} />
+            <TextField
+              label="Trip code"
+              value={form.code ?? ""}
+              placeholder="Auto-generated trip code"
+              maxLength={TRIP_CODE_MAX_LENGTH}
+              readOnly
+              onChange={(value) => onUpdateForm("code", value)}
+            />
             <div className="grid gap-3 md:grid-cols-2">
-              <TextField label="Origin" value={form.origin ?? ""} placeholder="Optional origin" onChange={(value) => onUpdateForm("origin", value)} />
-              <TextField label="Destination" value={form.destination ?? ""} placeholder="Optional destination" onChange={(value) => onUpdateForm("destination", value)} />
+              <TextField
+                label="Origin"
+                value={form.origin ?? ""}
+                placeholder="Optional origin"
+                maxLength={ROUTE_POINT_MAX_LENGTH}
+                onChange={(value) => onUpdateForm("origin", value)}
+              />
+              <TextField
+                label="Destination"
+                value={form.destination ?? ""}
+                placeholder="Optional destination"
+                maxLength={ROUTE_POINT_MAX_LENGTH}
+                onChange={(value) => onUpdateForm("destination", value)}
+              />
             </div>
+            {warnings.length > 0 ? (
+              <div className="grid gap-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+                {warnings.map((warning) => (
+                  <p key={warning.message}>{warning.message}</p>
+                ))}
+              </div>
+            ) : null}
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -474,10 +534,12 @@ function TripDialog({
         ) : (
           <div className="grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
             <div className="grid gap-3">
-              <div className="grid gap-3 text-sm md:grid-cols-3">
-                <TripMetric label="Trip" value={activeTrip.code || activeTrip.trip_id} />
-                <TripMetric label="Status" value={activeTrip.status} />
+              <div className="grid gap-3 text-sm md:grid-cols-3 xl:grid-cols-5">
+                <TripMetric label="Trip code" value={tripTitle(activeTrip)} />
                 <TripMetric label="Route" value={routeLabel(activeTrip)} />
+                <TripMetric label="Start time" value={dateLabel(activeTrip.actual_start_at ?? activeTrip.start_time)} />
+                <TripMetric label="Driver" value={driverName} />
+                <TripMetric label="Detection" value={cnnRunning ? "Running" : "Starting"} />
               </div>
               <div className={`relative aspect-[4/3] w-full overflow-hidden rounded-md bg-zinc-950 ${cnnRunning ? "" : "hidden"}`}>
                 <video ref={cnnVideoRef} autoPlay muted playsInline className="h-full w-full scale-x-[-1] object-contain" />
@@ -549,18 +611,106 @@ function TripDialog({
   );
 }
 
-function TripRow({ trip }: { trip: BackendTrip }) {
-  const score = scoreLabel(trip);
+function TripRow({ trip, onSelect }: { trip: BackendTrip; onSelect: (tripId: string) => void }) {
   return (
-    <div className="grid grid-cols-[1.2fr_0.8fr_1.2fr_1fr_1fr_0.7fr_0.7fr_0.7fr] gap-3 border-b border-hairline px-4 py-3 text-sm text-zinc-300">
-      <span className="truncate font-mono-num text-xs text-zinc-100">{trip.code || trip.trip_id}</span>
-      <span className={statusClassName(trip.status)}>{trip.status}</span>
-      <span className="truncate text-xs text-zinc-500">{routeLabel(trip)}</span>
-      <span className="truncate text-xs text-zinc-500">{dateLabel(trip.actual_start_at ?? trip.start_time)}</span>
-      <span className="truncate text-xs text-zinc-500">{dateLabel(trip.actual_end_at ?? trip.end_time)}</span>
-      <span className="truncate text-xs text-zinc-300">{score}</span>
-      <span className="font-mono-num text-xs text-zinc-300">{alertCountLabel(trip)}</span>
-      <span className="font-mono-num text-xs text-rose-300">{criticalAlertCountLabel(trip)}</span>
+    <button
+      type="button"
+      onClick={() => onSelect(trip.trip_id)}
+      className="grid w-full grid-cols-[1.1fr_1.4fr_1fr_1fr_0.85fr] items-center gap-4 border-b border-hairline px-5 py-4 text-left text-sm text-zinc-300 transition hover:bg-surface-2/60 focus:bg-surface-2/60 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+    >
+      <span className="min-w-0">
+        <span className="block truncate font-mono-num text-xs font-semibold text-zinc-100">{tripTitle(trip)}</span>
+        <span className="mt-0.5 block truncate text-[10px] text-zinc-600">{trip.status}</span>
+      </span>
+      <span className="truncate text-xs text-zinc-300">{routeLabel(trip)}</span>
+      <span className="truncate font-mono-num text-xs text-zinc-500">{dateLabel(trip.actual_start_at ?? trip.start_time)}</span>
+      <span className="truncate font-mono-num text-xs text-zinc-500">{dateLabel(trip.actual_end_at ?? trip.end_time)}</span>
+      <span className="truncate text-xs font-semibold text-zinc-300"><SafetyScoreValue trip={trip} /></span>
+    </button>
+  );
+}
+
+function TripHistoryDialog({
+  alerts,
+  alertsError,
+  driverName,
+  isLoadingAlerts,
+  onClose,
+  trip,
+}: {
+  alerts: MonitoringAlert[];
+  alertsError: string | null;
+  driverName: string;
+  isLoadingAlerts: boolean;
+  onClose: () => void;
+  trip: BackendTrip;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      role="presentation"
+    >
+      <section className="panel flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-hairline px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-semibold text-zinc-100">{tripTitle(trip)}</h2>
+            <p className="mt-1 truncate text-xs text-zinc-500">{routeLabel(trip)}</p>
+          </div>
+          <button
+            type="button"
+            className="rounded-md border border-hairline px-3 py-2 text-xs font-semibold text-zinc-200"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="min-h-0 overflow-y-auto px-5 py-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <TripMetric label="Trip code" value={tripTitle(trip)} />
+            <TripMetric label="Status" value={trip.status} />
+            <TripMetric label="Driver" value={driverName} />
+            <TripMetric label="Route" value={routeLabel(trip)} />
+            <TripMetric label="Start time" value={dateLabel(trip.actual_start_at ?? trip.start_time)} />
+            <TripMetric label="End time" value={dateLabel(trip.actual_end_at ?? trip.end_time)} />
+            <TripMetric label="Safety score" value={<SafetyScoreValue trip={trip} />} />
+            <TripMetric label="Alerts" value={alertCountLabel(trip)} />
+            <TripMetric label="Critical" value={criticalAlertCountLabel(trip)} />
+            <TripMetric label="Origin" value={trip.origin || "Route not provided"} />
+            <TripMetric label="Destination" value={trip.destination || "Route not provided"} />
+          </div>
+
+          <div className="mt-5">
+            <div className="flex items-center justify-between gap-3 border-b border-hairline pb-2">
+              <h3 className="text-sm font-semibold text-zinc-100">Trip alerts</h3>
+              <span className="font-mono-num text-xs text-zinc-500">{alerts.length}</span>
+            </div>
+            {alertsError ? (
+              <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+                {alertsError}
+              </div>
+            ) : null}
+            {!alertsError && isLoadingAlerts ? (
+              <div className="mt-3 rounded-md border border-hairline bg-zinc-950/30 px-3 py-6 text-center text-xs text-zinc-500">
+                Loading alerts...
+              </div>
+            ) : null}
+            {!alertsError && !isLoadingAlerts && alerts.length === 0 ? (
+              <div className="mt-3 rounded-md border border-hairline bg-zinc-950/30 px-3 py-6 text-center text-xs text-zinc-500">
+                No alerts for this trip.
+              </div>
+            ) : null}
+            <div className="mt-3 grid gap-2">
+              {alerts.map((alert) => (
+                <AlertInfoRow key={alert.id} alert={alert} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -574,7 +724,7 @@ function TripSummary({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TripMetric({ label, value }: { label: string; value: string }) {
+function TripMetric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
       <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
@@ -587,11 +737,15 @@ function TextField({
   label,
   value,
   placeholder,
+  maxLength,
+  readOnly = false,
   onChange,
 }: {
   label: string;
   value: string;
   placeholder: string;
+  maxLength?: number;
+  readOnly?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
@@ -599,10 +753,17 @@ function TextField({
       {label}
       <input
         value={value}
+        maxLength={maxLength}
+        readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-md border border-hairline bg-surface-2 px-3 py-2 text-[12px] text-zinc-100 outline-none focus:border-emerald-500/50"
+        className="rounded-md border border-hairline bg-surface-2 px-3 py-2 text-[12px] text-zinc-100 outline-none focus:border-emerald-500/50 read-only:text-zinc-300"
         placeholder={placeholder}
       />
+      {maxLength ? (
+        <span className="text-[10px] text-zinc-600">
+          {value.length}/{maxLength}
+        </span>
+      ) : null}
     </label>
   );
 }
@@ -650,18 +811,45 @@ function dateLabel(value?: string | null): string {
 
 function routeLabel(trip: BackendTrip): string {
   if (trip.origin && trip.destination) return `${trip.origin} → ${trip.destination}`;
-  return trip.origin || trip.destination || "-";
+  return trip.origin || trip.destination || "Route not provided";
 }
 
-function scoreLabel(trip: BackendTrip): string {
-  const score = trip.safety_score;
-  if (score && typeof score === "object") {
-    return `${score.score} (${score.grade})`;
+function generateTripCode(existingTrips: BackendTrip[], now = new Date()): string {
+  const datePart = [
+    String(now.getFullYear()).slice(-2),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("");
+  const prefix = `TRIP-${datePart}-`;
+  const nextSequence = existingTrips.reduce((max, trip) => {
+    const code = trip.code ?? "";
+    if (!code.startsWith(prefix)) return max;
+    const sequence = Number.parseInt(code.slice(prefix.length), 10);
+    return Number.isFinite(sequence) ? Math.max(max, sequence) : max;
+  }, 0) + 1;
+  return `${prefix}${String(nextSequence).padStart(2, "0")}`;
+}
+
+function tripFormWarnings(form: StartMyTripPayload): Array<{ message: string; blocking: boolean }> {
+  const code = (form.code ?? "").trim();
+  const origin = (form.origin ?? "").trim();
+  const destination = (form.destination ?? "").trim();
+  const warnings: Array<{ message: string; blocking: boolean }> = [];
+
+  if (code.length > TRIP_CODE_MAX_LENGTH) {
+    warnings.push({ message: `Trip code must be ${TRIP_CODE_MAX_LENGTH} characters or less.`, blocking: true });
   }
-  if (score !== null && score !== undefined && score !== "") {
-    return trip.safety_grade ? `${score} (${trip.safety_grade})` : String(score);
+  if (origin.length > ROUTE_POINT_MAX_LENGTH) {
+    warnings.push({ message: `Origin must be ${ROUTE_POINT_MAX_LENGTH} characters or less.`, blocking: true });
   }
-  return "-";
+  if (destination.length > ROUTE_POINT_MAX_LENGTH) {
+    warnings.push({ message: `Destination must be ${ROUTE_POINT_MAX_LENGTH} characters or less.`, blocking: true });
+  }
+  if (origin && destination && origin.toLocaleLowerCase() === destination.toLocaleLowerCase()) {
+    warnings.push({ message: "Origin and destination are identical. You can continue, but the route may be unclear.", blocking: false });
+  }
+
+  return warnings;
 }
 
 function alertCountLabel(trip: BackendTrip): string {
@@ -682,9 +870,6 @@ function criticalAlertCountLabel(trip: BackendTrip): string {
   return "-";
 }
 
-function statusClassName(status: string): string {
-  if (status === "in_progress") return "truncate text-xs font-semibold text-emerald-300";
-  if (status === "completed") return "truncate text-xs text-zinc-300";
-  if (status === "cancelled" || status === "aborted") return "truncate text-xs text-rose-300";
-  return "truncate text-xs text-amber-300";
+function tripTitle(trip: BackendTrip): string {
+  return trip.code || "Trip without code";
 }

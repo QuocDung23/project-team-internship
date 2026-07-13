@@ -27,8 +27,8 @@ class TripCreate(BaseModel):
     status: TripStatus = TripStatus.DRAFT
     planned_start_at: datetime | None = None
     planned_end_at: datetime | None = None
-    origin: str | None = None
-    destination: str | None = None
+    origin: str | None = Field(default=None, max_length=120)
+    destination: str | None = Field(default=None, max_length=120)
 
     @field_validator("code", "origin", "destination", mode="before")
     @classmethod
@@ -54,8 +54,8 @@ class TripCreate(BaseModel):
 class StartMyTripRequest(BaseModel):
     code: str | None = Field(default=None, max_length=50)
     vehicle_id: str | None = Field(default=None, min_length=1)
-    origin: str | None = None
-    destination: str | None = None
+    origin: str | None = Field(default=None, max_length=120)
+    destination: str | None = Field(default=None, max_length=120)
 
     @field_validator("code", "vehicle_id", "origin", "destination", mode="before")
     @classmethod

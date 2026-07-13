@@ -46,7 +46,6 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-400">
-        <span className="font-mono-num text-zinc-300">{vehicle.id}</span>
         <span className="inline-flex items-center gap-1">
           <MapPin size={11} />
           {vehicle.team}

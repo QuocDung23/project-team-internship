@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { AdminEmptyState, AdminErrorBanner, AdminHeader, AdminPage, AdminStatStrip } from "../component/admin/AdminShell";
 import { StatusBadge } from "../component/monitoring/StatusBadge";
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useBackendTrips } from "../hook/useBackendData";
 import { buildSafetySummaryFromTrips, fetchSafetyScore, type BackendTrip, type SafetyScore } from "../services/backendApi";
 import type { MonitoringAlert } from "../types/monitoring";
+import { SafetyScoreValue } from "../utils/safetyScore";
 
 function FleetPage() {
   const backendTrips = useBackendTrips(false);
@@ -121,14 +123,14 @@ function TripTable({
                 trip.trip_id === selectedTripId ? "bg-emerald-500/10 text-zinc-100" : "text-zinc-300 hover:bg-surface-2/50",
               ].join(" ")}
             >
-              <span className="truncate font-mono-num text-xs">{trip.code || shortId(trip.trip_id)}</span>
+              <span className="truncate font-mono-num text-xs">{tripTitle(trip)}</span>
               <span className="truncate text-xs">{trip.status}</span>
               <span className="min-w-0">
                 <span className="block truncate text-xs text-zinc-200">{driverName(trip)}</span>
                 <span className="block truncate font-mono-num text-[10px] text-zinc-500">{driverContext(trip)}</span>
               </span>
               <span className="truncate font-mono-num text-xs text-zinc-500">{formatDate(trip.actual_start_at ?? trip.start_time)}</span>
-              <span className="truncate text-xs text-zinc-300">{tripScoreLabel(trip)}</span>
+              <span className="truncate text-xs text-zinc-300"><SafetyScoreValue trip={trip} /></span>
               <span className="font-mono-num text-xs text-zinc-300">{String(trip.total_alerts_count ?? "-")}</span>
             </button>
           ))
@@ -156,8 +158,8 @@ function TripDetails({
       <div className="shrink-0 border-b border-hairline px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-zinc-100">{trip.code || shortId(trip.trip_id)}</h2>
-            <p className="mt-1 truncate font-mono-num text-[11px] text-zinc-500">{trip.trip_id}</p>
+            <h2 className="truncate text-sm font-semibold text-zinc-100">{tripTitle(trip)}</h2>
+            <p className="mt-1 truncate text-[11px] text-zinc-500">{routeLabel(trip)}</p>
           </div>
           <StatusBadge tone={trip.status === "in_progress" ? "active" : trip.status === "completed" ? "neutral" : "warn"} label={trip.status} />
         </div>
@@ -167,10 +169,10 @@ function TripDetails({
         <div className="grid gap-2">
           <TripMetric label="Driver" value={driverName(trip)} detail={driverContext(trip)} />
           <div className="grid grid-cols-2 gap-2">
-            <TripMetric label="Score" value={score ? `${score.score} (${score.grade})` : tripScoreLabel(trip)} />
+            <TripMetric label="Trip code" value={tripTitle(trip)} />
+            <TripMetric label="Route" value={routeLabel(trip)} />
+            <TripMetric label="Score" value={<SafetyScoreValue trip={trip} score={score} />} />
             <TripMetric label="Alerts" value={`${String(trip.total_alerts_count ?? score?.alert_count ?? "-")} total`} detail={`${String(trip.critical_alerts_count ?? score?.critical_events ?? "-")} critical`} />
-            <TripMetric label="Origin" value={trip.origin ?? "-"} />
-            <TripMetric label="Destination" value={trip.destination ?? "-"} />
             <TripMetric label="Started" value={formatDate(trip.actual_start_at ?? trip.start_time)} />
             <TripMetric label="Ended" value={formatDate(trip.actual_end_at ?? trip.end_time)} />
           </div>
@@ -201,7 +203,7 @@ function TripDetails({
   );
 }
 
-function TripMetric({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function TripMetric({ label, value, detail }: { label: string; value: ReactNode; detail?: string }) {
   return (
     <div className="min-w-0 rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
       <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
@@ -212,25 +214,20 @@ function TripMetric({ label, value, detail }: { label: string; value: string; de
 }
 
 function driverName(trip: BackendTrip): string {
-  return trip.driver_name ?? trip.driver_email ?? trip.driver_id ?? trip.assignment?.driver_id ?? "Unassigned";
+  return trip.driver_name ?? trip.driver_email ?? "Unassigned";
 }
 
 function driverContext(trip: BackendTrip): string {
-  return trip.driver_email ?? trip.driver_id ?? trip.assignment?.driver_id ?? "-";
+  return trip.driver_email ?? "No driver context";
 }
 
-function tripScoreLabel(trip: BackendTrip): string {
-  if (trip.safety_score && typeof trip.safety_score === "object") {
-    return `${trip.safety_score.score} (${trip.safety_score.grade})`;
-  }
-  if (trip.safety_score !== null && trip.safety_score !== undefined) {
-    return trip.safety_grade ? `${trip.safety_score} (${trip.safety_grade})` : String(trip.safety_score);
-  }
-  return "-";
+function routeLabel(trip: BackendTrip): string {
+  if (trip.origin && trip.destination) return `${trip.origin} → ${trip.destination}`;
+  return trip.origin || trip.destination || "Route not provided";
 }
 
-function shortId(value: string): string {
-  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
+function tripTitle(trip: BackendTrip): string {
+  return trip.code || "Trip without code";
 }
 
 function formatDate(value?: string | null): string {
