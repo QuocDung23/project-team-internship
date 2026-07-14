@@ -205,13 +205,6 @@ function DriversPage() {
     }
   };
 
-  const isDrivingForSelected = useMemo(
-    () =>
-      allDrivers.find((driver) => driver.id === selectedDriverId)?.status ===
-      "driving",
-    [allDrivers, selectedDriverId],
-  );
-
   return (
     <AdminPage scroll>
       <DriversHeroPanel
