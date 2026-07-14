@@ -126,7 +126,7 @@ export default function TripDialog({
 
           {!activeTrip ? (
             <div className="grid gap-4">
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3">
                 <TextField
                   label="Trip code"
                   value={form.code ?? ""}
@@ -135,21 +135,28 @@ export default function TripDialog({
                   readOnly
                   onChange={(value) => onUpdateForm("code", value)}
                 />
-                <TextField
-                  label="Origin"
-                  value={form.origin ?? ""}
-                  placeholder="Optional origin"
-                  maxLength={ROUTE_POINT_MAX_LENGTH}
-                  onChange={(value) => onUpdateForm("origin", value)}
-                />
-                <TextField
-                  label="Destination"
-                  value={form.destination ?? ""}
-                  placeholder="Optional destination"
-                  maxLength={ROUTE_POINT_MAX_LENGTH}
-                  onChange={(value) => onUpdateForm("destination", value)}
-                />
+                <div className="flex flex-col gap-3 md:flex-row">
+                  <div className="flex-1">
+                    <TextField
+                      label="Origin"
+                      value={form.origin ?? ""}
+                      placeholder="Optional origin"
+                      maxLength={ROUTE_POINT_MAX_LENGTH}
+                      onChange={(value) => onUpdateForm("origin", value)}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <TextField
+                      label="Destination"
+                      value={form.destination ?? ""}
+                      placeholder="Optional destination"
+                      maxLength={ROUTE_POINT_MAX_LENGTH}
+                      onChange={(value) => onUpdateForm("destination", value)}
+                    />
+                  </div>
+                </div>
               </div>
+      
               {warnings.length > 0 ? (
                 <div className="grid gap-1 rounded-xl border border-accent-warn/30 bg-accent-warn/6 px-4 py-2.5 text-xs text-accent-warn">
                   {warnings.map((warning) => (
