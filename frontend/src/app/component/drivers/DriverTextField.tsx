@@ -18,20 +18,20 @@ export default function DriverTextField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-1.5 text-[11px] text-zinc-400">
+    <label className="grid gap-1.5 text-[11px] text-text-secondary">
       <span className="flex items-center gap-1.5 font-medium">
-        {icon ? <span className="text-zinc-500">{icon}</span> : null}
+        {icon ? <span className="text-text-tertiary">{icon}</span> : null}
         {label}
-        {required ? <span className="text-rose-400/80">*</span> : null}
+        {required ? <span className="text-accent-critical/80">*</span> : null}
       </span>
       <input
         type={type}
         value={value}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-xl border border-white/[0.08] bg-zinc-950/60 px-3 py-2 text-[12px] text-zinc-100 outline-none transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] placeholder:text-zinc-600 focus:border-emerald-500/50 focus:bg-zinc-950/80 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.10)]"
+        className="rounded-xl border border-hairline bg-surface-2 px-3 py-2 text-[12px] text-text-primary outline-none transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] placeholder:text-text-tertiary focus:border-accent-active/50 focus:bg-surface focus:shadow-[0_0_0_3px_var(--theme-focus-ring)]"
       />
-      {hint ? <span className="text-[10px] leading-relaxed text-zinc-500">{hint}</span> : null}
+      {hint ? <span className="text-[10px] leading-relaxed text-text-tertiary">{hint}</span> : null}
     </label>
   );
 }

@@ -29,13 +29,13 @@ export default function RuntimeControls({
       initial={reduceMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-2xl border border-zinc-800/50 bg-zinc-900/30 p-6"
+      className="theme-card rounded-2xl p-6"
     >
       <div className="mb-5">
-        <h2 className="text-sm font-semibold text-zinc-100">
+        <h2 className="text-sm font-semibold text-text-primary">
           Runtime Controls
         </h2>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1 text-xs text-text-tertiary">
           Adjustable parameters during operation
         </p>
       </div>
@@ -54,12 +54,12 @@ export default function RuntimeControls({
         </motion.div>
 
         <motion.div
-          className="border-t border-zinc-800/50 pt-5"
+          className="border-t border-hairline pt-5"
           initial={reduceMotion ? false : { opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <h3 className="mb-4 text-xs font-medium text-zinc-500">
+          <h3 className="mb-4 text-xs font-medium text-text-tertiary">
             Camera Resolution
           </h3>
           <div className="grid grid-cols-2 gap-4">

@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Envelope, IdentificationCard, UserCircle } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
 import type { BackendDriver } from "../../services/backendApi";
 import { SPRING } from "../../utils/trips/tripMotion";
 
@@ -11,7 +12,7 @@ interface TripDriverInfoProps {
 interface DriverField {
   label: string;
   value: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 export default function TripDriverInfo({
@@ -50,25 +51,25 @@ export default function TripDriverInfo({
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-emerald-400/40 to-transparent"
+          className="pointer-events-none absolute inset-y-0 left-0 w-px bg-linear-to-b from-transparent via-accent-active/40 to-transparent"
         />
 
         <div className="relative grid gap-3 md:grid-cols-3">
           {fields.map((field) => (
             <div
               key={field.label}
-              className="flex items-center gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.02] px-4 py-3"
+              className="flex items-center gap-3 rounded-2xl border border-hairline bg-subtle-bg px-4 py-3"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] text-emerald-300">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-hairline bg-subtle-bg text-accent-active">
                 {field.icon}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
                   {field.label}
                 </p>
-                <p className="mt-0.5 truncate font-mono-num text-[13px] font-medium text-zinc-100">
+                <p className="mt-0.5 truncate font-mono-num text-[13px] font-medium text-text-primary">
                   {isLoading ? (
-                    <span className="inline-block h-3.5 w-28 animate-pulse rounded bg-white/[0.06]" />
+                    <span className="inline-block h-3.5 w-28 animate-pulse rounded bg-subtle-bg" />
                   ) : (
                     field.value
                   )}

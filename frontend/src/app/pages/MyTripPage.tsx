@@ -193,7 +193,7 @@ export default function MyTripPage() {
       />
 
       {error ? (
-        <section className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] px-4 py-3 text-[12px] text-amber-200">
+        <section className="rounded-2xl border border-accent-warn/30 bg-accent-warn/5 px-4 py-3 text-[12px] text-accent-warn">
           {error}
         </section>
       ) : null}
@@ -202,10 +202,10 @@ export default function MyTripPage() {
 
       <section className="bezel-shell overflow-hidden">
         <div className="bezel-core relative">
-          <div className="flex items-end justify-between gap-3 border-b border-white/[0.06] px-5 py-4">
+          <div className="flex items-end justify-between gap-3 border-b border-hairline px-5 py-4">
             <div>
               <div className="eyebrow-chip mb-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-active" />
                 <span>History</span>
               </div>
               <h2 className="section-headline">Trip history</h2>
@@ -213,11 +213,11 @@ export default function MyTripPage() {
                 Select a trip to review details and persisted alerts.
               </p>
             </div>
-            <span className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 font-mono-num text-[11px] font-medium text-zinc-400 tabular-nums">
+            <span className="rounded-full border border-hairline bg-subtle-bg px-2.5 py-1 font-mono-num text-[11px] font-medium text-text-secondary tabular-nums">
               {trips.length} total
             </span>
           </div>
-          <div className="grid grid-cols-[1.1fr_1.4fr_1fr_1fr_0.85fr_auto] gap-4 border-b border-white/[0.06] bg-white/[0.015] px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+          <div className="grid grid-cols-[1.1fr_1.4fr_1fr_1fr_0.85fr_auto] gap-4 border-b border-hairline bg-subtle-bg px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
             <span>Trip ID</span>
             <span>Route</span>
             <span>Start time</span>
@@ -235,7 +235,7 @@ export default function MyTripPage() {
                 />
               ))
             ) : (
-              <div className="px-4 py-14 text-center text-sm text-zinc-500">
+              <div className="px-4 py-14 text-center text-sm text-text-tertiary">
                 No trips yet.
               </div>
             )}

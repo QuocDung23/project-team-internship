@@ -6,6 +6,7 @@ import {
   getEditableSettings,
 } from "../constants/settings/constants";
 import SettingsHeader from "../component/settings/SettingsHeader";
+import AppearanceSettings from "../component/settings/AppearanceSettings";
 import ReadOnlyThresholds from "../component/settings/ReadOnlyThresholds";
 import RuntimeControls from "../component/settings/RuntimeControls";
 import SafetyGrades from "../component/settings/SafetyGrades";
@@ -106,20 +107,24 @@ export default function SettingsPage() {
         message={backendSettings.error ?? validationError}
       />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <ReadOnlyThresholds />
 
-        <RuntimeControls
-          soundCatalog={soundCatalog}
-          selectedSoundId={draft.alarm_sound_id ?? "classic"}
-          frameWidth={draft.frame_width ?? 640}
-          frameHeight={draft.frame_height ?? 480}
-          onSoundChange={handleSoundChange}
-          onFrameWidthChange={(v) => handleNumberChange("frame_width", v)}
-          onFrameHeightChange={(v) => handleNumberChange("frame_height", v)}
-        />
+        <div className="grid content-start gap-6">
+          <AppearanceSettings />
 
-        <div className="lg:col-span-2">
+          <RuntimeControls
+            soundCatalog={soundCatalog}
+            selectedSoundId={draft.alarm_sound_id ?? "classic"}
+            frameWidth={draft.frame_width ?? 640}
+            frameHeight={draft.frame_height ?? 480}
+            onSoundChange={handleSoundChange}
+            onFrameWidthChange={(v) => handleNumberChange("frame_width", v)}
+            onFrameHeightChange={(v) => handleNumberChange("frame_height", v)}
+          />
+        </div>
+
+        <div className="xl:col-span-2">
           <SafetyGrades
             gradeAMin={draft.safety_grade_a_min_score ?? 80}
             gradeBMin={draft.safety_grade_b_min_score ?? 60}

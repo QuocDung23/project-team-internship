@@ -23,25 +23,25 @@ function FleetKpiRow({ kpi }: FleetKpiRowProps) {
     {
       label: "Total Vehicles",
       value: kpi.totalVehicles,
-      tone: "text-zinc-100",
+      tone: "text-text-primary",
       icon: <LucideTruck size={18} strokeWidth={1.5} />,
     },
     {
       label: "Active",
       value: kpi.activeVehicles,
-      tone: "text-emerald-400",
+      tone: "text-accent-active",
       icon: <LucideCheckCircle size={18} strokeWidth={1.5} />,
     },
     {
       label: "Trips Today",
       value: kpi.todayTrips,
-      tone: "text-zinc-100",
+      tone: "text-text-primary",
       icon: <LucideMapPin size={18} strokeWidth={1.5} />,
     },
     {
       label: "Distance",
       value: `${kpi.totalDistanceKm} km`,
-      tone: "text-zinc-100",
+      tone: "text-text-primary",
       icon: <LucideRoute size={18} strokeWidth={1.5} />,
     },
   ];
@@ -51,12 +51,12 @@ function FleetKpiRow({ kpi }: FleetKpiRowProps) {
       {items.map(({ label, value, tone, icon }) => (
         <div
           key={label}
-          className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface-1/50 p-4 transition-all duration-300 hover:border-zinc-700/50 hover:bg-surface-2/30"
+          className="group relative overflow-hidden rounded-2xl border border-hairline bg-subtle-bg p-4 transition-all duration-300 hover:border-hairline hover:bg-subtle-bg-hover"
         >
           <div className="absolute inset-0 bg-linear-to-br from-white/2 to-transparent" />
           <div className="relative flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-900/50 ring-1 ring-white/5">
-              <span className="text-zinc-400 transition-colors duration-300 group-hover:text-zinc-300">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-subtle-bg ring-1 ring-hairline">
+              <span className="text-text-tertiary transition-colors duration-300 group-hover:text-text-secondary">
                 {icon}
               </span>
             </div>
@@ -64,7 +64,7 @@ function FleetKpiRow({ kpi }: FleetKpiRowProps) {
               <p className={`font-mono-num text-2xl font-semibold tracking-tight ${tone}`}>
                 {value}
               </p>
-              <p className="mt-1 text-[10px] uppercase tracking-wider text-zinc-500">
+              <p className="mt-1 text-[10px] uppercase tracking-wider text-text-tertiary">
                 {label}
               </p>
             </div>

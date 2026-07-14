@@ -40,17 +40,17 @@ export default function DriverTable({
 }: DriverTableProps) {
   const rows = drivers.slice(0, maxRows);
   return (
-    <section className="rounded-xl border border-white/5 bg-white/2 px-5 py-4">
+    <section className="rounded-xl border border-hairline bg-subtle-bg px-5 py-4">
       <header className="mb-3">
-        <h2 className="text-[13px] font-semibold tracking-tight text-zinc-100">
+        <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
           Realtime Driver Status
         </h2>
       </header>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left text-[12px]">
-          <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
-            <tr className="border-b border-white/5">
+          <thead className="text-[10px] uppercase tracking-wider text-text-tertiary">
+            <tr className="border-b border-hairline">
               <th className="py-2 pr-4 font-medium">ID</th>
               <th className="py-2 pr-4 font-medium">Driver</th>
               <th className="py-2 pr-4 font-medium">Plate</th>
@@ -65,13 +65,13 @@ export default function DriverTable({
             variants={tableVariants}
             initial="hidden"
             animate="visible"
-            className="divide-y divide-white/3"
+            className="divide-y divide-hairline"
           >
             {rows.length === 0 && (
               <tr>
                 <td
                   colSpan={8}
-                  className="py-8 text-center text-[12px] text-zinc-500"
+                  className="py-8 text-center text-[12px] text-text-tertiary"
                 >
                   No backend driver data available.
                 </td>
@@ -81,19 +81,19 @@ export default function DriverTable({
               <motion.tr
                 key={d.id}
                 variants={rowVariants}
-                className="group cursor-pointer transition-colors duration-200 hover:bg-white/2"
+                className="group cursor-pointer transition-colors duration-200 hover:bg-subtle-bg-hover"
               >
-                <td className="py-2.5 pr-4 font-mono-num text-zinc-400">
+                <td className="py-2.5 pr-4 font-mono-num text-text-secondary">
                   {d.id}
                 </td>
-                <td className="py-2.5 pr-4 font-medium text-zinc-100">
+                <td className="py-2.5 pr-4 font-medium text-text-primary">
                   {d.name}
                 </td>
-                <td className="py-2.5 pr-4 font-mono-num text-zinc-400">
+                <td className="py-2.5 pr-4 font-mono-num text-text-secondary">
                   {d.licensePlate}
                 </td>
-                <td className="py-2.5 pr-4 text-zinc-500">{d.team}</td>
-                <td className="py-2.5 pr-4 font-mono-num text-zinc-300">
+                <td className="py-2.5 pr-4 text-text-tertiary">{d.team}</td>
+                <td className="py-2.5 pr-4 font-mono-num text-text-secondary">
                   {d.ear.toFixed(2)}
                 </td>
                 <td className="py-2.5 pr-4">
@@ -106,16 +106,16 @@ export default function DriverTable({
                   <span
                     className={`font-mono-num ${
                       d.totalAlerts > 5
-                        ? "text-red-300"
+                        ? "text-accent-critical"
                         : d.totalAlerts > 0
-                          ? "text-amber-300"
-                          : "text-zinc-400"
+                          ? "text-accent-warn"
+                          : "text-text-secondary"
                     }`}
                   >
                     {d.totalAlerts}
                   </span>
                 </td>
-                <td className="py-2.5 pl-4 font-mono-num text-zinc-500">
+                <td className="py-2.5 pl-4 font-mono-num text-text-tertiary">
                   {formatTime(d.lastUpdate)}
                 </td>
               </motion.tr>

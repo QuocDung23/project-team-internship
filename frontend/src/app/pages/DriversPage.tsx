@@ -226,8 +226,8 @@ function DriversPage() {
         transition={{ ...SPRING, delay: 0.18 }}
         className="flex flex-1 flex-col gap-3"
       >
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-[1.5px]">
-          <div className="rounded-[calc(1rem-1.5px)] border border-white/[0.04] bg-surface-1/40 p-3 backdrop-blur-sm">
+        <div className="rounded-2xl border border-white/6 bg-white/2 p-[1.5px]">
+          <div className="rounded-[calc(1rem-1.5px)] border border-white/4 bg-surface-1/40 p-3 backdrop-blur-sm">
             <DriverFilters
               search={search}
               eyeFilter={eyeFilter}
@@ -252,12 +252,12 @@ function DriversPage() {
       <AnimatePresence>
         {dialogOpen ? (
           <AdminDialog
-            title={dialogMode === "manage" ? "Quan ly tai xe" : "Tao tai xe moi"}
+            title={dialogMode === "manage" ? "Manage Driver" : "Create New Driver"}
             width={dialogMode === "manage" ? "lg" : "md"}
             description={
               dialogMode === "manage"
-                ? "Cap nhat thong tin ho so va trang thai hoat dong cua tai xe."
-                : "Tao ho so tai xe de gan ca va giam sat hoat dong."
+                ? "Update driver profile information and operation status."
+                : "Create a driver profile to assign shifts and monitor activity."
             }
             onClose={closeDialog}
             footer={

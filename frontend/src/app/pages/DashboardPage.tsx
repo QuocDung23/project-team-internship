@@ -138,9 +138,9 @@ function DashboardPage() {
           description="Live admin overview for the current demo environment."
           actions={
             <>
-              <span className="inline-flex items-center gap-2 rounded-lg border border-white/5 bg-white/3 px-3 py-1.5 text-[11px] text-zinc-400">
-                <span className="text-zinc-500">Last refreshed</span>
-                <span className="font-mono-num tabular-nums text-zinc-200">
+              <span className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-subtle-bg px-3 py-1.5 text-[11px] text-text-secondary">
+                <span className="text-text-tertiary">Last refreshed</span>
+                <span className="font-mono-num tabular-nums text-text-primary">
                   {new Date(now).toLocaleTimeString()}
                 </span>
               </span>
@@ -154,7 +154,7 @@ function DashboardPage() {
 
         <motion.div
           variants={sectionVariants}
-          className="flex flex-col gap-3 mt-5"
+          className="mt-5 flex flex-col gap-3"
         >
           <AdminErrorBanner
             label="Drivers unavailable"
@@ -204,7 +204,7 @@ function DashboardPage() {
 
         <motion.section
           variants={sectionVariants}
-          className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr] mt-5"
+          className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]"
         >
           <ActiveTripsPanel
             trips={activeTrips}
@@ -223,7 +223,7 @@ function DashboardPage() {
 
         <motion.section
           variants={sectionVariants}
-          className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr] mt-5"
+          className="mt-5 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]"
         >
           <TodayAlertDistributionPanel
             alerts={todayAlerts}
@@ -271,8 +271,8 @@ function ActiveTripsPanel({
       {!error && !isLoading && trips.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-[12px]">
-            <thead className="text-[10px] uppercase tracking-wider text-zinc-500">
-              <tr className="border-b border-white/5">
+            <thead className="text-[10px] uppercase tracking-wider text-text-tertiary">
+              <tr className="border-b border-hairline">
                 <th className="py-2 pr-4 font-medium">Trip</th>
                 <th className="py-2 pr-4 font-medium">Driver</th>
                 <th className="py-2 pr-4 font-medium">Vehicle</th>
@@ -281,32 +281,32 @@ function ActiveTripsPanel({
                 <th className="py-2 text-right font-medium">Score</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/3">
+            <tbody className="divide-y divide-hairline">
               {trips.slice(0, 6).map((trip) => (
                 <tr
                   key={trip.trip_id}
-                  className="group cursor-pointer transition-colors duration-200 hover:bg-white/2"
+                  className="group cursor-pointer transition-colors duration-200 hover:bg-subtle-bg-hover"
                 >
                   <td className="py-2.5 pr-4">
-                    <p className="font-mono-num text-[12px] font-medium text-zinc-100">
+                    <p className="font-mono-num text-[12px] font-medium text-text-primary">
                       {tripTitle(trip)}
                     </p>
-                    <p className="truncate text-[11px] text-zinc-500">
+                    <p className="truncate text-[11px] text-text-tertiary">
                       {routeLabel(trip)}
                     </p>
                   </td>
                   <td className="py-2.5 pr-4">
-                    <p className="truncate text-[12px] font-medium text-zinc-200">
+                    <p className="truncate text-[12px] font-medium text-text-secondary">
                       {driverLabel(trip)}
                     </p>
-                    <p className="truncate text-[11px] text-zinc-500">
+                    <p className="truncate text-[11px] text-text-tertiary">
                       {trip.driver_email ?? "No email"}
                     </p>
                   </td>
-                  <td className="py-2.5 pr-4 font-mono-num text-zinc-400">
+                  <td className="py-2.5 pr-4 font-mono-num text-text-secondary">
                     {trip.vehicle_plate ?? "Unassigned"}
                   </td>
-                  <td className="py-2.5 pr-4 font-mono-num text-zinc-500">
+                  <td className="py-2.5 pr-4 font-mono-num text-text-tertiary">
                     {formatDate(
                       trip.actual_start_at ??
                         trip.start_time ??
@@ -314,10 +314,10 @@ function ActiveTripsPanel({
                     )}
                   </td>
                   <td className="py-2.5 pr-4 text-right">
-                    <span className="font-mono-num text-amber-300">
+                    <span className="font-mono-num text-accent-warn">
                       {toNumber(trip.total_alerts_count)}
                     </span>
-                    <span className="ml-2 font-mono-num text-red-300">
+                    <span className="ml-2 font-mono-num text-accent-critical">
                       {toNumber(trip.critical_alerts_count)} crit
                     </span>
                   </td>
@@ -366,25 +366,25 @@ function DriverRankingPanel({
           {topRows.map(({ driver, averageScore, scoredTrips }, index) => (
             <div
               key={driver.id}
-              className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/2 px-3 py-2.5"
+              className="flex items-center gap-3 rounded-lg border border-hairline bg-subtle-bg px-3 py-2.5"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white/4 text-[11px] font-semibold text-zinc-500">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-subtle-bg text-[11px] font-semibold text-text-tertiary">
                 #{index + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-medium text-zinc-100">
+                <p className="truncate text-[12px] font-medium text-text-primary">
                   {driver.name}
                 </p>
-                <p className="truncate font-mono-num text-[11px] text-zinc-500">
+                <p className="truncate font-mono-num text-[11px] text-text-tertiary">
                   {driver.licenseNumber} - {driver.licensePlate}
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="font-mono-num text-[12px] font-semibold text-amber-300">
+                <p className="font-mono-num text-[12px] font-semibold text-accent-warn">
                   {driver.totalAlerts} alerts
                 </p>
-                <p className="text-[11px] text-zinc-500">
-                  <span className="font-mono-num text-red-300">
+                <p className="text-[11px] text-text-tertiary">
+                  <span className="font-mono-num text-accent-critical">
                     {driver.criticalAlerts}
                   </span>{" "}
                   crit -{" "}
@@ -479,25 +479,25 @@ function DistributionRow({
   severity: FleetEventSeverity;
   status: "Open" | "Acknowledged";
 }) {
-  const severityClass = severity === "critical" ? "bg-red-400" : "bg-amber-400";
+  const severityClass = severity === "critical" ? "bg-accent-critical" : "bg-accent-warn";
   const statusClass =
-    status === "Acknowledged" ? "text-emerald-300" : "text-zinc-400";
+    status === "Acknowledged" ? "text-accent-active" : "text-text-secondary";
   const percent = total > 0 ? Math.round((value / total) * 100) : 0;
 
   return (
     <div className="grid gap-1.5">
       <div className="flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-zinc-300">
+        <span className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary">
           <span
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${severityClass}`}
           />
           <span className="truncate">{label}</span>
         </span>
-        <span className="shrink-0 font-mono-num text-[12px] text-zinc-400">
+        <span className="shrink-0 font-mono-num text-[12px] text-text-tertiary">
           {value} <span className={statusClass}>({percent}%)</span>
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+      <div className="h-1.5 overflow-hidden rounded-full bg-subtle-bg">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
@@ -546,8 +546,8 @@ function AlertsLastSevenDaysPanel({
                 key={day.key}
                 className="grid grid-cols-[3.5rem_1fr_2.5rem] items-center gap-3"
               >
-                <span className="text-[11px] text-zinc-500">{day.label}</span>
-                <div className="h-6 overflow-hidden rounded-md bg-white/3">
+                <span className="text-[11px] text-text-tertiary">{day.label}</span>
+                <div className="h-6 overflow-hidden rounded-md bg-subtle-bg">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${percent}%` }}
@@ -556,10 +556,10 @@ function AlertsLastSevenDaysPanel({
                       delay: 0.1,
                       ease: [0.32, 0.72, 0, 1] as const,
                     }}
-                    className="flex h-full items-center rounded-md bg-emerald-500/20 px-2"
+                    className="flex h-full items-center rounded-md bg-accent-active/20 px-2"
                   />
                 </div>
-                <span className="text-right font-mono-num text-[12px] text-zinc-300">
+                <span className="text-right font-mono-num text-[12px] text-text-secondary">
                   {day.count}
                 </span>
               </div>
@@ -581,7 +581,7 @@ function DashboardPanel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-white/5 bg-white/2 px-5 py-4">
+    <section className="rounded-xl border border-hairline bg-subtle-bg px-5 py-4">
       <PanelHeader title={title} action={action} />
       {children}
     </section>
@@ -597,7 +597,7 @@ function PanelHeader({
 }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="text-[13px] font-semibold tracking-tight text-zinc-100">
+      <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
         {title}
       </h2>
       {action}
@@ -607,9 +607,9 @@ function PanelHeader({
 
 function PanelLoading({ label }: { label: string }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-white/2 px-5 py-8 text-center">
-      <p className="text-[12px] font-medium text-zinc-300">{label}</p>
-      <p className="mt-1 text-[11px] text-zinc-500">
+    <div className="rounded-xl border border-hairline bg-subtle-bg px-5 py-8 text-center">
+      <p className="text-[12px] font-medium text-text-secondary">{label}</p>
+      <p className="mt-1 text-[11px] text-text-tertiary">
         Waiting for backend data...
       </p>
     </div>
@@ -618,9 +618,9 @@ function PanelLoading({ label }: { label: string }) {
 
 function PanelError({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3 text-center">
-      <p className="text-[12px] font-medium text-red-200">{message}</p>
-      <p className="mt-1 text-[11px] text-red-200/70">
+    <div className="rounded-xl border border-accent-critical/20 bg-accent-critical/8 px-4 py-3 text-center">
+      <p className="text-[12px] font-medium text-accent-critical">{message}</p>
+      <p className="mt-1 text-[11px] text-accent-critical/70">
         The rest of the dashboard will continue using available data.
       </p>
     </div>
@@ -631,7 +631,7 @@ function LinkButton({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/3 px-2.5 py-1 text-[11px] text-zinc-400 transition-colors duration-200 hover:bg-white/5 hover:text-zinc-200"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-subtle-bg px-2.5 py-1 text-[11px] text-text-secondary transition-colors duration-200 hover:bg-subtle-bg-hover hover:text-text-primary"
     >
       {label}
       <ArrowUpRight size={11} />
@@ -765,13 +765,13 @@ function scoreBadge(trip: BackendTrip): ReactElement {
       ? trip.safety_score.grade
       : null);
   if (score === null)
-    return <span className="text-[11px] text-zinc-500">No Score</span>;
+    return <span className="text-[11px] text-text-tertiary">No Score</span>;
   const tone =
     score < 60
-      ? "text-red-300"
+      ? "text-accent-critical"
       : score < 85
-        ? "text-amber-300"
-        : "text-emerald-300";
+        ? "text-accent-warn"
+        : "text-accent-active";
   return (
     <span className={`font-mono-num text-[12px] font-semibold ${tone}`}>
       {score}

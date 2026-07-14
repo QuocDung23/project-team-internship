@@ -10,27 +10,27 @@ type StatTone = "neutral" | "critical" | "warn" | "active";
 
 const STAT_CONFIG: Record<StatTone, { gradient: string; ring: string; text: string; glow?: string }> = {
   neutral: { 
-    gradient: "from-zinc-500/10 to-zinc-500/5", 
-    ring: "ring-zinc-500/20", 
-    text: "text-zinc-100",
+    gradient: "from-text-tertiary/10 to-text-tertiary/5", 
+    ring: "ring-text-tertiary/20", 
+    text: "text-text-primary",
   },
   critical: { 
-    gradient: "from-red-500/15 to-red-500/5", 
-    ring: "ring-red-500/30", 
-    text: "text-red-400",
-    glow: "shadow-[0_0_20px_rgba(239,68,68,0.15)]",
+    gradient: "from-accent-critical/15 to-accent-critical/5", 
+    ring: "ring-accent-critical/30", 
+    text: "text-accent-critical",
+    glow: "shadow-[0_0_20px_rgba(220,38,38,0.15)]",
   },
   warn: { 
-    gradient: "from-amber-500/15 to-amber-500/5", 
-    ring: "ring-amber-500/30", 
-    text: "text-amber-400",
+    gradient: "from-accent-warn/15 to-accent-warn/5", 
+    ring: "ring-accent-warn/30", 
+    text: "text-accent-warn",
     glow: "shadow-[0_0_20px_rgba(245,158,11,0.12)]",
   },
   active: { 
-    gradient: "from-emerald-500/15 to-emerald-500/5", 
-    ring: "ring-emerald-500/30", 
-    text: "text-emerald-400",
-    glow: "shadow-[0_0_20px_rgba(52,211,153,0.12)]",
+    gradient: "from-accent-active/15 to-accent-active/5", 
+    ring: "ring-accent-active/30", 
+    text: "text-accent-active",
+    glow: "shadow-[0_0_20px_rgba(16,185,129,0.12)]",
   },
 };
 
@@ -57,13 +57,13 @@ export default function AlertStatsRow({ stats }: AlertStatsRowProps) {
               delay: index * 0.08, 
               ease: [0.32, 0.72, 0, 1] 
             }}
-            className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-linear-to-br ${config.gradient} p-px ${config.ring} ${config.glow ?? ""}`}
+            className={`group relative overflow-hidden rounded-2xl border border-hairline bg-linear-to-br ${config.gradient} p-px ${config.ring} ${config.glow ?? ""}`}
           >
-            <div className="relative rounded-[1.25rem] bg-linear-to-br from-zinc-900/90 to-zinc-950 p-4">
+            <div className="relative rounded-[1.25rem] bg-surface p-4">
               <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-linear-to-br to-transparent" />
               
               <div className="relative">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
                   {label}
                 </span>
                 <motion.span 

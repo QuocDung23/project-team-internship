@@ -17,17 +17,17 @@ interface DriverFiltersProps {
 }
 
 const EYE_OPTIONS: ReadonlyArray<{ value: DriverEyeFilter; label: string }> = [
-  { value: "all", label: "Tất cả" },
-  { value: "open", label: "Mở" },
-  { value: "yawning", label: "Ngáp" },
-  { value: "closed", label: "Nhắm" },
+  { value: "all", label: "All" },
+  { value: "open", label: "Open" },
+  { value: "yawning", label: "Yawning" },
+  { value: "closed", label: "Closed" },
 ];
 
 const EYE_ACTIVE: Record<DriverEyeFilter, string> = {
-  all: "bg-surface-2 text-zinc-100",
-  open: "bg-emerald-500/20 text-emerald-300",
-  yawning: "bg-amber-500/20 text-amber-300",
-  closed: "bg-red-500/20 text-red-300",
+  all: "bg-surface-2 text-text-primary",
+  open: "bg-accent-active/20 text-accent-active",
+  yawning: "bg-accent-warn/20 text-accent-warn",
+  closed: "bg-accent-critical/20 text-accent-critical",
 };
 
 const STATUS_OPTIONS: ReadonlyArray<DriverStatusFilter> = [
@@ -38,10 +38,10 @@ const STATUS_OPTIONS: ReadonlyArray<DriverStatusFilter> = [
 ];
 
 const STATUS_ACTIVE: Record<DriverStatusFilter, string> = {
-  all: "bg-emerald-500/20 text-emerald-300",
-  driving: "bg-emerald-500/20 text-emerald-300",
-  idle: "bg-zinc-500/20 text-zinc-300",
-  disable: "bg-red-500/20 text-red-300",
+  all: "bg-accent-active/20 text-accent-active",
+  driving: "bg-accent-active/20 text-accent-active",
+  idle: "bg-surface-2 text-text-secondary",
+  disable: "bg-accent-critical/20 text-accent-critical",
 };
 
 function DriverFilters({
@@ -57,18 +57,18 @@ function DriverFilters({
       <div className="relative flex items-center">
         <Search
           size={13}
-          className="absolute left-2.5 text-zinc-500"
+          className="absolute left-2.5 text-text-tertiary"
         />
         <input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Tìm tên hoặc mã tài xế..."
-          className="w-52 rounded-md border border-hairline bg-surface-2 pl-8 pr-3 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-emerald-500/40"
+          placeholder="Search by name or driver code..."
+          className="w-52 rounded-md border border-hairline bg-surface-2 pl-8 pr-3 py-1.5 text-[11px] text-text-primary placeholder:text-text-tertiary outline-none focus:border-accent-active/40"
         />
       </div>
       <div className="h-3 w-px bg-hairline" />
       <div className="flex items-center gap-1">
-        <span className="text-[11px] text-zinc-500">Mắt:</span>
+        <span className="text-[11px] text-text-tertiary">Eyes:</span>
         {EYE_OPTIONS.map((opt) => (
           <button
             key={opt.value}
@@ -77,7 +77,7 @@ function DriverFilters({
             className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors ${
               eyeFilter === opt.value
                 ? EYE_ACTIVE[opt.value]
-                : "text-zinc-500 hover:text-zinc-300"
+                : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
             {opt.label}
@@ -86,7 +86,7 @@ function DriverFilters({
       </div>
       <div className="h-3 w-px bg-hairline" />
       <div className="flex items-center gap-1">
-        <span className="text-[11px] text-zinc-500">Trạng thái:</span>
+        <span className="text-[11px] text-text-tertiary">Status:</span>
         {STATUS_OPTIONS.map((value) => (
           <button
             key={value}
@@ -95,10 +95,10 @@ function DriverFilters({
             className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors ${
               statusFilter === value
                 ? STATUS_ACTIVE[value]
-                : "text-zinc-500 hover:text-zinc-300"
+                : "text-text-tertiary hover:text-text-secondary"
             }`}
           >
-            {value === "all" ? "Tất cả" : STATUS_LABEL[value]}
+            {value === "all" ? "All" : STATUS_LABEL[value]}
           </button>
         ))}
       </div>

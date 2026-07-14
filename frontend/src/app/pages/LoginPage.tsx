@@ -46,7 +46,7 @@ export function LoginPage() {
       };
 
   return (
-    <main className="relative grid min-h-dvh w-full place-items-center overflow-hidden bg-canvas px-4 py-10 text-zinc-100">
+    <main className="relative grid min-h-dvh w-full place-items-center overflow-hidden bg-canvas px-4 py-10 text-text-primary">
       {/* Atmospheric backdrop: two soft mesh orbs + hairline grid. Pointer-events-none, fixed inside viewport. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
@@ -61,7 +61,7 @@ export function LoginPage() {
           className="absolute inset-0 opacity-[0.07]"
           style={{
             backgroundImage:
-              "linear-gradient(to right, rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.6) 1px, transparent 1px)",
+              "linear-gradient(to right, color-mix(in srgb, var(--color-text-tertiary) 35%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--color-text-tertiary) 35%, transparent) 1px, transparent 1px)",
             backgroundSize: "56px 56px",
             maskImage: "radial-gradient(ellipse at center, black 30%, transparent 75%)",
             WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 75%)",
@@ -74,13 +74,13 @@ export function LoginPage() {
         {...entry}
         className="relative z-10 w-full max-w-[420px]"
       >
-        <div className="rounded-[28px] border border-white/[0.08] bg-white/[0.03] p-[1.5px] shadow-[0_30px_120px_-20px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
+        <div className="rounded-[28px] border border-(--theme-subtle-border) bg-(--theme-subtle-bg) p-[1.5px] shadow-[0_30px_120px_-62px_var(--theme-shadow)] backdrop-blur-2xl">
           <div
-            className="rounded-[26px] border border-white/[0.05] p-7 sm:p-8"
+            className="rounded-[26px] border border-white/5 p-7 sm:p-8"
             style={{
               background:
-                "linear-gradient(180deg, rgba(22,28,37,0.92) 0%, rgba(17,22,29,0.92) 100%)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+                "linear-gradient(180deg, color-mix(in srgb, var(--color-elevated) 94%, transparent) 0%, color-mix(in srgb, var(--color-surface) 94%, transparent) 100%)",
+              boxShadow: "inset 0 1px 0 var(--theme-subtle-border)",
             }}
           >
             {/* Header: brand mark + eyebrow + title + subtitle. No section-number eyebrow. */}
@@ -98,17 +98,17 @@ export function LoginPage() {
                   <ShieldCheck size={22} strokeWidth={1.5} />
                 </div>
                 <span
-                  className="rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500"
+                  className="rounded-full border border-white/8 bg-white/2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500"
                 >
                   Console
                 </span>
               </div>
 
               <div className="grid gap-1.5">
-                <h1 className="text-[22px] font-semibold leading-tight tracking-tight text-zinc-50">
+                <h1 className="text-[22px] font-semibold leading-tight tracking-tight text-text-primary">
                   Driver Safety Console
                 </h1>
-                <p className="max-w-[34ch] text-[13px] leading-relaxed text-zinc-400">
+                <p className="max-w-[34ch] text-[13px] leading-relaxed text-text-secondary">
                   Sign in with your fleet operator credentials to monitor trips, drivers, and live alerts.
                 </p>
               </div>
@@ -117,11 +117,11 @@ export function LoginPage() {
             <form onSubmit={onSubmit} className="mt-7 grid gap-4">
               {/* Email field: nested input architecture with leading icon. */}
               <label className="grid gap-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
                   Email
                 </span>
                 <span
-                  className="group flex h-11 items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-950/60 px-3 transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] focus-within:border-emerald-500/60 focus-within:bg-zinc-950/80 hover:border-white/[0.14]"
+                  className="field-surface group flex h-11 items-center gap-2 px-3 transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-white/[0.14]"
                 >
                   <Mail
                     size={16}
@@ -136,18 +136,18 @@ export function LoginPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
-                    className="w-full bg-transparent text-[13px] text-zinc-100 placeholder:text-zinc-600 outline-none"
+                    className="w-full bg-transparent text-[13px] text-text-primary placeholder:text-zinc-600 outline-none"
                   />
                 </span>
               </label>
 
               {/* Password field: same nested input architecture. */}
               <label className="grid gap-1.5">
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
                   Password
                 </span>
                 <span
-                  className="group flex h-11 items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-950/60 px-3 transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] focus-within:border-emerald-500/60 focus-within:bg-zinc-950/80 hover:border-white/[0.14]"
+                  className="field-surface group flex h-11 items-center gap-2 px-3 transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-white/[0.14]"
                 >
                   <Lock
                     size={16}
@@ -161,7 +161,7 @@ export function LoginPage() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
-                    className="w-full bg-transparent text-[13px] text-zinc-100 placeholder:text-zinc-600 outline-none"
+                    className="w-full bg-transparent text-[13px] text-text-primary placeholder:text-zinc-600 outline-none"
                   />
                 </span>
               </label>
@@ -170,7 +170,7 @@ export function LoginPage() {
               {error ? (
                 <p
                   role="alert"
-                  className="flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/[0.08] px-3 py-2 text-[12px] text-rose-300"
+                  className="flex items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/8 px-3 py-2 text-[12px] text-rose-300"
                 >
                   <span
                     aria-hidden
@@ -195,7 +195,7 @@ export function LoginPage() {
                 {!isSubmitting ? (
                   <span
                     aria-hidden
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-950/15 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-[1px]"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-950/15 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px"
                   >
                     <ArrowRight size={12} strokeWidth={2} />
                   </span>
@@ -204,11 +204,11 @@ export function LoginPage() {
             </form>
 
             {/* Footer: legal-style helper line, no marketing fluff, no version stamp. */}
-            <footer className="mt-7 flex items-center justify-between border-t border-white/[0.06] pt-5">
-              <span className="font-mono-num text-[10.5px] uppercase tracking-[0.18em] text-zinc-600">
+            <footer className="mt-7 flex items-center justify-between border-t border-white/6 pt-5">
+              <span className="font-mono-num text-[10.5px] uppercase tracking-[0.18em] text-text-tertiary">
                 Restricted access
               </span>
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-[11px] text-text-tertiary">
                 Need help? Contact your fleet admin.
               </span>
             </footer>

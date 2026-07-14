@@ -33,7 +33,7 @@ export default function TripHistoryDialog({
 }: TripHistoryDialogProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 p-4 backdrop-blur-sm"
+      className="theme-overlay fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -46,16 +46,16 @@ export default function TripHistoryDialog({
         className="bezel-shell flex max-h-[92vh] w-full max-w-5xl flex-col"
       >
         <div className="bezel-core relative flex flex-col overflow-hidden">
-          <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] px-6 py-4">
+          <div className="flex items-start justify-between gap-4 border-b border-hairline px-6 py-4">
             <div className="min-w-0">
               <div className="eyebrow-chip mb-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-active" />
                 <span>Trip record</span>
               </div>
-              <h2 className="truncate text-lg font-semibold tracking-[-0.015em] text-zinc-100">
+              <h2 className="truncate text-lg font-semibold tracking-[-0.015em] text-text-primary">
                 {tripTitle(trip)}
               </h2>
-              <p className="mt-1 truncate text-xs text-zinc-500">
+              <p className="mt-1 truncate text-xs text-text-tertiary">
                 {routeLabel(trip)}
               </p>
             </div>
@@ -63,7 +63,7 @@ export default function TripHistoryDialog({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:bg-white/[0.06] hover:text-zinc-50"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-subtle-bg text-text-secondary transition-colors duration-200 hover:bg-subtle-bg-hover hover:text-text-primary"
             >
               <X size={14} weight="bold" />
             </button>
@@ -105,29 +105,29 @@ export default function TripHistoryDialog({
             <div className="mt-6">
               <div className="flex items-end justify-between gap-3 pb-3">
                 <div>
-                  <h3 className="text-sm font-semibold tracking-[-0.01em] text-zinc-100">
+                  <h3 className="text-sm font-semibold tracking-[-0.01em] text-text-primary">
                     Trip alerts
                   </h3>
-                  <p className="mt-0.5 text-[11px] text-zinc-500">
+                  <p className="mt-0.5 text-[11px] text-text-tertiary">
                     Persisted safety events captured during this trip
                   </p>
                 </div>
-                <span className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-0.5 font-mono-num text-[11px] font-medium text-zinc-400 tabular-nums">
+                <span className="rounded-full border border-hairline bg-subtle-bg px-2.5 py-0.5 font-mono-num text-[11px] font-medium text-text-secondary tabular-nums">
                   {alerts.length}
                 </span>
               </div>
               {alertsError ? (
-                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-2.5 text-xs text-amber-200">
+                <div className="mt-3 rounded-xl border border-accent-warn/30 bg-accent-warn/6 px-3.5 py-2.5 text-xs text-accent-warn">
                   {alertsError}
                 </div>
               ) : null}
               {!alertsError && isLoadingAlerts ? (
-                <div className="mt-3 rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-6 text-center text-xs text-zinc-500">
+                <div className="mt-3 rounded-xl border border-hairline bg-subtle-bg px-3 py-6 text-center text-xs text-text-tertiary">
                   Loading alerts...
                 </div>
               ) : null}
               {!alertsError && !isLoadingAlerts && alerts.length === 0 ? (
-                <div className="mt-3 rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-6 text-center text-xs text-zinc-500">
+                <div className="mt-3 rounded-xl border border-hairline bg-subtle-bg px-3 py-6 text-center text-xs text-text-tertiary">
                   No alerts for this trip.
                 </div>
               ) : null}

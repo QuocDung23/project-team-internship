@@ -22,16 +22,16 @@ interface AlertFiltersProps {
 
 const SEVERITY_CONFIG: Record<SeverityFilter, { active: string; inactive: string }> = {
   all: { 
-    active: "bg-white/10 text-zinc-100 ring-white/20", 
-    inactive: "text-zinc-500 hover:text-zinc-300 hover:bg-white/5" 
+    active: "bg-subtle-bg text-text-primary ring-hairline", 
+    inactive: "text-text-tertiary hover:text-text-secondary hover:bg-subtle-bg-hover" 
   },
   critical: { 
-    active: "bg-gradient-to-r from-red-500/20 to-red-500/10 text-red-300 ring-red-500/30", 
-    inactive: "text-zinc-500 hover:text-red-300 hover:bg-red-500/10" 
+    active: "bg-gradient-to-r from-accent-critical/20 to-accent-critical/10 text-accent-critical ring-accent-critical/30", 
+    inactive: "text-text-tertiary hover:text-accent-critical hover:bg-accent-critical/10" 
   },
   warn: { 
-    active: "bg-gradient-to-r from-amber-500/20 to-amber-500/10 text-amber-300 ring-amber-500/30", 
-    inactive: "text-zinc-500 hover:text-amber-300 hover:bg-amber-500/10" 
+    active: "bg-gradient-to-r from-accent-warn/20 to-accent-warn/10 text-accent-warn ring-accent-warn/30", 
+    inactive: "text-text-tertiary hover:text-accent-warn hover:bg-accent-warn/10" 
   },
 };
 
@@ -58,15 +58,15 @@ export default function AlertFilters({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-      className="relative overflow-hidden rounded-2xl border border-white/6 bg-linear-to-br from-zinc-900/90 to-zinc-950/95 p-px"
+      className="relative overflow-hidden rounded-2xl border border-hairline bg-elevated p-px"
     >
-      <div className="relative rounded-[1.375rem] bg-linear-to-br from-zinc-900/95 to-zinc-950 px-5 py-3.5">
+      <div className="relative rounded-[1.375rem] bg-surface px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10">
-              <Filter size={13} className="text-zinc-400" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-subtle-bg ring-1 ring-hairline">
+              <Filter size={13} className="text-text-tertiary" />
             </div>
-            <span className="text-xs font-medium text-zinc-500">Filters</span>
+            <span className="text-xs font-medium text-text-tertiary">Filters</span>
           </div>
           
           <div className="flex items-center gap-1.5">
@@ -91,14 +91,14 @@ export default function AlertFilters({
             ))}
           </div>
           
-          <div className="h-4 w-px bg-white/10" />
+          <div className="h-4 w-px bg-hairline" />
           
           <select
             value={typeFilter}
             onChange={(e) => onTypeChange(e.target.value as TypeFilter)}
-            className="appearance-none cursor-pointer rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 pr-8 text-xs font-medium text-zinc-300 outline-none transition-all hover:border-white/20 hover:bg-white/10 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20"
+            className="appearance-none cursor-pointer rounded-full border border-hairline bg-subtle-bg px-3.5 py-1.5 pr-8 text-xs font-medium text-text-secondary outline-none transition-all hover:border-hairline hover:bg-subtle-bg-hover focus:border-accent-active/40 focus:ring-1 focus:ring-accent-active/20"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2372727a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat',
               backgroundPosition: 'right 10px center',
             }}
@@ -113,7 +113,7 @@ export default function AlertFilters({
           <motion.label 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all hover:bg-white/5"
+            className="flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all hover:bg-subtle-bg-hover"
           >
             <div className="relative">
               <input
@@ -122,10 +122,10 @@ export default function AlertFilters({
                 onChange={(e) => onToggleAcknowledged(e.target.checked)}
                 className="peer sr-only"
               />
-              <div className="h-4 w-8 rounded-full bg-zinc-700/50 ring-1 ring-white/10 transition-all peer-checked:bg-emerald-500/40 peer-checked:ring-emerald-500/30" />
-              <div className="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-zinc-400 transition-all peer-checked:translate-x-4 peer-checked:bg-emerald-400" />
+              <div className="h-4 w-8 rounded-full bg-subtle-bg-hover ring-1 ring-hairline transition-all peer-checked:bg-accent-active/40 peer-checked:ring-accent-active/30" />
+              <div className="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-text-tertiary transition-all peer-checked:translate-x-4 peer-checked:bg-accent-active" />
             </div>
-            <span className="text-zinc-400">Show acknowledged</span>
+            <span className="text-text-tertiary">Show acknowledged</span>
           </motion.label>
         </div>
       </div>

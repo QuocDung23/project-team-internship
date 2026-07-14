@@ -178,7 +178,7 @@ function DriverFilterDropdown({
 
   return (
     <div
-      className="relative grid max-w-xl gap-1 text-[11px] text-zinc-400"
+      className="relative grid max-w-xl gap-1 text-[11px] text-text-secondary"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
           setOpen(false);
@@ -188,7 +188,7 @@ function DriverFilterDropdown({
     >
       <span>Driver</span>
       <div className="relative">
-        <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+        <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
         <input
           value={visibleQuery}
           onFocus={() => setOpen(true)}
@@ -197,7 +197,7 @@ function DriverFilterDropdown({
             setOpen(true);
             if (selectedDriverId) onDriverChange("");
           }}
-          className="w-full rounded-md border border-hairline bg-surface-2 py-2 pl-9 pr-9 text-[12px] text-zinc-100 outline-none focus:border-emerald-500/50"
+          className="w-full rounded-md border border-hairline bg-subtle-bg py-2 pl-9 pr-9 text-[12px] text-text-primary outline-none focus:border-accent-active/50"
           placeholder="Search driver name, license, or email"
         />
         {selectedDriverId ? (
@@ -208,7 +208,7 @@ function DriverFilterDropdown({
               setQuery("");
               setOpen(false);
             }}
-            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-text-tertiary hover:bg-subtle-bg-hover hover:text-text-primary"
             aria-label="Clear driver filter"
           >
             <X size={13} />
@@ -217,7 +217,7 @@ function DriverFilterDropdown({
       </div>
 
       {open ? (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border border-hairline bg-zinc-950 p-1 shadow-xl shadow-black/30">
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border border-hairline bg-surface p-1 shadow-xl shadow-black/30">
           <button
             type="button"
             onClick={() => {
@@ -225,14 +225,14 @@ function DriverFilterDropdown({
               setQuery("");
               setOpen(false);
             }}
-            className={`grid w-full gap-0.5 rounded px-3 py-2 text-left text-[12px] hover:bg-surface-2 ${
-              selectedDriverId ? "text-zinc-300" : "bg-surface-2 text-emerald-300"
+            className={`grid w-full gap-0.5 rounded px-3 py-2 text-left text-[12px] hover:bg-subtle-bg-hover ${
+              selectedDriverId ? "text-text-secondary" : "bg-subtle-bg-hover text-accent-active"
             }`}
           >
             All drivers
           </button>
           {filteredDrivers.length === 0 ? (
-            <div className="px-3 py-3 text-[12px] text-zinc-500">No drivers match this search.</div>
+            <div className="px-3 py-3 text-[12px] text-text-tertiary">No drivers match this search.</div>
           ) : (
             filteredDrivers.map((driver) => (
               <button
@@ -243,12 +243,12 @@ function DriverFilterDropdown({
                   setQuery("");
                   setOpen(false);
                 }}
-                className={`grid w-full gap-0.5 rounded px-3 py-2 text-left hover:bg-surface-2 ${
-                  selectedDriverId === driver.id ? "bg-emerald-500/10 text-emerald-200" : "text-zinc-300"
+                className={`grid w-full gap-0.5 rounded px-3 py-2 text-left hover:bg-subtle-bg-hover ${
+                  selectedDriverId === driver.id ? "bg-accent-active/10 text-accent-active" : "text-text-secondary"
                 }`}
               >
                 <span className="truncate text-[12px] font-medium">{driver.name}</span>
-                <span className="truncate font-mono-num text-[10px] text-zinc-500">
+                <span className="truncate font-mono-num text-[10px] text-text-tertiary">
                   {driver.licenseNumber} - {driver.email}
                 </span>
               </button>

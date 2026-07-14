@@ -3,9 +3,9 @@ import type { VehicleQueueStats } from "../../types/fleets";
 type QueueTone = "warn" | "active" | "neutral";
 
 const TONE_CONFIG: Record<QueueTone, { text: string; dot: string }> = {
-  warn: { text: "text-amber-400", dot: "bg-amber-400" },
-  active: { text: "text-emerald-400", dot: "bg-emerald-400" },
-  neutral: { text: "text-zinc-200", dot: "bg-zinc-400" },
+  warn: { text: "text-accent-warn", dot: "bg-accent-warn" },
+  active: { text: "text-accent-active", dot: "bg-accent-active" },
+  neutral: { text: "text-text-primary", dot: "bg-text-tertiary" },
 };
 
 interface QueueStatsBarProps {
@@ -46,7 +46,7 @@ function QueueStatsBar({ stats }: QueueStatsBarProps) {
     ];
 
   return (
-    <div className="rounded-2xl border border-hairline bg-surface-1/20 px-5 py-3.5">
+    <div className="rounded-2xl border border-hairline bg-subtle-bg px-5 py-3.5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         {items.map(({ label, value, tone }) => (
           <div key={label} className="flex items-center gap-2.5">
@@ -54,7 +54,7 @@ function QueueStatsBar({ stats }: QueueStatsBarProps) {
               <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${TONE_CONFIG[tone].dot}`} />
               <span className={`relative inline-flex h-2 w-2 rounded-full ${TONE_CONFIG[tone].dot}`} />
             </span>
-            <span className="text-[11px] text-zinc-500">{label}</span>
+            <span className="text-[11px] text-text-tertiary">{label}</span>
             <span
               className={`font-mono-num text-[13px] font-semibold ${TONE_CONFIG[tone].text}`}
             >
@@ -66,11 +66,11 @@ function QueueStatsBar({ stats }: QueueStatsBarProps) {
           <>
             <div className="h-5 w-px bg-hairline" />
             <div className="flex items-center gap-4">
-              <span className="text-[11px] text-zinc-500">By Zone:</span>
+              <span className="text-[11px] text-text-tertiary">By Zone:</span>
               {Object.entries(stats.queueByTeam).map(([team, count]) => (
-                <span key={team} className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                  <span className="font-medium text-zinc-200">{team}</span>
-                  <span className="font-mono-num font-semibold text-zinc-100">
+                <span key={team} className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+                  <span className="font-medium text-text-primary">{team}</span>
+                  <span className="font-mono-num font-semibold text-text-primary">
                     {count}
                   </span>
                 </span>

@@ -13,11 +13,11 @@ function VehicleGrid({
 }: VehicleGridProps) {
   if (vehicles.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-hairline bg-surface-1/20 py-20">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20">
-          <CheckCircle size={28} strokeWidth={1.5} className="text-emerald-400" />
+      <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-hairline bg-subtle-bg py-20">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-active/10 ring-1 ring-accent-active/20">
+          <CheckCircle size={28} strokeWidth={1.5} className="text-accent-active" />
         </div>
-        <p className="text-[13px] text-zinc-500">{emptyMessage}</p>
+        <p className="text-[13px] text-text-tertiary">{emptyMessage}</p>
       </div>
     );
   }

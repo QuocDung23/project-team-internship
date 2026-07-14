@@ -21,14 +21,14 @@ export default function SafetyGrades({
       initial={reduceMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-2xl border border-zinc-800/50 bg-zinc-900/30 p-6"
+      className="theme-card rounded-2xl p-6"
     >
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.55 }}
       >
-        <h3 className="mb-4 text-xs font-medium text-zinc-500">
+        <h3 className="mb-4 text-xs font-medium text-text-tertiary">
           Score Thresholds
         </h3>
         <div className="grid grid-cols-2 gap-4">

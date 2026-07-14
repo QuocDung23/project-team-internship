@@ -37,9 +37,8 @@ export default function TripHeroHeader({
     {
       label: "Completed",
       value: String(completedCount),
-      tone:
-        "text-emerald-300 bg-emerald-500/10 border-emerald-500/25",
-      iconColor: "text-emerald-300",
+      tone: "text-accent-active bg-accent-active/10 border-accent-active/25",
+      iconColor: "text-accent-active",
       icon: <CheckCircle2 size={12} strokeWidth={2} />,
     },
     {
@@ -47,10 +46,10 @@ export default function TripHeroHeader({
       value: String(activeTripCount),
       tone:
         activeTripCount > 0
-          ? "text-amber-200 bg-amber-500/10 border-amber-500/25"
-          : "text-zinc-200 bg-white/[0.03] border-white/[0.06]",
+          ? "text-accent-warn bg-accent-warn/10 border-accent-warn/25"
+          : "text-text-primary bg-subtle-bg border-hairline",
       iconColor:
-        activeTripCount > 0 ? "text-amber-300" : "text-zinc-400",
+        activeTripCount > 0 ? "text-accent-warn" : "text-text-tertiary",
       icon: <Clock4 size={12} strokeWidth={2} />,
     },
     {
@@ -58,12 +57,12 @@ export default function TripHeroHeader({
       value: avgScore === null ? "-" : String(avgScore),
       tone:
         avgScore !== null && avgScore < 60
-          ? "text-rose-300 bg-rose-500/10 border-rose-500/25"
-          : "text-emerald-300 bg-emerald-500/10 border-emerald-500/25",
+          ? "text-accent-critical bg-accent-critical/10 border-accent-critical/25"
+          : "text-accent-active bg-accent-active/10 border-accent-active/25",
       iconColor:
         avgScore !== null && avgScore < 60
-          ? "text-rose-300"
-          : "text-emerald-300",
+          ? "text-accent-critical"
+          : "text-accent-active",
       icon: <ShieldCheck size={12} strokeWidth={2} />,
     },
     {
@@ -71,9 +70,9 @@ export default function TripHeroHeader({
       value: `${totalAlerts}/${criticalAlerts}`,
       tone:
         criticalAlerts > 0
-          ? "text-rose-300 bg-rose-500/10 border-rose-500/25"
-          : "text-zinc-200 bg-white/[0.03] border-white/[0.06]",
-      iconColor: criticalAlerts > 0 ? "text-rose-300" : "text-zinc-400",
+          ? "text-accent-critical bg-accent-critical/10 border-accent-critical/25"
+          : "text-text-primary bg-subtle-bg border-hairline",
+      iconColor: criticalAlerts > 0 ? "text-accent-critical" : "text-text-tertiary",
       icon: <AlertTriangle size={12} strokeWidth={2} />,
     },
   ];
@@ -86,13 +85,12 @@ export default function TripHeroHeader({
       className="bezel-shell"
     >
       <div className="bezel-core relative px-5 py-5 md:px-6">
-        {/* Faint technical grid as ambient texture */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.10]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+              "linear-gradient(var(--theme-subtle-border) 1px, transparent 1px), linear-gradient(90deg, var(--theme-subtle-border) 1px, transparent 1px)",
             backgroundSize: "44px 44px",
             maskImage:
               "radial-gradient(ellipse at 0% 50%, black 0%, transparent 70%)",
@@ -105,16 +103,16 @@ export default function TripHeroHeader({
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
                   activeTripCount > 0
-                    ? "bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
-                    : "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                    ? "bg-accent-warn shadow-[0_0_8px_rgba(245,158,11,0.6)]"
+                    : "bg-accent-active shadow-[0_0_8px_rgba(16,185,129,0.6)]"
                 }`}
               />
               <span>My Trips</span>
             </div>
-            <h1 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-zinc-50">
+            <h1 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-text-primary">
               Driver trips
             </h1>
-            <p className="mt-2 text-[13px] text-zinc-400">
+            <p className="mt-2 text-[13px] text-text-secondary">
               {activeTripCount > 0
                 ? `${activeTripCount} active trip in progress`
                 : `${completedCount} completed trips recorded`}
@@ -132,7 +130,7 @@ export default function TripHeroHeader({
               >
                 <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em]">
                   <span className={tile.iconColor}>{tile.icon}</span>
-                  <span className="text-zinc-300/80">{tile.label}</span>
+                  <span className="text-text-secondary/80">{tile.label}</span>
                 </div>
                 <div className="font-mono-num text-[20px] font-semibold tabular-nums leading-none">
                   {tile.value}

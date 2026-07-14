@@ -23,7 +23,7 @@ function DriverTable({
     <div className="panel flex flex-1 flex-col gap-0 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[920px] text-left text-[12px]">
-          <thead className="sticky top-0 z-10 border-b border-hairline bg-surface-1 text-[10px] uppercase tracking-wider text-zinc-500">
+          <thead className="sticky top-0 z-10 border-b border-hairline bg-surface-1 text-[10px] uppercase tracking-wider text-text-tertiary">
             <tr>
               <th className="px-4 py-3 font-medium">Driver</th>
               <th className="py-3 pr-4 font-medium">Vehicle plate</th>
@@ -38,7 +38,7 @@ function DriverTable({
               <tr>
                 <td
                   colSpan={6}
-                  className="py-12 text-center text-[12px] text-zinc-500"
+                  className="py-12 text-center text-[12px] text-text-tertiary"
                 >
                   No matching drivers found.
                 </td>
@@ -57,13 +57,13 @@ function DriverTable({
           </tbody>
         </table>
       </div>
-      <div className="border-t border-hairline px-4 py-3 text-[11px] text-zinc-500">
+      <div className="border-t border-hairline px-4 py-3 text-[11px] text-text-tertiary">
         Showing {drivers.length} / {totalCount} drivers
         {filteredOut && (
           <button
             type="button"
             onClick={onClearFilters}
-            className="ml-2 text-emerald-400 hover:text-emerald-300"
+            className="ml-2 text-accent-active hover:text-accent-active/80"
           >
             Clear filters
           </button>

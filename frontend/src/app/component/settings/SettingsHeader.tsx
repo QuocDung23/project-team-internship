@@ -1,3 +1,4 @@
+import { Loader2, Save } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 
 interface SettingsHeaderProps {
@@ -24,8 +25,8 @@ export default function SettingsHeader({
   };
 
   const getStatusColor = () => {
-    if (isDirty) return "text-amber-400";
-    return "text-emerald-400";
+    if (isDirty) return "text-accent-warn";
+    return "text-accent-active";
   };
 
   return (
@@ -36,17 +37,17 @@ export default function SettingsHeader({
       className="mb-8"
     >
       <div className="mb-2">
-        <span className="text-[11px] font-medium uppercase tracking-[0.15em] text-zinc-500">
+        <span className="text-[11px] font-medium uppercase tracking-[0.15em] text-text-tertiary">
           System Settings
         </span>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
             Detection Settings
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-text-tertiary">
             {isLive
               ? "Supported runtime settings are loaded from the backend"
               : "Backend is unavailable, showing defaults"}
@@ -75,32 +76,12 @@ export default function SettingsHeader({
             disabled={isSaving || !isDirty}
             whileHover={reduceMotion ? {} : { scale: 1.02 }}
             whileTap={reduceMotion ? {} : { scale: 0.98 }}
-            className="group inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-2 text-[12px] font-medium text-emerald-400 ring-1 ring-emerald-500/30 transition-colors hover:bg-emerald-500/20 hover:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="group inline-flex items-center gap-2 rounded-full bg-accent-active/10 px-4 py-2 text-[12px] font-medium text-accent-active ring-1 ring-accent-active/30 transition-colors hover:bg-accent-active/20 hover:ring-accent-active/50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isSaving ? (
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
-              </motion.span>
+              <Loader2 size={14} strokeWidth={2.4} className="animate-spin" />
             ) : (
-              <motion.svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </motion.svg>
+              <Save size={14} strokeWidth={2.4} />
             )}
             <span>Save Changes</span>
           </motion.button>

@@ -54,9 +54,9 @@ export default function DriverFormSections({
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={SPRING}
-          className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3.5 py-2.5 text-[12px] leading-relaxed text-amber-200"
+          className="rounded-xl border border-accent-warn/25 bg-accent-warn/8 px-3.5 py-2.5 text-[12px] leading-relaxed text-accent-warn"
           style={{
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+            boxShadow: "inset 0 1px 0 var(--theme-subtle-border)",
           }}
         >
           {formError}
@@ -64,28 +64,27 @@ export default function DriverFormSections({
       ) : null}
 
       {mode === "manage" ? (
-        <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2 text-[11px] text-zinc-500">
-          <IdCard size={13} strokeWidth={2} className="text-zinc-400" />
-          <span className="uppercase tracking-[0.14em] text-zinc-500">
+        <div className="flex items-center gap-2 rounded-xl border border-hairline bg-subtle-bg px-3.5 py-2 text-[11px] text-text-tertiary">
+          <IdCard size={13} strokeWidth={2} className="text-text-secondary" />
+          <span className="uppercase tracking-[0.14em]">
             Driver ID
           </span>
-          <span className="font-mono-num text-zinc-200">
+          <span className="font-mono-num text-text-primary">
             {selectedDriverId}
           </span>
         </div>
       ) : null}
 
-      {/* Identity section */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-[1.5px]">
-        <div className="grid gap-3 rounded-[calc(1rem-1.5px)] bg-zinc-950/40 p-4">
-          <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            <User size={12} strokeWidth={2} className="text-emerald-400" />
-            Thông tin định danh
+      <div className="rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]">
+        <div className="grid gap-3 rounded-[calc(1rem-1.5px)] bg-surface p-4">
+          <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
+            <User size={12} strokeWidth={2} className="text-accent-active" />
+            Identity Information
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <DriverTextField
               icon={<User size={13} strokeWidth={2} />}
-              label="Họ và tên"
+              label="Full Name"
               value={form.fullName}
               required
               onChange={(fullName) =>
@@ -94,7 +93,7 @@ export default function DriverFormSections({
             />
             <DriverTextField
               icon={<IdCard size={13} strokeWidth={2} />}
-              label="Số bằng lái"
+              label="Driver License Number"
               value={form.licenseNumber}
               required
               onChange={(licenseNumber) =>
@@ -105,17 +104,16 @@ export default function DriverFormSections({
         </div>
       </div>
 
-      {/* Contact section */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-[1.5px]">
-        <div className="grid gap-3 rounded-[calc(1rem-1.5px)] bg-zinc-950/40 p-4">
-          <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            <MapPin size={12} strokeWidth={2} className="text-emerald-400" />
-            Liên lạc
+      <div className="rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]">
+        <div className="grid gap-3 rounded-[calc(1rem-1.5px)] bg-surface p-4">
+          <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
+            <MapPin size={12} strokeWidth={2} className="text-accent-active" />
+            Contact
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <DriverTextField
               icon={<Phone size={13} strokeWidth={2} />}
-              label="Số điện thoại"
+              label="Phone Number"
               value={form.phone}
               onChange={(phone) =>
                 setForm((current) => ({ ...current, phone }))
@@ -123,7 +121,7 @@ export default function DriverFormSections({
             />
             <DriverTextField
               icon={<AtSign size={13} strokeWidth={2} />}
-              label="Email đăng nhập"
+              label="Login Email"
               value={form.email}
               type="email"
               onChange={(email) =>
@@ -134,11 +132,11 @@ export default function DriverFormSections({
           {mode === "create" ? (
             <DriverTextField
               icon={<ShieldCheck size={13} strokeWidth={2} />}
-              label="Mật khẩu khởi tạo"
+              label="Initial Password"
               value={form.password}
               required
               type="password"
-              hint="Tối thiểu 12 ký tự."
+              hint="At least 12 characters."
               onChange={(password) =>
                 setForm((current) => ({ ...current, password }))
               }
@@ -147,15 +145,14 @@ export default function DriverFormSections({
         </div>
       </div>
 
-      {/* Availability */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-[1.5px]">
-        <div className="grid gap-2 rounded-[calc(1rem-1.5px)] bg-zinc-950/40 p-4">
-          <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            <Activity size={12} strokeWidth={2} className="text-emerald-400" />
-            Trạng thái hoạt động
+      <div className="rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]">
+        <div className="grid gap-2 rounded-[calc(1rem-1.5px)] bg-surface p-4">
+          <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
+            <Activity size={12} strokeWidth={2} className="text-accent-active" />
+            Driver Status
           </div>
-          <label className="grid gap-1.5 text-[11px] text-zinc-400">
-            <span className="font-medium">Khả dụng</span>
+          <label className="grid gap-1.5 text-[11px] text-text-secondary">
+            <span className="font-medium">Availability</span>
             <select
               value={form.status}
               disabled={
@@ -167,15 +164,14 @@ export default function DriverFormSections({
                   status: event.target.value as DriverFormState["status"],
                 }))
               }
-              className="rounded-xl border border-white/[0.08] bg-zinc-950/60 px-3 py-2 text-[12px] text-zinc-100 outline-none transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] focus:border-emerald-500/50 focus:bg-zinc-950/80 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.10)]"
+              className="rounded-xl border border-hairline bg-surface-2 px-3 py-2 text-[12px] text-text-primary outline-none transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] focus:border-accent-active/50 focus:bg-surface focus:shadow-[0_0_0_3px_var(--theme-focus-ring)]"
             >
-              <option value="active">Sẵn sàng / đang rảnh</option>
-              <option value="inactive">Tạm khoá</option>
+              <option value="active">Available</option>
+              <option value="inactive">Locked</option>
             </select>
             {isDrivingForSelected ? (
-              <span className="mt-1 text-[10px] leading-relaxed text-zinc-500">
-                Tài xế đang trong ca lái, không thể khoá cho đến khi chuyến kết
-                thúc.
+              <span className="mt-1 text-[10px] leading-relaxed text-text-tertiary">
+                This driver is currently on a trip and cannot be locked until the trip is finished.
               </span>
             ) : null}
           </label>
