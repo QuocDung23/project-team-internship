@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
-export function AdminPage({
+const PAGE_PADDING = "p-5 md:p-6 lg:p-7";
+
+function AdminPage({
   children,
   scroll = false,
 }: {
@@ -8,13 +10,15 @@ export function AdminPage({
   scroll?: boolean;
 }) {
   return (
-    <div className={`flex flex-1 flex-col gap-4 p-4 md:p-6 ${scroll ? "overflow-hidden" : ""}`}>
+    <div
+      className={`flex flex-1 flex-col gap-5 ${PAGE_PADDING} ${scroll ? "overflow-hidden" : ""}`}
+    >
       {children}
     </div>
   );
 }
 
-export function AdminHeader({
+function AdminHeader({
   title,
   description,
   eyebrow,
@@ -26,24 +30,26 @@ export function AdminHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="panel flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-      <div className="min-w-0">
-        {eyebrow ? (
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            {eyebrow}
-          </p>
-        ) : null}
-        <h1 className="truncate text-base font-semibold tracking-tight text-zinc-100">
-          {title}
-        </h1>
-        <p className="mt-0.5 text-[12px] text-zinc-400">{description}</p>
+    <header className="rounded-xl border border-white/5 bg-white/[0.03] px-5 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          {eyebrow ? (
+            <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+              {eyebrow}
+            </p>
+          ) : null}
+          <h1 className="text-[15px] font-semibold tracking-tight text-zinc-100">
+            {title}
+          </h1>
+          <p className="mt-0.5 text-[12px] text-zinc-400">{description}</p>
+        </div>
+        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </header>
   );
 }
 
-export function AdminErrorBanner({
+function AdminErrorBanner({
   label,
   message,
 }: {
@@ -52,13 +58,13 @@ export function AdminErrorBanner({
 }) {
   if (!message) return null;
   return (
-    <section className="panel border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
+    <section className="rounded-xl border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm text-amber-200">
       {label}: {message}
     </section>
   );
 }
 
-export function AdminEmptyState({
+function AdminEmptyState({
   title,
   detail,
 }: {
@@ -66,14 +72,14 @@ export function AdminEmptyState({
   detail?: string;
 }) {
   return (
-    <div className="rounded-md border border-hairline bg-zinc-950/30 px-4 py-8 text-center">
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] px-5 py-8 text-center">
       <p className="text-sm font-medium text-zinc-300">{title}</p>
       {detail ? <p className="mt-1 text-xs text-zinc-500">{detail}</p> : null}
     </div>
   );
 }
 
-export function AdminStatStrip({
+function AdminStatStrip({
   items,
 }: {
   items: ReadonlyArray<{
@@ -90,9 +96,12 @@ export function AdminStatStrip({
     critical: "text-red-300",
   };
   return (
-    <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <section className="grid grid-cols-2 gap-5 lg:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="panel px-4 py-3">
+        <div
+          key={item.label}
+          className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3"
+        >
           <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
             {item.label}
           </p>
@@ -105,3 +114,11 @@ export function AdminStatStrip({
     </section>
   );
 }
+
+export {
+  AdminPage,
+  AdminHeader,
+  AdminErrorBanner,
+  AdminEmptyState,
+  AdminStatStrip,
+};
