@@ -31,9 +31,9 @@ export default function AlertList({
   if (events.length === 0) {
     return (
       <div className="panel flex flex-col items-center justify-center gap-3 py-16">
-        <AlertTriangle size={32} className="text-zinc-600" />
-        <p className="text-[13px] text-zinc-500">
-          Không có cảnh báo nào phù hợp
+        <AlertTriangle size={32} className="text-text-tertiary" />
+        <p className="text-[13px] text-text-tertiary">
+          No alerts found
         </p>
       </div>
     );
@@ -126,34 +126,34 @@ function DrowsinessGroupRow({
     <div
       className={`flex flex-col gap-2 rounded-lg border p-3.5 transition-colors ${
         isCritical
-          ? "border-red-500/25 bg-red-500/5"
-          : "border-amber-500/20 bg-amber-500/5"
+          ? "border-accent-critical/25 bg-accent-critical/5"
+          : "border-accent-warn/20 bg-accent-warn/5"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${
-            isCritical ? "bg-red-500/30" : "bg-amber-500/20"
+            isCritical ? "bg-accent-critical/30" : "bg-accent-warn/20"
           }`}
           >
             <Frown size={14} />
           </span>
           <div>
-            <p className="text-[12px] font-medium text-zinc-100">
-              3 cảnh báo buồn ngủ
+            <p className="text-[12px] font-medium text-text-primary">
+              3 drowsiness alerts
             </p>
-            <p className="font-mono-num text-[10px] text-zinc-500">
+            <p className="font-mono-num text-[10px] text-text-tertiary">
               {first.driverName} · {first.licensePlate}
             </p>
           </div>
         </div>
-        <span className="font-mono-num text-[10px] text-zinc-500">
+        <span className="font-mono-num text-[10px] text-text-tertiary">
           {formatTime(newest)}
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
-        <span>Gom 3 cảnh báo gần nhau</span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-secondary">
+        <span>Grouped 3 drowsiness alerts close in time</span>
         <span className="font-mono-num">
           {formatTime(oldest)} - {formatTime(newest)}
         </span>
@@ -164,10 +164,10 @@ function DrowsinessGroupRow({
           type="button"
           onClick={() => onAcknowledgeGroup(group.events, group.id)}
           disabled={isAcknowledging}
-          className="inline-flex w-fit items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex w-fit items-center gap-1 rounded-md border border-accent-active/25 bg-accent-active/10 px-2 py-1 text-[10px] font-medium text-accent-active transition-colors hover:bg-accent-active/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <CheckCircle size={11} />
-          {isAcknowledging ? "Đang xác nhận" : "Xác nhận nhóm"}
+          {isAcknowledging ? "Acknowledging..." : "Acknowledge group"}
         </button>
       ) : null}
     </div>

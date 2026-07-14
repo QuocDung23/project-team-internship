@@ -26,9 +26,9 @@ export default function DriverStatTile({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...SPRING, delay }}
       whileHover={{ y: -2 }}
-      className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-[1.5px]"
+      className="group relative overflow-hidden rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]"
     >
-      <div className="relative overflow-hidden rounded-[calc(1rem-1.5px)] bg-gradient-to-br from-zinc-950/80 to-zinc-900/40 px-3.5 py-3">
+      <div className="relative overflow-hidden rounded-[calc(1rem-1.5px)] bg-surface px-3.5 py-3">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-60 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
@@ -36,9 +36,9 @@ export default function DriverStatTile({
             background: `radial-gradient(circle, ${STAT_TONE_GLOW[tone]} 0%, transparent 70%)`,
           }}
         />
-        <div className="relative flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+        <div className="relative flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
           <span
-            className={`flex h-5 w-5 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.03] ${STAT_TONE_TEXT[tone]}`}
+            className={`flex h-5 w-5 items-center justify-center rounded-md border border-hairline bg-subtle-bg ${STAT_TONE_TEXT[tone]}`}
           >
             {icon}
           </span>

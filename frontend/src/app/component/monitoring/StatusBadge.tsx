@@ -7,28 +7,28 @@ const TONE: Record<
   { fg: string; bg: string; ring: string; dot: string }
 > = {
   active: {
-    fg: "text-emerald-400",
-    bg: "bg-emerald-400/10",
-    ring: "ring-emerald-400/20",
-    dot: "bg-emerald-400",
+    fg: "text-accent-active",
+    bg: "bg-accent-active/10",
+    ring: "ring-accent-active/20",
+    dot: "bg-accent-active",
   },
   warn: {
-    fg: "text-amber-400",
-    bg: "bg-amber-400/10",
-    ring: "ring-amber-400/20",
-    dot: "bg-amber-400",
+    fg: "text-accent-warn",
+    bg: "bg-accent-warn/10",
+    ring: "ring-accent-warn/20",
+    dot: "bg-accent-warn",
   },
   critical: {
-    fg: "text-rose-400",
-    bg: "bg-rose-400/10",
-    ring: "ring-rose-400/20",
-    dot: "bg-rose-400",
+    fg: "text-accent-critical",
+    bg: "bg-accent-critical/10",
+    ring: "ring-accent-critical/20",
+    dot: "bg-accent-critical",
   },
   neutral: {
-    fg: "text-zinc-300",
-    bg: "bg-zinc-400/10",
-    ring: "ring-zinc-400/15",
-    dot: "bg-zinc-400",
+    fg: "text-text-secondary",
+    bg: "bg-subtle-bg",
+    ring: "ring-hairline",
+    dot: "bg-text-tertiary",
   },
 };
 

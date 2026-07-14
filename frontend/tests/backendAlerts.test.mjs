@@ -54,7 +54,7 @@ test("shows browser CNN alerts with a driver-friendly source label", () => {
     detection_method: "browser_cnn",
   });
 
-  assert.equal(event.location, "Phát hiện qua camera AI");
+  assert.equal(event.location, "Detected via AI camera");
 });
 
 test("maps acknowledged tuple alert rows from the current FastAPI response", () => {
@@ -93,7 +93,7 @@ test("maps backend detector alert to monitoring alert", () => {
 
   assert.equal(alert.id, "alert-1");
   assert.equal(alert.severity, "warn");
-  assert.equal(alert.title, "Gật đầu / mất tư thế đầu");
+  assert.equal(alert.title, "Head Nod / Loss of Head Position");
   assert.match(alert.detail, /CNN 93%/);
 });
 
@@ -134,7 +134,7 @@ test("maps canonical backend alert types from safety event ingestion", () => {
 
   assert.equal(drowsiness.type, "drowsiness_alert");
   assert.equal(drowsiness.severity, "critical");
-  assert.equal(inattention.title, "Gật đầu / mất tư thế đầu");
+  assert.equal(inattention.title, "Head Nod / Loss of Head Position");
   assert.equal(camera.type, "distraction_alert");
 });
 

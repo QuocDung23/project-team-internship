@@ -18,11 +18,11 @@ interface DriverRowProps {
 function avatarTone(status: Driver["status"]): string {
   switch (status) {
     case "disable":
-      return "bg-red-500/15 text-red-300";
+      return "bg-accent-critical/15 text-accent-critical";
     case "idle":
-      return "bg-zinc-500/15 text-zinc-400";
+      return "bg-surface-2 text-text-secondary";
     case "driving":
-      return "bg-emerald-500/15 text-emerald-300";
+      return "bg-accent-active/15 text-accent-active";
   }
 }
 
@@ -44,8 +44,8 @@ function DriverRow({
           onSelect(driver);
         }
       }}
-      className={`border-b border-hairline/50 transition-colors hover:bg-surface-2/40 ${
-        onSelect ? "cursor-pointer focus-within:bg-surface-2/50 focus:outline-none" : ""
+      className={`border-b border-hairline/50 transition-colors hover:bg-subtle-bg-hover ${
+        onSelect ? "cursor-pointer focus-within:bg-subtle-bg-hover focus:outline-none" : ""
       }`}
     >
       <td className="px-4 py-4 align-middle">
@@ -57,21 +57,21 @@ function DriverRow({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-mono-num text-[11px] font-semibold text-emerald-300">
+              <span className="font-mono-num text-[11px] font-semibold text-accent-active">
                 {driver.driverCode}
               </span>
-              <span className="truncate text-[13px] font-semibold text-zinc-100">
+              <span className="truncate text-[13px] font-semibold text-text-primary">
                 {driver.name}
               </span>
             </div>
-            <p className="mt-1 truncate text-[11px] text-zinc-500">
+            <p className="mt-1 truncate text-[11px] text-text-tertiary">
               License {driver.licenseNumber} | {driver.email}
             </p>
           </div>
         </div>
       </td>
       <td className="py-4 pr-4 align-middle">
-        <span className="font-mono-num text-[13px] font-semibold text-zinc-200">
+        <span className="font-mono-num text-[13px] font-semibold text-text-primary">
           {driver.licensePlate}
         </span>
       </td>
@@ -86,23 +86,23 @@ function DriverRow({
           <span
             className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono-num text-[11px] font-semibold ${
               driver.totalAlerts > 0
-                ? "bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/20"
-                : "bg-zinc-800/40 text-zinc-500 ring-1 ring-zinc-700/40"
+                ? "bg-accent-warn/10 text-accent-warn ring-1 ring-accent-warn/20"
+                : "bg-surface-2 text-text-secondary ring-1 ring-hairline"
             }`}
           >
             <Warning size={13} />
             {driver.totalAlerts}
           </span>
           {driver.criticalAlerts > 0 ? (
-            <span className="rounded-md bg-red-500/10 px-2 py-1 font-mono-num text-[11px] font-semibold text-red-300 ring-1 ring-red-500/20">
+            <span className="rounded-md bg-accent-critical/10 px-2 py-1 font-mono-num text-[11px] font-semibold text-accent-critical ring-1 ring-accent-critical/20">
               {driver.criticalAlerts} critical
             </span>
           ) : null}
         </div>
       </td>
       <td className="py-4 pr-4 align-middle">
-        <div className="grid gap-1 text-[11px] text-zinc-500">
-          <span className="font-mono-num text-zinc-300">{driver.phone}</span>
+        <div className="grid gap-1 text-[11px] text-text-tertiary">
+          <span className="font-mono-num text-text-secondary">{driver.phone}</span>
           <span className="truncate">{driver.email}</span>
         </div>
       </td>
@@ -115,7 +115,7 @@ function DriverRow({
               event.stopPropagation();
               onSetAvailability(driver, driver.status === "disable");
             }}
-            className="rounded-md border border-hairline px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-hairline px-3 py-1.5 text-[11px] font-semibold text-text-secondary transition hover:bg-subtle-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isUpdating ? "Saving" : driver.status === "disable" ? "Enable" : "Disable"}
           </button>

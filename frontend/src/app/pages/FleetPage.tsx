@@ -44,10 +44,10 @@ function FleetPage() {
   return (
     <AdminPage scroll>
       <AdminHeader
-        eyebrow="Trip Safety"
-        title="Trips"
+        eyebrow="Safety"
+        title="Trip Safety"
         description="Active and completed driver safety trips with score and alert summaries"
-        actions={<span className="font-mono-num text-xs text-zinc-500">{trips.length} trips</span>}
+        actions={<span className="rounded-lg bg-subtle-bg px-2.5 py-1 font-mono-num text-[11px] text-text-secondary">{trips.length} trips</span>}
       />
       <AdminErrorBanner label="Trips unavailable" message={backendTrips.error} />
       <AdminErrorBanner label="Alerts unavailable" message={alerts.error} />
@@ -72,7 +72,7 @@ function FleetPage() {
             detail: `${safety.criticalAlerts} critical`,
           },
           {
-            label: "Avg score",
+            label: "Avg Score",
             value: safety.averageScore ?? "-",
             tone: safety.averageScore !== null && safety.averageScore < 60 ? "critical" : "active",
             detail: `${safety.scoredTrips} scored`,
@@ -103,7 +103,7 @@ function TripTable({
 }) {
   return (
     <section className="panel flex min-h-[420px] min-w-0 flex-col overflow-hidden xl:min-h-0">
-      <div className="grid shrink-0 grid-cols-[1.15fr_0.75fr_1.2fr_1fr_0.65fr_0.65fr] gap-3 border-b border-hairline px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-500">
+      <div className="grid shrink-0 grid-cols-[1.15fr_0.75fr_1.2fr_1fr_0.65fr_0.65fr] gap-3 border-b border-hairline px-4 py-2.5 text-[10px] uppercase tracking-wider text-text-tertiary">
         <span>Trip</span>
         <span>Status</span>
         <span>Driver</span>
@@ -119,19 +119,21 @@ function TripTable({
               type="button"
               onClick={() => onSelect(trip.trip_id)}
               className={[
-                "grid w-full grid-cols-[1.15fr_0.75fr_1.2fr_1fr_0.65fr_0.65fr] gap-3 border-b border-hairline px-4 py-3 text-left text-sm transition",
-                trip.trip_id === selectedTripId ? "bg-emerald-500/10 text-zinc-100" : "text-zinc-300 hover:bg-surface-2/50",
+                "grid w-full grid-cols-[1.15fr_0.75fr_1.2fr_1fr_0.65fr_0.65fr] gap-3 border-b border-hairline px-4 py-3 text-left text-sm transition-all duration-200",
+                trip.trip_id === selectedTripId 
+                  ? "bg-accent-active/10 text-text-primary ring-1 ring-inset ring-accent-active/20" 
+                  : "text-text-secondary hover:bg-subtle-bg-hover hover:text-text-primary",
               ].join(" ")}
             >
               <span className="truncate font-mono-num text-xs">{tripTitle(trip)}</span>
               <span className="truncate text-xs">{trip.status}</span>
               <span className="min-w-0">
-                <span className="block truncate text-xs text-zinc-200">{driverName(trip)}</span>
-                <span className="block truncate font-mono-num text-[10px] text-zinc-500">{driverContext(trip)}</span>
+                <span className="block truncate text-xs text-text-primary">{driverName(trip)}</span>
+                <span className="block truncate font-mono-num text-[10px] text-text-tertiary">{driverContext(trip)}</span>
               </span>
-              <span className="truncate font-mono-num text-xs text-zinc-500">{formatDate(trip.actual_start_at ?? trip.start_time)}</span>
-              <span className="truncate text-xs text-zinc-300"><SafetyScoreValue trip={trip} /></span>
-              <span className="font-mono-num text-xs text-zinc-300">{String(trip.total_alerts_count ?? "-")}</span>
+              <span className="truncate font-mono-num text-xs text-text-tertiary">{formatDate(trip.actual_start_at ?? trip.start_time)}</span>
+              <span className="truncate text-xs text-text-secondary"><SafetyScoreValue trip={trip} /></span>
+              <span className="font-mono-num text-xs text-text-secondary">{String(trip.total_alerts_count ?? "-")}</span>
             </button>
           ))
         ) : (
@@ -158,8 +160,8 @@ function TripDetails({
       <div className="shrink-0 border-b border-hairline px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-zinc-100">{tripTitle(trip)}</h2>
-            <p className="mt-1 truncate text-[11px] text-zinc-500">{routeLabel(trip)}</p>
+            <h2 className="truncate text-sm font-semibold text-text-primary">{tripTitle(trip)}</h2>
+            <p className="mt-1 truncate text-[11px] text-text-tertiary">{routeLabel(trip)}</p>
           </div>
           <StatusBadge tone={trip.status === "in_progress" ? "active" : trip.status === "completed" ? "neutral" : "warn"} label={trip.status} />
         </div>
@@ -169,7 +171,7 @@ function TripDetails({
         <div className="grid gap-2">
           <TripMetric label="Driver" value={driverName(trip)} detail={driverContext(trip)} />
           <div className="grid grid-cols-2 gap-2">
-            <TripMetric label="Trip code" value={tripTitle(trip)} />
+            <TripMetric label="Trip Code" value={tripTitle(trip)} />
             <TripMetric label="Route" value={routeLabel(trip)} />
             <TripMetric label="Score" value={<SafetyScoreValue trip={trip} score={score} />} />
             <TripMetric label="Alerts" value={`${String(trip.total_alerts_count ?? score?.alert_count ?? "-")} total`} detail={`${String(trip.critical_alerts_count ?? score?.critical_events ?? "-")} critical`} />
@@ -180,22 +182,24 @@ function TripDetails({
 
         <div className="mt-4 grid gap-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-[13px] font-semibold text-zinc-100">All alerts</h3>
-            <span className="font-mono-num text-xs text-zinc-500">{alerts.length}</span>
+            <h3 className="text-[13px] font-semibold text-text-primary">All Alerts</h3>
+            <span className="rounded-md bg-subtle-bg px-2 py-0.5 font-mono-num text-[10px] text-text-tertiary">{alerts.length}</span>
           </div>
           {alerts.map((alert) => (
-            <div key={alert.id} className="rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
+            <div key={alert.id} className="group overflow-hidden rounded-xl border border-hairline bg-subtle-bg px-4 py-3 transition-colors duration-200 hover:border-hairline">
               <div className="flex items-center justify-between gap-3">
-                <p className="truncate text-sm font-medium text-zinc-100">{alert.title}</p>
+                <p className="truncate text-sm font-medium text-text-primary">{alert.title}</p>
                 <StatusBadge tone={alert.severity === "critical" ? "critical" : "warn"} label={alert.severity} withDot={false} />
               </div>
-              <p className="mt-1 truncate text-xs text-zinc-500">
+              <p className="mt-1.5 truncate font-mono-num text-[10px] text-text-tertiary">
                 {new Date(alert.ts).toLocaleString()} · {alert.detail}
               </p>
             </div>
           ))}
           {alerts.length === 0 ? (
-            <AdminEmptyState title="No alerts for this trip" detail="Persisted trip alerts will appear after ingestion." />
+            <div className="rounded-xl border border-dashed border-hairline bg-subtle-bg py-8 text-center">
+              <p className="text-[12px] text-text-tertiary">No alerts for this trip</p>
+            </div>
           ) : null}
         </div>
       </div>
@@ -205,10 +209,10 @@ function TripDetails({
 
 function TripMetric({ label, value, detail }: { label: string; value: ReactNode; detail?: string }) {
   return (
-    <div className="min-w-0 rounded-md border border-hairline bg-zinc-950/40 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
-      <p className="mt-1 truncate text-sm text-zinc-100">{value}</p>
-      {detail ? <p className="mt-0.5 truncate font-mono-num text-[10px] text-zinc-500">{detail}</p> : null}
+    <div className="min-w-0 rounded-xl border border-hairline bg-subtle-bg px-3 py-2.5 transition-colors duration-200 hover:border-hairline">
+      <p className="text-[10px] uppercase tracking-wider text-text-tertiary">{label}</p>
+      <p className="mt-1 truncate text-sm text-text-primary">{value}</p>
+      {detail ? <p className="mt-0.5 truncate font-mono-num text-[10px] text-text-tertiary">{detail}</p> : null}
     </div>
   );
 }
