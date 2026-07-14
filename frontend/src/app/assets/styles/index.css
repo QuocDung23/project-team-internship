@@ -1,0 +1,590 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #0a0e14;
+  --color-surface: #11161d;
+  --color-surface-1: #11161d;
+  --color-surface-2: #161c25;
+  --color-elevated: #151b24;
+  --color-hairline: #1f2630;
+  --color-text-primary: #e4e7ec;
+  --color-text-secondary: #7d8590;
+  --color-text-tertiary: #5a626d;
+  --color-text-inverse: #0a0e14;
+  --color-accent-active: #10b981;
+  --color-accent-warn: #f59e0b;
+  --color-accent-critical: #ef4444;
+  --color-accent-mesh: #facc15;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+@layer base {
+  :root {
+    --theme-subtle-bg: rgb(255 255 255 / 0.02);
+    --theme-subtle-bg-hover: rgb(255 255 255 / 0.04);
+    --theme-subtle-border: rgb(255 255 255 / 0.06);
+    --theme-overlay: rgb(3 7 18 / 0.82);
+    --theme-shadow: rgb(0 0 0 / 0.4);
+    --theme-video-surface: #05070b;
+    --theme-focus-ring: rgb(16 185 129 / 0.18);
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    background-color: var(--color-canvas);
+    color: var(--color-text-primary);
+    font-family: "Plus Jakarta Sans", Geist, ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Thin, theme-aware scrollbars so the console does not flash a default OS bar. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-canvas);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-hairline);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--color-hairline) 78%, var(--color-text-secondary));
+  }
+}
+
+@layer utilities {
+  .font-mono-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: 20px;
+    box-shadow: 0 18px 70px -58px var(--theme-shadow);
+  }
+
+  .hairline {
+    border-color: var(--color-hairline);
+  }
+
+  /* Double-bezel: outer hairline shell + inner core with concentric radius.
+     Used on hero, driver, dialog header. Avoids flat card-on-bg look. */
+  .bezel-shell {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    border: 1px solid var(--theme-subtle-border);
+    background: var(--theme-subtle-bg);
+    padding: 1.5px;
+    isolation: isolate;
+  }
+  .bezel-core {
+    position: relative;
+    overflow: hidden;
+    border-radius: calc(1.75rem - 1.5px);
+    border: 1px solid var(--theme-subtle-border);
+    background:
+      linear-gradient(180deg, var(--theme-subtle-bg) 0%, transparent 60%),
+      color-mix(in srgb, var(--color-surface) 88%, transparent);
+    box-shadow:
+      inset 0 1px 0 var(--theme-subtle-border),
+      inset 0 -1px 0 color-mix(in srgb, var(--theme-shadow) 45%, transparent);
+  }
+
+  /* Hairline inset tile used for stat metrics. */
+  .tile {
+    border-radius: 16px;
+    border: 1px solid var(--theme-subtle-border);
+    background: var(--theme-subtle-bg);
+    transition: background 220ms cubic-bezier(0.32, 0.72, 0, 1),
+      border-color 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .tile:hover {
+    background: var(--theme-subtle-bg-hover);
+    border-color: color-mix(in srgb, var(--color-hairline) 55%, var(--color-text-secondary));
+  }
+
+  /* Soft, directional accent glow applied to the driver band (pinned to one corner). */
+  .accent-radial-emerald {
+    background: radial-gradient(
+      ellipse at 100% 50%,
+      rgba(16, 185, 129, 0.18) 0%,
+      rgba(16, 185, 129, 0) 60%
+    );
+  }
+
+  /* Pressable primary CTA - filled emerald with kinetic trailing icon. */
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.625rem 1.125rem;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: rgb(236 253 245 / 1);
+    background:
+      linear-gradient(180deg, rgb(16 185 129 / 0.95), rgb(5 150 105 / 0.95));
+    border: 1px solid rgb(16 185 129 / 0.6);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.25),
+      0 1px 0 rgb(0 0 0 / 0.4),
+      0 6px 18px -8px rgb(16 185 129 / 0.55);
+    transition:
+      transform 240ms cubic-bezier(0.32, 0.72, 0, 1),
+      box-shadow 240ms cubic-bezier(0.32, 0.72, 0, 1),
+      background 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .cta-primary:hover:not(:disabled) {
+    background:
+      linear-gradient(180deg, rgb(16 185 129 / 1), rgb(5 150 105 / 1));
+  }
+  .cta-primary:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+  }
+  .cta-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  /* Ghost CTA - hairline outline, lifts on hover. */
+  .cta-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.5rem 0.875rem;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    background: transparent;
+    border: 1px solid var(--theme-subtle-border);
+    transition:
+      background 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      border-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .cta-ghost:hover:not(:disabled) {
+    background: var(--theme-subtle-bg-hover);
+    border-color: color-mix(in srgb, var(--color-hairline) 55%, var(--color-text-secondary));
+  }
+  .cta-ghost:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+  }
+  .cta-ghost:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  /* Danger CTA - rose, hairline, used for "End Trip". */
+  .cta-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.625rem 1rem;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgb(254 226 226 / 1);
+    background: rgb(244 63 94 / 0.1);
+    border: 1px solid rgb(244 63 94 / 0.4);
+    transition:
+      background 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .cta-danger:hover:not(:disabled) {
+    background: rgb(244 63 94 / 0.18);
+  }
+  .cta-danger:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+  }
+  .cta-danger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  /* Eyebrow chip - microscopic label above section headlines. */
+  .eyebrow-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--theme-subtle-border);
+    background: var(--theme-subtle-bg);
+    padding: 0.25rem 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+  }
+
+  /* Section header pair (eyebrow + headline + body). Caps eyebrow count. */
+  .section-headline {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+  }
+  .section-subline {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    margin-top: 0.25rem;
+    max-width: 60ch;
+  }
+
+  /* Form field surface - inner-core look, doubles as input bg. */
+  .field-surface {
+    border-radius: 12px;
+    border: 1px solid var(--theme-subtle-border);
+    background: var(--theme-subtle-bg);
+    transition:
+      border-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+      background 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .field-surface:focus-within {
+    border-color: rgb(16 185 129 / 0.55);
+    background: rgb(16 185 129 / 0.04);
+  }
+
+  .theme-overlay {
+    background-color: var(--theme-overlay);
+  }
+
+  .theme-card {
+    border: 1px solid var(--theme-subtle-border);
+    background:
+      linear-gradient(180deg, var(--theme-subtle-bg), transparent 70%),
+      color-mix(in srgb, var(--color-surface) 92%, transparent);
+    box-shadow: 0 20px 68px -58px var(--theme-shadow);
+  }
+
+  .theme-control {
+    border: 1px solid var(--color-hairline);
+    background-color: var(--color-surface-2);
+    color: var(--color-text-primary);
+  }
+
+  .theme-control:focus {
+    border-color: rgb(16 185 129 / 0.55);
+    box-shadow: 0 0 0 3px var(--theme-focus-ring);
+  }
+
+  .theme-icon-shell {
+    border: 1px solid var(--theme-subtle-border);
+    background: var(--theme-subtle-bg);
+  }
+
+  .theme-video-surface {
+    background-color: var(--theme-video-surface);
+  }
+
+  /* Mono numerals - tabular for stat rows. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  html[data-theme="light"] .text-zinc-50,
+  html[data-theme="light"] .text-zinc-100,
+  html[data-theme="light"] .text-zinc-200 {
+    color: var(--color-text-primary);
+  }
+
+  html[data-theme="light"] .text-zinc-300,
+  html[data-theme="light"] .text-zinc-400 {
+    color: var(--color-text-secondary);
+  }
+
+  html[data-theme="light"] .text-zinc-500,
+  html[data-theme="light"] .text-zinc-600,
+  html[data-theme="light"] .placeholder\:text-zinc-600::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  html[data-theme="light"] .text-emerald-200,
+  html[data-theme="light"] .text-emerald-300,
+  html[data-theme="light"] .text-emerald-400,
+  html[data-theme="light"] .group-hover\:text-emerald-300:is(:where(.group):hover *),
+  html[data-theme="light"] .hover\:text-emerald-300:hover {
+    color: var(--color-accent-active);
+  }
+
+  html[data-theme="light"] .text-emerald-500 {
+    color: #059669;
+  }
+
+  html[data-theme="light"] .border-white\/5,
+  html[data-theme="light"] .border-white\/6,
+  html[data-theme="light"] .border-white\/10,
+  html[data-theme="light"] .border-white\/20,
+  html[data-theme="light"] .border-white\/\[0\.04\],
+  html[data-theme="light"] .border-white\/\[0\.05\],
+  html[data-theme="light"] .border-white\/\[0\.06\],
+  html[data-theme="light"] .border-white\/\[0\.08\],
+  html[data-theme="light"] .border-white\/\[0\.12\],
+  html[data-theme="light"] .border-white\/\[0\.14\],
+  html[data-theme="light"] .border-zinc-700\/50,
+  html[data-theme="light"] .border-zinc-800\/50 {
+    border-color: var(--theme-subtle-border);
+  }
+
+  html[data-theme="light"] .ring-white\/5,
+  html[data-theme="light"] .ring-white\/\[0\.04\],
+  html[data-theme="light"] .ring-white\/\[0\.06\],
+  html[data-theme="light"] .ring-white\/\[0\.08\],
+  html[data-theme="light"] .ring-white\/\[0\.10\],
+  html[data-theme="light"] .ring-white\/\[0\.12\] {
+    --tw-ring-color: var(--theme-subtle-border);
+  }
+
+  html[data-theme="light"] .ring-emerald-400\/20,
+  html[data-theme="light"] .ring-emerald-500\/20,
+  html[data-theme="light"] .ring-emerald-500\/25,
+  html[data-theme="light"] .ring-emerald-500\/30 {
+    --tw-ring-color: rgb(4 120 87 / 0.32);
+  }
+
+  html[data-theme="light"] .divide-white\/3 > :not(:last-child),
+  html[data-theme="light"] .divide-white\/5 > :not(:last-child) {
+    border-color: var(--theme-subtle-border);
+  }
+
+  html[data-theme="light"] .bg-white\/2,
+  html[data-theme="light"] .bg-white\/3,
+  html[data-theme="light"] .bg-white\/4,
+  html[data-theme="light"] .bg-white\/5,
+  html[data-theme="light"] .bg-white\/10,
+  html[data-theme="light"] .bg-white\/\[0\.015\],
+  html[data-theme="light"] .bg-white\/\[0\.02\],
+  html[data-theme="light"] .bg-white\/\[0\.025\],
+  html[data-theme="light"] .bg-white\/\[0\.03\],
+  html[data-theme="light"] .bg-white\/\[0\.035\],
+  html[data-theme="light"] .bg-white\/\[0\.04\],
+  html[data-theme="light"] .bg-white\/\[0\.05\],
+  html[data-theme="light"] .bg-black\/30,
+  html[data-theme="light"] .bg-zinc-950\/15,
+  html[data-theme="light"] .bg-zinc-950\/40,
+  html[data-theme="light"] .bg-zinc-950\/50,
+  html[data-theme="light"] .bg-zinc-950\/60,
+  html[data-theme="light"] .bg-zinc-950\/80,
+  html[data-theme="light"] .bg-zinc-900\/30,
+  html[data-theme="light"] .bg-zinc-900\/50,
+  html[data-theme="light"] .bg-zinc-900\/80,
+  html[data-theme="light"] .bg-zinc-900\/95,
+  html[data-theme="light"] .bg-zinc-800\/50 {
+    background-color: var(--theme-subtle-bg);
+  }
+
+  html[data-theme="light"] .bg-emerald-400,
+  html[data-theme="light"] .peer-checked\:bg-emerald-400:checked,
+  html[data-theme="light"] .peer:checked ~ .peer-checked\:bg-emerald-400 {
+    background-color: #059669;
+  }
+
+  html[data-theme="light"] .bg-emerald-400\/40,
+  html[data-theme="light"] .bg-emerald-400\/70,
+  html[data-theme="light"] .bg-emerald-400\/80,
+  html[data-theme="light"] .bg-emerald-500\/8,
+  html[data-theme="light"] .bg-emerald-500\/10,
+  html[data-theme="light"] .bg-emerald-500\/15,
+  html[data-theme="light"] .bg-emerald-500\/20,
+  html[data-theme="light"] .bg-emerald-500\/25,
+  html[data-theme="light"] .bg-emerald-500\/\[0\.08\],
+  html[data-theme="light"] .bg-emerald-500\/\[0\.12\],
+  html[data-theme="light"] .bg-emerald-500\/\[0\.15\] {
+    background-color: rgb(4 120 87 / 0.14);
+  }
+
+  html[data-theme="light"] .hover\:bg-emerald-500\/14:hover,
+  html[data-theme="light"] .hover\:bg-emerald-500\/20:hover,
+  html[data-theme="light"] .hover\:bg-emerald-500\/25:hover {
+    background-color: rgb(4 120 87 / 0.2);
+  }
+
+  html[data-theme="light"] .bg-zinc-950,
+  html[data-theme="light"] .bg-zinc-900 {
+    background-color: var(--color-elevated);
+  }
+
+  html[data-theme="light"] .bg-zinc-800 {
+    background-color: var(--color-surface-2);
+  }
+
+  html[data-theme="light"] .hover\:bg-white\/3:hover,
+  html[data-theme="light"] .hover\:bg-white\/4:hover,
+  html[data-theme="light"] .hover\:bg-white\/5:hover,
+  html[data-theme="light"] .hover\:bg-white\/10:hover,
+  html[data-theme="light"] .hover\:bg-white\/\[0\.025\]:hover,
+  html[data-theme="light"] .hover\:bg-white\/\[0\.03\]:hover,
+  html[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover,
+  html[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover,
+  html[data-theme="light"] .hover\:bg-zinc-800:hover,
+  html[data-theme="light"] .hover\:bg-surface-2:hover,
+  html[data-theme="light"] .focus\:bg-white\/\[0\.025\]:focus,
+  html[data-theme="light"] .focus\:bg-zinc-950\/80:focus {
+    background-color: var(--theme-subtle-bg-hover);
+  }
+
+  html[data-theme="light"] .hover\:border-white\/\[0\.08\]:hover,
+  html[data-theme="light"] .hover\:border-white\/\[0\.12\]:hover,
+  html[data-theme="light"] .hover\:border-white\/\[0\.14\]:hover,
+  html[data-theme="light"] .hover\:border-zinc-700\/30:hover,
+  html[data-theme="light"] .hover\:border-zinc-700\/50:hover {
+    border-color: color-mix(in srgb, var(--color-hairline) 55%, var(--color-text-secondary));
+  }
+
+  html[data-theme="light"] .border-emerald-400\/30,
+  html[data-theme="light"] .border-emerald-400\/40,
+  html[data-theme="light"] .border-emerald-500\/25,
+  html[data-theme="light"] .border-emerald-500\/30,
+  html[data-theme="light"] .border-emerald-500\/40 {
+    border-color: rgb(4 120 87 / 0.35);
+  }
+
+  html[data-theme="light"] .hover\:border-emerald-400\/40:hover,
+  html[data-theme="light"] .hover\:border-emerald-500\/30:hover,
+  html[data-theme="light"] .hover\:border-emerald-500\/40:hover {
+    border-color: rgb(4 120 87 / 0.48);
+  }
+
+  html[data-theme="light"] .shadow-black\/30,
+  html[data-theme="light"] .shadow-black\/40 {
+    --tw-shadow-color: var(--theme-shadow);
+  }
+
+  html[data-theme="light"] .from-zinc-900\/90,
+  html[data-theme="light"] .from-zinc-900\/95,
+  html[data-theme="light"] .from-zinc-950\/80,
+  html[data-theme="light"] .from-zinc-950\/85,
+  html[data-theme="light"] .from-zinc-950\/95 {
+    --tw-gradient-from: color-mix(in srgb, var(--color-elevated) 95%, transparent) var(--tw-gradient-from-position);
+    --tw-gradient-to: color-mix(in srgb, var(--color-elevated) 0%, transparent) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+
+  html[data-theme="light"] .via-zinc-950\/85 {
+    --tw-gradient-via: color-mix(in srgb, var(--color-surface) 92%, transparent) var(--tw-gradient-via-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to);
+  }
+
+  html[data-theme="light"] .to-zinc-900\/40,
+  html[data-theme="light"] .to-zinc-900\/70,
+  html[data-theme="light"] .to-zinc-950,
+  html[data-theme="light"] .to-zinc-950\/95 {
+    --tw-gradient-to: var(--color-surface-1) var(--tw-gradient-to-position);
+  }
+
+  html[data-theme="light"] .from-emerald-200 {
+    --tw-gradient-from: #047857 var(--tw-gradient-from-position);
+    --tw-gradient-to: rgb(4 120 87 / 0) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+
+  html[data-theme="light"] .via-emerald-300 {
+    --tw-gradient-via: #059669 var(--tw-gradient-via-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to);
+  }
+
+  html[data-theme="light"] .to-teal-200 {
+    --tw-gradient-to: #0f766e var(--tw-gradient-to-position);
+  }
+
+  /* Rose/Critical accent overrides for light mode */
+  html[data-theme="light"] .text-rose-300,
+  html[data-theme="light"] .text-rose-400 {
+    color: var(--color-accent-critical);
+  }
+
+  html[data-theme="light"] .bg-rose-400\/10,
+  html[data-theme="light"] .bg-rose-500\/10,
+  html[data-theme="light"] .bg-rose-500\/15,
+  html[data-theme="light"] .bg-rose-500\/18 {
+    background-color: rgb(220 38 38 / 0.12);
+  }
+
+  html[data-theme="light"] .border-rose-400\/30,
+  html[data-theme="light"] .border-rose-500\/25,
+  html[data-theme="light"] .border-rose-500\/30 {
+    border-color: rgb(220 38 38 / 0.35);
+  }
+
+  html[data-theme="light"] .text-rose-100 {
+    color: var(--color-accent-critical);
+  }
+
+  html[data-theme="light"] .bg-rose-600\/90 {
+    background-color: var(--color-accent-critical);
+  }
+
+  html[data-theme="light"] .bg-rose-950\/40 {
+    background-color: rgb(220 38 38 / 0.08);
+  }
+
+  /* Amber/Warn accent overrides for light mode */
+  html[data-theme="light"] .text-amber-200,
+  html[data-theme="light"] .text-amber-300,
+  html[data-theme="light"] .text-amber-400 {
+    color: var(--color-accent-warn);
+  }
+
+  html[data-theme="light"] .bg-amber-400\/10,
+  html[data-theme="light"] .bg-amber-400\/90,
+  html[data-theme="light"] .bg-amber-500\/3,
+  html[data-theme="light"] .bg-amber-500\/6,
+  html[data-theme="light"] .bg-amber-500\/10,
+  html[data-theme="light"] .bg-amber-500\/15,
+  html[data-theme="light"] .bg-amber-500\/20,
+  html[data-theme="light"] .bg-amber-500\/25 {
+    background-color: rgb(180 83 9 / 0.12);
+  }
+
+  html[data-theme="light"] .border-amber-400\/30,
+  html[data-theme="light"] .border-amber-500\/20,
+  html[data-theme="light"] .border-amber-500\/25,
+  html[data-theme="light"] .border-amber-500\/30 {
+    border-color: rgb(180 83 9 / 0.35);
+  }
+
+  html[data-theme="light"] .text-zinc-950 {
+    color: var(--color-text-primary);
+  }
+
+  /* Shadow color for light mode */
+  html[data-theme="light"] .shadow-\[0_8px_30px_rgba\(159\,18\,57\,0\.55\)\] {
+    --tw-shadow-color: rgb(220 38 38 / 0.25);
+  }
+
+  html[data-theme="light"] .shadow-\[0_8px_30px_rgba\(217\,119\,6\,0\.45\)\] {
+    --tw-shadow-color: rgb(180 83 9 / 0.25);
+  }
+
+  html[data-theme="light"] .drop-shadow-\[0_4px_22px_rgba\(127\,29\,29\,0\.95\)\] {
+    --tw-shadow-color: rgb(220 38 38 / 0.15);
+  }
+}

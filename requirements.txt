@@ -1,0 +1,10 @@
+numpy
+scipy
+opencv-python
+imutils
+pygame
+httpx
+scikit-learn
+Pillow
+dlib-bin; platform_system == "Windows"
+dlib; platform_system != "Windows"
