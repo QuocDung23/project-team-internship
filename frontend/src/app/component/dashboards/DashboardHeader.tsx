@@ -14,10 +14,10 @@ export default function DashboardHeader({
     <header className="panel flex flex-wrap items-center justify-between gap-4 px-5 py-4">
       <div>
         <h1 className="text-base font-semibold tracking-tight text-zinc-100">
-          Tổng quan đội xe
+          Fleet Overview
         </h1>
         <p className="mt-0.5 text-[12px] text-zinc-400">
-          Ca trực đang chạy · 3 khu vực · cập nhật liên tục từ central backend
+          Active Shifts · 3 regions · continuously updated from central backend
         </p>
       </div>
       <div className="flex items-center gap-3 text-[11px]">

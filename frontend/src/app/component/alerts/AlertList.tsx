@@ -33,7 +33,7 @@ export default function AlertList({
       <div className="panel flex flex-col items-center justify-center gap-3 py-16">
         <AlertTriangle size={32} className="text-zinc-600" />
         <p className="text-[13px] text-zinc-500">
-          Không có cảnh báo nào phù hợp
+          No alerts found
         </p>
       </div>
     );
@@ -140,7 +140,7 @@ function DrowsinessGroupRow({
           </span>
           <div>
             <p className="text-[12px] font-medium text-zinc-100">
-              3 cảnh báo buồn ngủ
+              3 drowsiness alerts
             </p>
             <p className="font-mono-num text-[10px] text-zinc-500">
               {first.driverName} · {first.licensePlate}
@@ -153,7 +153,7 @@ function DrowsinessGroupRow({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-400">
-        <span>Gom 3 cảnh báo gần nhau</span>
+        <span>Grouped 3 drowsiness alerts close in time</span>
         <span className="font-mono-num">
           {formatTime(oldest)} - {formatTime(newest)}
         </span>
@@ -167,7 +167,7 @@ function DrowsinessGroupRow({
           className="inline-flex w-fit items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[10px] font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <CheckCircle size={11} />
-          {isAcknowledging ? "Đang xác nhận" : "Xác nhận nhóm"}
+          {isAcknowledging ? "Acknowledging..." : "Acknowledge group"}
         </button>
       ) : null}
     </div>

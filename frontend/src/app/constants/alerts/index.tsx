@@ -13,16 +13,14 @@ import type {
   SeverityFilter,
 } from "../../types/alerts";
 
-// Vietnamese labels for the underlying alert types. Re-used in the filter
-// <select> and inside the row chip so the copy stays in one place.
 export const ALERT_TYPE_LABELS: Record<FleetEventType | "all", string> = {
-  all: "Tất cả",
-  drowsiness_alert: "Buồn ngủ",
-  yawn_alert: "Ngáp",
-  distraction_alert: "Mất tập trung",
-  speed_alert: "Tốc độ",
-  collision_warning: "Va chạm",
-  lane_departure: "Lệch làn",
+  all: "All",
+  drowsiness_alert: "Drowsiness",
+  yawn_alert: "Yawn",
+  distraction_alert: "Distraction",
+  speed_alert: "Speed",
+  collision_warning: "Collision",
+  lane_departure: "Lane departure",
 };
 
 export const ALERT_TYPE_ICONS: Record<FleetEventType, ReactNode> = {
@@ -35,15 +33,15 @@ export const ALERT_TYPE_ICONS: Record<FleetEventType, ReactNode> = {
 };
 
 export const SEVERITY_LABELS: Record<FleetEventSeverity, string> = {
-  critical: "Nguy hiểm",
-  warn: "Cảnh báo",
+  critical: "Critical",
+  warn: "Warning",
 };
 
 export const SEVERITY_FILTER_OPTIONS: ReadonlyArray<{
   value: SeverityFilter;
   label: string;
 }> = [
-  { value: "all", label: "Tất cả" },
+  { value: "all", label: "All" },
   { value: "critical", label: SEVERITY_LABELS.critical },
   { value: "warn", label: SEVERITY_LABELS.warn },
 ];

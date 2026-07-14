@@ -55,7 +55,7 @@ export default function DriverActivityPanel({
       <div className="grid gap-3 rounded-[calc(1rem-1.5px)] bg-zinc-950/40 p-4">
         <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
           <ShieldCheck size={12} strokeWidth={2} className="text-emerald-400" />
-          Hoạt động gần đây
+          Recent activity
         </div>
 
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -76,7 +76,7 @@ export default function DriverActivityPanel({
         <div className="grid gap-2">
           <div className="flex items-center justify-between border-t border-white/[0.04] pt-3">
             <h3 className="text-[12px] font-semibold tracking-tight text-zinc-100">
-              Chuyến &amp; điểm số
+              Trips &amp; Scores
             </h3>
             <span className="font-mono-num text-[10px] uppercase tracking-[0.16em] text-zinc-500">
               {trips.length}
@@ -114,7 +114,7 @@ export default function DriverActivityPanel({
           ))}
           {trips.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/[0.06] bg-white/[0.01] px-3 py-4 text-center text-[11px] text-zinc-500">
-              Tài xế chưa có chuyến nào.
+              The driver has no trips yet.
             </p>
           ) : null}
         </div>
@@ -122,7 +122,7 @@ export default function DriverActivityPanel({
         <div className="grid gap-2">
           <div className="flex items-center justify-between border-t border-white/[0.04] pt-3">
             <h3 className="text-[12px] font-semibold tracking-tight text-zinc-100">
-              Cảnh báo mới
+              New alerts
             </h3>
             <span className="font-mono-num text-[10px] uppercase tracking-[0.16em] text-zinc-500">
               {alerts.length}
@@ -155,10 +155,11 @@ export default function DriverActivityPanel({
           {alerts.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/[0.06] bg-white/[0.01] px-3 py-4 text-center text-[11px] text-zinc-500">
               {hasLinkedTrips
-                ? "Chưa có cảnh báo nào cho các chuyến của tài xế này."
-                : "Chưa có cảnh báo vì tài xế chưa liên kết chuyến nào."}
+                ? "There are no alerts for this driver's trips yet."
+                : "There are no alerts because the driver has no linked trips."}
             </p>
           ) : null}
+     
         </div>
       </div>
     </section>

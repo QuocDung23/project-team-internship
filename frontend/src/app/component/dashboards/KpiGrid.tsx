@@ -32,27 +32,27 @@ export default function KpiGrid({ kpis }: KpiGridProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <KpiCard
-        label="Tổng xe đang chạy"
+        label="Total Driving"
         value={driving}
-        hint={`${idle} idle · ${disabled} disable · ${total} tài xế`}
+        hint={`${idle} idle · ${disabled} disabled · ${total} drivers`}
         tone="active"
         icon={<Truck size={18} strokeWidth={1.5} />}
       />
       <KpiCard
-        label="Tài xế idle"
+        label="Idle Drivers"
         value={idle}
-        hint={`${driving} driving · ${disabled} disable`}
+        hint={`${driving} driving · ${disabled} disabled`}
         icon={<Users size={18} strokeWidth={1.5} />}
       />
       <KpiCard
-        label="Cảnh báo ca"
+        label="Alerts"
         value={kpis.totalAlerts}
         hint={`${kpis.criticalAlerts} critical alerts`}
         tone={alertsTone}
         icon={<AlertTriangle size={18} strokeWidth={1.5} />}
       />
       <KpiCard
-        label="Điểm an toàn TB"
+        label="Avg. Safety Score"
         value={kpis.averageScore === null ? "—" : kpis.averageScore}
         hint="Average completed trip score"
         tone={kpis.averageScore !== null && kpis.averageScore < 60 ? "critical" : "active"}

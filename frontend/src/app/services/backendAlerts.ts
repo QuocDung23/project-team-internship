@@ -153,19 +153,19 @@ function alertTitle(alertType: string): string {
     case "drowsiness_detected":
     case "drowsy_cnn":
     case "eyes_closed":
-      return "Buồn ngủ / mắt nhắm";
+      return "Drowsiness / Eyes Closed";
     case "yawning":
     case "yawning_detected":
-      return "Ngáp";
+      return "Yawning";
     case "driver_inattention":
     case "head_nod":
     case "head_nodding_detected":
-      return "Gật đầu / mất tư thế đầu";
+      return "Head Nod / Loss of Head Position";
     case "camera_issue":
     case "no_face_detected":
-      return "Không phát hiện khuôn mặt";
+      return "No Face Detected";
     default:
-      return "Cảnh báo mất tập trung";
+      return "Distraction Alert";
   }
 }
 
@@ -175,19 +175,19 @@ function alertDetail(alert: BackendAlert): string {
     parts.push(`EAR ${alert.ear_value.toFixed(3)}`);
   }
   if (typeof alert.consecutive_frame_count === "number") {
-    parts.push(`${alert.consecutive_frame_count} khung hình`);
+    parts.push(`${alert.consecutive_frame_count} frames`);
   }
   if (typeof alert.cnn_confidence === "number") {
     parts.push(`CNN ${Math.round(alert.cnn_confidence * 100)}%`);
   }
-  if (alert.alarm_triggered) parts.push("đã phát cảnh báo âm thanh");
+  if (alert.alarm_triggered) parts.push("Audio alert triggered");
   return parts.length > 0 ? parts.join(" · ") : alert.detection_method;
 }
 
 function detectionMethodLabel(value: string): string {
   switch (value) {
     case "browser_cnn":
-      return "Phát hiện qua camera AI";
+      return "Detected via AI camera";
     default:
       return value;
   }

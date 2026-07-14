@@ -10,7 +10,10 @@ interface DriverTableProps {
   maxRows?: number;
 }
 
-export default function DriverTable({ drivers, maxRows = 8 }: DriverTableProps) {
+export default function DriverTable({
+  drivers,
+  maxRows = 8,
+}: DriverTableProps) {
   const rows = drivers.slice(0, maxRows);
   return (
     <section className="panel flex flex-col gap-3 px-5 py-4">
