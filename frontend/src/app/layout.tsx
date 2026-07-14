@@ -6,7 +6,7 @@ import DashboardPage from "./pages/DashboardPage";
 import DriversPage from "./pages/DriversPage";
 import FleetPage from "./pages/FleetPage";
 import { AlertsPage } from "./pages/AlertsPage";
-import { SettingsPage } from "./pages/SettingsPage";
+import SettingsPage from "./pages/SettingsPage";
 import { LoginPage } from "./pages/LoginPage";
 import MyTripPage from "./pages/MyTripPage";
 
