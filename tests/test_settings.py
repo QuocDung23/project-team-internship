@@ -5,6 +5,48 @@ from backend.core.settings import Settings
 
 
 class SettingsTests(unittest.TestCase):
+    def test_cors_origins_accept_comma_separated_env_value(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "DROWSINESS_CORS_ORIGINS": (
+                    "https://drowsiness-detector-web.onrender.com,"
+                    "http://localhost:5173"
+                ),
+            },
+            clear=True,
+        ):
+            settings = Settings()
+
+        self.assertEqual(
+            settings.cors_origins,
+            [
+                "https://drowsiness-detector-web.onrender.com",
+                "http://localhost:5173",
+            ],
+        )
+
+    def test_cors_origins_accept_json_array_env_value(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "DROWSINESS_CORS_ORIGINS": (
+                    '["https://drowsiness-detector-web.onrender.com",'
+                    '"http://localhost:5173"]'
+                ),
+            },
+            clear=True,
+        ):
+            settings = Settings()
+
+        self.assertEqual(
+            settings.cors_origins,
+            [
+                "https://drowsiness-detector-web.onrender.com",
+                "http://localhost:5173",
+            ],
+        )
+
     def test_database_url_prefers_render_database_url(self):
         with patch.dict(
             "os.environ",
