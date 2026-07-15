@@ -21,7 +21,7 @@ def _friendly_connection_message(exc: OperationalError) -> str:
     return (
         "Database connection failed while initializing the schema. "
         "Check DROWSINESS_DB_HOST, DROWSINESS_DB_NAME, DROWSINESS_DB_USER, "
-        "DROWSINESS_DB_PASSWORD, and DROWSINESS_DB_PORT. "
+        "DROWSINESS_DB_PASSWORD, DROWSINESS_DB_PORT, or DATABASE_URL. "
         f"PostgreSQL reported: {detail}"
     )
 

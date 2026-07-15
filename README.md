@@ -105,6 +105,52 @@ python -m backend.db.schema validate
 
 The schema utility reads `database/drowsiness_safety_db_schema.sql` and does not modify it.
 
+## Deploy on Render
+
+This repo includes `render.yaml` for a Render Blueprint with three resources:
+
+- `drowsiness-detector-api`: FastAPI backend.
+- `drowsiness-detector-web`: React/Vite static frontend.
+- `drowsiness-detector-db`: managed PostgreSQL database.
+
+Create the Blueprint from the Render Dashboard and point it at this repository. Render will provision the database, pass its internal `DATABASE_URL` to the backend, build the frontend from `frontend/` with `npm ci`, and rewrite SPA routes to `index.html`.
+
+After the database is created, initialize or restore data:
+
+```bash
+# Empty database: apply the canonical schema from a machine with psql access.
+psql "<render-external-database-url>" -f database/drowsiness_safety_db_schema.sql
+
+# Existing local Docker/PostgreSQL data: dump locally, then restore remotely.
+pg_dump --format=custom --no-owner --no-acl \
+  --dbname=postgresql://postgres:postgres@localhost:5432/drowsiness_safety_phase1 \
+  --file=drowsiness_safety_phase1.dump
+
+pg_restore --clean --if-exists --no-owner --no-acl \
+  --dbname="<render-external-database-url>" \
+  drowsiness_safety_phase1.dump
+```
+
+Then validate the deployed API:
+
+```bash
+curl https://drowsiness-detector-api.onrender.com/health
+curl https://drowsiness-detector-api.onrender.com/health/db
+```
+
+Keep the detector runtime local on the machine with the camera and publish events to the cloud API:
+
+```bash
+python integrate_cnn.py --camera 1 \
+  --model best_model_v2.h5 \
+  --class-json class_indices_v2.json \
+  --publish-safety-events-backend \
+  --safety-backend-url https://drowsiness-detector-api.onrender.com/api/v1 \
+  --safety-backend-token <access_token>
+```
+
+If you rename the Render services, update `DROWSINESS_CORS_ORIGINS` and `VITE_API_BASE_URL` in `render.yaml` to match the generated service URLs.
+
 Run the detector with the existing CLI:
 
 ```bash
