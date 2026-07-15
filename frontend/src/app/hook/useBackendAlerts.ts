@@ -21,7 +21,7 @@ interface BackendAlertsState {
   fleetEvents: FleetAlertEvent[] | null;
   monitorAlerts: MonitoringAlert[] | null;
   isLive: boolean;
-  error: string | null;
+  error: unknown;
   refresh: () => Promise<void>;
 }
 
@@ -29,7 +29,7 @@ export function useBackendAlerts(tripId?: string, query: AlertQuery = {}): Backe
   const activeTripId = tripId || query.tripId || getActiveTripId();
   const pollMs = getAlertPollMs();
   const [loaded, setLoaded] = useState<LoadedAlerts | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const queryKey = JSON.stringify(query);
 
   const refresh = useCallback(async () => {
@@ -44,7 +44,7 @@ export function useBackendAlerts(tripId?: string, query: AlertQuery = {}): Backe
       setLoaded({ tripId: activeTripId || "all", alerts: nextAlerts });
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load alerts");
+      setError(err instanceof Error ? err : new Error(String(err)));
     }
   }, [activeTripId, queryKey]);
 

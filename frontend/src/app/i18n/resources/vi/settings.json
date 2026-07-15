@@ -1,0 +1,104 @@
+{
+  "header": {
+    "eyebrow": "Hệ thống",
+    "title": "Cài đặt phát hiện",
+    "description": "Cấu hình trình phát hiện, xếp hạng an toàn, giao diện và tùy chọn trên thiết bị.",
+    "backendLive": "Máy chủ đang hoạt động",
+    "defaults": "Đang dùng mặc định",
+    "save": "Lưu cài đặt",
+    "saving": "Đang lưu cài đặt...",
+    "unsaved": "Có thay đổi chưa lưu",
+    "savedAt": "Đã lưu lúc {{time}}",
+    "noChanges": "Không có thay đổi",
+    "liveDescription": "Các cài đặt được hỗ trợ đã được tải từ máy chủ",
+    "offlineDescription": "Máy chủ không khả dụng, đang hiển thị giá trị mặc định"
+  },
+  "appearance": {
+    "title": "Giao diện",
+    "description": "Chọn cách hiển thị bảng điều khiển trên thiết bị này",
+    "userDescription": "Chọn chế độ hiển thị bạn muốn",
+    "options": {
+      "dark": {
+        "label": "Tối",
+        "description": "Bảng màu điều khiển hiện tại",
+        "userDescription": "Dịu mắt trong môi trường tối"
+      },
+      "light": {
+        "label": "Sáng",
+        "description": "Giao diện vận hành sáng rõ",
+        "userDescription": "Hiển thị sáng và rõ ràng"
+      }
+    }
+  },
+  "language": {
+    "title": "Ngôn ngữ",
+    "description": "Chọn ngôn ngữ hiển thị trên thiết bị này",
+    "options": {
+      "en": {
+        "description": "Sử dụng giao diện tiếng Anh"
+      },
+      "vi": {
+        "description": "Sử dụng giao diện tiếng Việt"
+      }
+    }
+  },
+  "user": {
+    "eyebrow": "Cá nhân",
+    "title": "Cài đặt của tôi",
+    "description": "Tùy chỉnh trải nghiệm và các lựa chọn của bạn"
+  },
+  "errors": {
+    "unavailable": "Không thể tải cài đặt",
+    "frameSize": "Chiều rộng và chiều cao khung hình phải là số nguyên dương.",
+    "gradeCutoffs": "Ngưỡng điểm phải nằm trong khoảng từ 0 đến 100 và điểm hạng A không được thấp hơn hạng B."
+  },
+  "runtime": {
+    "title": "Điều khiển vận hành",
+    "description": "Cấu hình các cài đặt có thể thay đổi khi trình phát hiện đang chạy.",
+    "cameraResolution": "Độ phân giải camera",
+    "alarmSound": "Âm thanh cảnh báo",
+    "frameWidth": "Chiều rộng khung hình",
+    "frameHeight": "Chiều cao khung hình",
+    "preview": "Nghe thử âm thanh",
+    "play": "Phát âm thanh",
+    "stop": "Dừng âm thanh",
+    "sounds": {
+      "classic": "Cảnh báo cổ điển",
+      "soft": "Chuông nhẹ",
+      "urgent": "Nhịp cảnh báo khẩn cấp"
+    }
+  },
+  "thresholds": {
+    "title": "Ngưỡng phát hiện",
+    "description": "Các giá trị chỉ đọc do trình phát hiện quản lý.",
+    "ear": "Ngưỡng EAR",
+    "earFrames": "Số khung hình EAR liên tiếp",
+    "cnnConfidence": "Độ tin cậy CNN",
+    "detectionMethod": "Phương thức phát hiện",
+    "alertCooldown": "Thời gian chờ cảnh báo",
+    "noFaceTimeout": "Thời gian chờ khi mất khuôn mặt",
+    "cameraIndex": "Chỉ số camera",
+    "eyeClosureDuration": "Thời gian nhắm mắt",
+    "eyeClosureFrames": "Số khung hình nhắm mắt",
+    "cnnClosedThreshold": "Ngưỡng CNN phát hiện nhắm mắt",
+    "yawnMarThreshold": "Ngưỡng MAR phát hiện ngáp",
+    "marFrameThreshold": "Ngưỡng khung hình MAR",
+    "yawnFrames": "Số khung hình ngáp",
+    "drowsinessPairWindow": "Khoảng ghép sự kiện buồn ngủ",
+    "drowsinessEscalationWindow": "Khoảng tăng mức buồn ngủ",
+    "yawnPairWindow": "Khoảng ghép sự kiện ngáp",
+    "poseDropThreshold": "Ngưỡng giảm tư thế",
+    "absoluteNodLimit": "Giới hạn gật đầu tuyệt đối",
+    "warningPenalty": "Điểm trừ cảnh báo",
+    "criticalPenalty": "Điểm trừ nghiêm trọng",
+    "managed": "Do trình phát hiện quản lý"
+  },
+  "grades": {
+    "title": "Xếp hạng an toàn",
+    "description": "Đặt điểm tối thiểu cần đạt cho từng hạng an toàn.",
+    "gradeA": "Điểm tối thiểu hạng A",
+    "gradeB": "Điểm tối thiểu hạng B",
+    "gradeC": "Hạng C",
+    "range": "Từ {{min}} đến {{max}} điểm"
+  }
+}

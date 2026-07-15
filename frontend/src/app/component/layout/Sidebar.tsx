@@ -11,65 +11,74 @@ import {
   Activity,
   Building2,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ReactElement } from "react";
 import { useAuth } from "../../auth/AuthContext";
 
 interface NavItem {
   to: string;
-  label: string;
   icon: ReactElement;
+  translationKey:
+    | "primary.dashboard"
+    | "primary.drivers"
+    | "primary.trips"
+    | "primary.alerts"
+    | "primary.myTrip"
+    | "primary.myAlerts"
+    | "primary.settings";
   badge?: string;
 }
 
 const PRIMARY_NAV: ReadonlyArray<NavItem> = [
-  { to: "/", label: "Dashboard", icon: <Gauge size={18} strokeWidth={1.7} /> },
+  { to: "/", icon: <Gauge size={18} strokeWidth={1.7} />, translationKey: "primary.dashboard" },
   {
     to: "/drivers",
-    label: "Drivers",
     icon: <Users size={18} strokeWidth={1.7} />,
+    translationKey: "primary.drivers",
   },
-  { to: "/trips", label: "Trips", icon: <Truck size={18} strokeWidth={1.7} /> },
+  { to: "/trips", icon: <Truck size={18} strokeWidth={1.7} />, translationKey: "primary.trips" },
   {
     to: "/alerts",
-    label: "Alerts",
     icon: <AlertTriangle size={18} strokeWidth={1.7} />,
+    translationKey: "primary.alerts",
   },
 ];
 
 const DRIVER_NAV: ReadonlyArray<NavItem> = [
   {
     to: "/my-trip",
-    label: "My Trip",
     icon: <Truck size={18} strokeWidth={1.7} />,
+    translationKey: "primary.myTrip",
   },
   {
     to: "/alerts",
-    label: "My Alerts",
     icon: <AlertTriangle size={18} strokeWidth={1.7} />,
+    translationKey: "primary.myAlerts",
   },
 ];
 
 const DRIVER_SECONDARY_NAV: ReadonlyArray<NavItem> = [
   {
     to: "/user-settings",
-    label: "Settings",
     icon: <Settings size={18} strokeWidth={1.7} />,
+    translationKey: "primary.settings",
   },
 ];
 
 const SECONDARY_NAV: ReadonlyArray<NavItem> = [
   {
     to: "/settings",
-    label: "Settings",
     icon: <Settings size={18} strokeWidth={1.7} />,
+    translationKey: "primary.settings",
   },
 ];
 
 export function Sidebar() {
+  const { t } = useTranslation(["navigation", "common"]);
   const { user, logout } = useAuth();
   const primaryNav = user?.role === "driver" ? DRIVER_NAV : PRIMARY_NAV;
   const secondaryNav = user?.role === "admin" ? SECONDARY_NAV : DRIVER_SECONDARY_NAV;
-  const initials = (user?.full_name ?? user?.email ?? "U")
+  const initials = (user?.full_name ?? user?.email ?? t("user.fallbackName"))
     .split(/\s+/)
     .map((part) => part[0])
     .join("")
@@ -79,7 +88,7 @@ export function Sidebar() {
   return (
     <aside
       className="sticky top-0 flex h-dvh w-[252px] shrink-0 flex-col border-r border-hairline bg-surface/70 px-3 py-5 backdrop-blur-2xl"
-      aria-label="Primary navigation"
+      aria-label={t("aria.primaryNavigation")}
     >
       {/* Brand mark: Double-Bezel outer shell + inner core, concentric radii. */}
       <div className="flex items-center gap-2.5 rounded-2xl px-2 pb-6">
@@ -98,10 +107,10 @@ export function Sidebar() {
         </div>
         <div className="leading-tight">
           <p className="text-[13px] font-semibold tracking-tight text-text-primary">
-            Driver Safety
+            {t("common:brand.name")}
           </p>
           <p className="font-mono-num text-[10px] uppercase tracking-[0.16em] text-text-tertiary">
-            {user?.role === "admin" ? "Admin Console" : "Driver Console"}
+            {user?.role === "admin" ? t("console.admin") : t("console.driver")}
           </p>
         </div>
       </div>
@@ -120,10 +129,10 @@ export function Sidebar() {
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-[12px] font-medium text-text-primary">
-              Production backend
+              {t("workspace.backend")}
             </p>
             <p className="truncate text-[10px] text-text-tertiary">
-              Realtime detector data
+              {t("workspace.description")}
             </p>
           </div>
           <ChevronRight
@@ -135,14 +144,14 @@ export function Sidebar() {
       </button>
 
       <nav className="flex flex-1 flex-col gap-7 overflow-y-auto px-1">
-        <SidebarSection label="Operations">
+        <SidebarSection label={t("sections.operations")}>
           {primaryNav.map((item) => (
             <SidebarLink key={item.to} item={item} />
           ))}
         </SidebarSection>
 
         {secondaryNav.length > 0 && (
-          <SidebarSection label="System">
+          <SidebarSection label={t("sections.system")}>
             {secondaryNav.map((item) => (
               <SidebarLink key={item.to} item={item} />
             ))}
@@ -162,7 +171,7 @@ export function Sidebar() {
             strokeWidth={1.7}
             className="text-accent-active/80"
           />
-          <span className="text-text-secondary">Backend live</span>
+          <span className="text-text-secondary">{t("workspace.live")}</span>
         </div>
 
         <div className="rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]">
@@ -181,17 +190,17 @@ export function Sidebar() {
             </div>
             <div className="min-w-0 flex-1 leading-tight">
               <p className="truncate text-[12px] font-medium text-text-primary">
-                {user?.full_name ?? "User"}
+                {user?.full_name ?? t("user.fallbackName")}
               </p>
               <p className="truncate text-[10px] text-text-tertiary">
-                {user?.email ?? "Signed in"}
+                {user?.email ?? t("user.signedIn")}
               </p>
             </div>
             <button
               type="button"
               onClick={logout}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-transparent text-text-tertiary transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-hairline hover:bg-subtle-bg-hover hover:text-text-primary active:scale-[0.94]"
-              aria-label="Sign out"
+              aria-label={t("aria.signOut")}
             >
               <LogOut size={16} strokeWidth={1.7} />
             </button>
@@ -223,6 +232,7 @@ interface SidebarLinkProps {
 }
 
 function SidebarLink({ item }: SidebarLinkProps) {
+  const { t } = useTranslation("navigation");
   return (
     <li>
       <NavLink
@@ -256,7 +266,7 @@ function SidebarLink({ item }: SidebarLinkProps) {
             >
               {item.icon}
             </span>
-            <span className="flex-1 truncate">{item.label}</span>
+            <span className="flex-1 truncate">{t(item.translationKey)}</span>
             {item.badge && (
               <span className="ml-auto rounded-full bg-accent-critical/15 px-1.5 py-0.5 font-mono-num text-[10px] font-semibold tabular-nums text-accent-critical ring-1 ring-accent-critical/25">
                 {item.badge}

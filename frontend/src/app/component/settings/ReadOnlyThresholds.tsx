@@ -1,9 +1,11 @@
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { READ_ONLY_SETTINGS } from "../../constants/settings/constants";
 import ReadOnlyValue from "./ReadOnlyValue";
 
 export default function ReadOnlyThresholds() {
   const reduceMotion = useReducedMotion();
+  const { t } = useTranslation("settings");
 
   return (
     <motion.section
@@ -14,18 +16,18 @@ export default function ReadOnlyThresholds() {
     >
       <div className="mb-5">
         <h2 className="text-sm font-semibold text-text-primary">
-          Detector Thresholds
+          {t("thresholds.title")}
         </h2>
         <p className="mt-1 text-xs text-text-tertiary">
-          System-defined values, read-only
+          {t("thresholds.description")}
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {READ_ONLY_SETTINGS.map(([label, value], index) => (
+        {READ_ONLY_SETTINGS.map(([labelKey, value], index) => (
           <ReadOnlyValue
-            key={label}
-            label={label}
+            key={labelKey}
+            labelKey={labelKey}
             value={value}
             index={index}
           />

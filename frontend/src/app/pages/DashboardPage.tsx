@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { ArrowUpRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useBackendDrivers, useBackendTrips } from "../hook/useBackendData";
 import { useTicker } from "../hook/useTicker";
@@ -15,6 +16,7 @@ import {
   AdminStatStrip,
 } from "../component/admin/AdminShell";
 import { StatusBadge } from "../component/monitoring/StatusBadge";
+import { useAppLocale } from "../i18n/useAppLocale";
 import type { Driver } from "../types";
 import type { FleetAlertEvent, FleetEventSeverity } from "../types/alerts";
 import {
@@ -26,6 +28,13 @@ import {
 const EMPTY_DRIVERS: Driver[] = [];
 const EMPTY_TRIPS: BackendTrip[] = [];
 const EMPTY_ALERTS: FleetAlertEvent[] = [];
+
+function toErrorMessage(error: unknown): string | null {
+  if (error === null || error === undefined) return null;
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
 interface DriverAlertSummary {
   driver: Driver;
@@ -70,6 +79,14 @@ const sectionVariants = {
 };
 
 function DashboardPage() {
+  const { t } = useTranslation("dashboard");
+  const { t: tn } = useTranslation("navigation");
+  const { formatTime, formatDate, formatNumber } = useAppLocale();
+  const formatDayLabel = useMemo(
+    () => (date: Date) => formatDate(date, { month: "short", day: "numeric" }),
+    [formatDate],
+  );
+
   const now = useTicker(1000);
   const backendDrivers = useBackendDrivers();
   const backendTrips = useBackendTrips(false);
@@ -109,7 +126,10 @@ function DashboardPage() {
     () => buildAlertDistribution(todayAlerts),
     [todayAlerts],
   );
-  const alertDays = useMemo(() => buildAlertDays(alerts, now), [alerts, now]);
+  const alertDays = useMemo(
+    () => buildAlertDays(alerts, now, formatDayLabel),
+    [alerts, now, formatDayLabel],
+  );
 
   const disabledDrivers = drivers.filter(
     (driver) => driver.status === "disable",
@@ -133,20 +153,22 @@ function DashboardPage() {
         animate="visible"
       >
         <AdminHeader
-          eyebrow="Admin Console"
-          title="Operations Command Center"
-          description="Live admin overview for the current demo environment."
+          eyebrow={tn("console.admin")}
+          title={t("header.title")}
+          description={t("header.description")}
           actions={
             <>
               <span className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-subtle-bg px-3 py-1.5 text-[11px] text-text-secondary">
-                <span className="text-text-tertiary">Last refreshed</span>
+                <span className="text-text-tertiary">
+                  {t("header.lastRefreshed")}
+                </span>
                 <span className="font-mono-num tabular-nums text-text-primary">
-                  {new Date(now).toLocaleTimeString()}
+                  {formatTime(now)}
                 </span>
               </span>
               <StatusBadge
                 tone={connected ? "active" : "warn"}
-                label={connected ? "Backend Live" : "Partial Data"}
+                label={connected ? t("header.backendLive") : t("header.partialData")}
               />
             </>
           }
@@ -157,16 +179,16 @@ function DashboardPage() {
           className="mt-5 flex flex-col gap-3"
         >
           <AdminErrorBanner
-            label="Drivers unavailable"
+            label={t("errors.driversUnavailable")}
             message={backendDrivers.error}
           />
           <AdminErrorBanner
-            label="Trips unavailable"
+            label={t("errors.tripsUnavailable")}
             message={backendTrips.error}
           />
           <AdminErrorBanner
-            label="Alerts unavailable"
-            message={backendAlerts.error}
+            label={t("errors.alertsUnavailable")}
+            message={toErrorMessage(backendAlerts.error)}
           />
         </motion.div>
 
@@ -174,29 +196,41 @@ function DashboardPage() {
           <AdminStatStrip
             items={[
               {
-                label: "Driving",
-                value: drivers.filter((driver) => driver.status === "driving")
-                  .length,
+                label: t("kpi.labels.driving"),
+                value: formatNumber(
+                  drivers.filter((driver) => driver.status === "driving")
+                    .length,
+                ),
                 tone: "active",
-                detail: `${drivers.filter((driver) => driver.status === "idle").length} idle - ${disabledDrivers.length} disabled`,
+                detail: t("kpi.details.drivingSummary", {
+                  idle: drivers.filter((driver) => driver.status === "idle")
+                    .length,
+                  disabled: disabledDrivers.length,
+                }),
               },
               {
-                label: "Active Trips",
-                value: activeTrips.length,
+                label: t("kpi.labels.activeTrips"),
+                value: formatNumber(activeTrips.length),
                 tone: activeTrips.length > 0 ? "active" : "neutral",
-                detail: `${completedTrips.length} completed`,
+                detail: t("kpi.details.activeTripsCompleted", {
+                  count: completedTrips.length,
+                }),
               },
               {
-                label: "Open Critical",
-                value: openCriticalAlerts.length,
+                label: t("kpi.labels.openCritical"),
+                value: formatNumber(openCriticalAlerts.length),
                 tone: openCriticalAlerts.length > 0 ? "critical" : "active",
-                detail: `${openAlerts.length} open alerts`,
+                detail: t("kpi.details.openAlerts", {
+                  count: openAlerts.length,
+                }),
               },
               {
-                label: "Total Alerts",
-                value: totalAlerts || alerts.length,
+                label: t("kpi.labels.totalAlerts"),
+                value: formatNumber(totalAlerts || alerts.length),
                 tone: alerts.length > 0 || totalAlerts > 0 ? "warn" : "neutral",
-                detail: `${alerts.filter((alert) => alert.acknowledged).length} acknowledged`,
+                detail: t("kpi.details.alertsAcknowledged", {
+                  count: alerts.filter((alert) => alert.acknowledged).length,
+                }),
               },
             ]}
           />
@@ -229,12 +263,12 @@ function DashboardPage() {
             alerts={todayAlerts}
             distribution={todayDistribution}
             isLoading={!backendAlerts.isLive && !backendAlerts.error}
-            error={backendAlerts.error}
+            error={toErrorMessage(backendAlerts.error)}
           />
           <AlertsLastSevenDaysPanel
             days={alertDays}
             isLoading={!backendAlerts.isLive && !backendAlerts.error}
-            error={backendAlerts.error}
+            error={toErrorMessage(backendAlerts.error)}
           />
         </motion.section>
       </motion.div>
@@ -251,21 +285,24 @@ function ActiveTripsPanel({
   isLoading: boolean;
   error: string | null;
 }) {
+  const { t } = useTranslation("dashboard");
+  const { formatDateTime, formatNumber } = useAppLocale();
+
   return (
     <DashboardPanel
-      title="Active Trips"
-      action={<LinkButton to="/trips" label="Open Trips" />}
+      title={t("activeTrips.title")}
+      action={<LinkButton to="/trips" label={t("activeTrips.actionLabel")} />}
     >
       {error ? (
-        <PanelError message="Active trips are unavailable right now." />
+        <PanelError message={t("errors.activeTripsUnavailable")} />
       ) : null}
       {!error && isLoading ? (
-        <PanelLoading label="Loading active trips..." />
+        <PanelLoading label={t("loading.activeTrips")} />
       ) : null}
       {!error && !isLoading && trips.length === 0 ? (
         <AdminEmptyState
-          title="No Active Trips"
-          detail="Ongoing trips will appear here with driver, vehicle, score, and alert context."
+          title={t("activeTrips.emptyTitle")}
+          detail={t("activeTrips.emptyDetail")}
         />
       ) : null}
       {!error && !isLoading && trips.length > 0 ? (
@@ -273,12 +310,12 @@ function ActiveTripsPanel({
           <table className="w-full min-w-[720px] text-left text-[12px]">
             <thead className="text-[10px] uppercase tracking-wider text-text-tertiary">
               <tr className="border-b border-hairline">
-                <th className="py-2 pr-4 font-medium">Trip</th>
-                <th className="py-2 pr-4 font-medium">Driver</th>
-                <th className="py-2 pr-4 font-medium">Vehicle</th>
-                <th className="py-2 pr-4 font-medium">Started</th>
-                <th className="py-2 pr-4 text-right font-medium">Alerts</th>
-                <th className="py-2 text-right font-medium">Score</th>
+                <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.trip")}</th>
+                <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.driver")}</th>
+                <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.vehicle")}</th>
+                <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.started")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{t("activeTrips.columns.alerts")}</th>
+                <th className="py-2 text-right font-medium">{t("activeTrips.columns.score")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
@@ -289,39 +326,41 @@ function ActiveTripsPanel({
                 >
                   <td className="py-2.5 pr-4">
                     <p className="font-mono-num text-[12px] font-medium text-text-primary">
-                      {tripTitle(trip)}
+                      {tripTitle(trip, t)}
                     </p>
                     <p className="truncate text-[11px] text-text-tertiary">
-                      {routeLabel(trip)}
+                      {routeLabel(trip, t)}
                     </p>
                   </td>
                   <td className="py-2.5 pr-4">
                     <p className="truncate text-[12px] font-medium text-text-secondary">
-                      {driverLabel(trip)}
+                      {driverLabel(trip, t)}
                     </p>
                     <p className="truncate text-[11px] text-text-tertiary">
-                      {trip.driver_email ?? "No email"}
+                      {trip.driver_email ?? t("activeTrips.fallback.noEmail")}
                     </p>
                   </td>
                   <td className="py-2.5 pr-4 font-mono-num text-text-secondary">
-                    {trip.vehicle_plate ?? "Unassigned"}
+                    {trip.vehicle_plate ?? t("activeTrips.fallback.unassigned")}
                   </td>
                   <td className="py-2.5 pr-4 font-mono-num text-text-tertiary">
-                    {formatDate(
+                    {formatTripDate(
                       trip.actual_start_at ??
                         trip.start_time ??
                         trip.planned_start_at,
+                      formatDateTime,
                     )}
                   </td>
                   <td className="py-2.5 pr-4 text-right">
                     <span className="font-mono-num text-accent-warn">
-                      {toNumber(trip.total_alerts_count)}
+                      {formatNumber(toNumber(trip.total_alerts_count))}
                     </span>
                     <span className="ml-2 font-mono-num text-accent-critical">
-                      {toNumber(trip.critical_alerts_count)} crit
+                      {formatNumber(toNumber(trip.critical_alerts_count))}{" "}
+                      {t("activeTrips.criticalShort")}
                     </span>
                   </td>
-                  <td className="py-2.5 text-right">{scoreBadge(trip)}</td>
+                  <td className="py-2.5 text-right">{scoreBadge(trip, t)}</td>
                 </tr>
               ))}
             </tbody>
@@ -341,24 +380,27 @@ function DriverRankingPanel({
   isLoading: boolean;
   error: string | null;
 }) {
+  const { t } = useTranslation("dashboard");
   const hasAlertHistory = rows.some((row) => row.driver.totalAlerts > 0);
   const topRows = rows.filter((row) => row.driver.totalAlerts > 0).slice(0, 10);
 
   return (
     <DashboardPanel
-      title="Driver Ranking"
-      action={<LinkButton to="/drivers" label="Manage Drivers" />}
+      title={t("driverRanking.title")}
+      action={
+        <LinkButton to="/drivers" label={t("driverRanking.actionLabel")} />
+      }
     >
       {error ? (
-        <PanelError message="Driver ranking is unavailable right now." />
+        <PanelError message={t("errors.driverRankingUnavailable")} />
       ) : null}
       {!error && isLoading ? (
-        <PanelLoading label="Loading driver ranking..." />
+        <PanelLoading label={t("loading.driverRanking")} />
       ) : null}
       {!error && !isLoading && !hasAlertHistory ? (
         <AdminEmptyState
-          title="No Driver Alert History"
-          detail="Drivers will be ranked here after alert activity is reported."
+          title={t("driverRanking.emptyTitle")}
+          detail={t("driverRanking.emptyDetail")}
         />
       ) : null}
       {!error && !isLoading && hasAlertHistory ? (
@@ -369,27 +411,40 @@ function DriverRankingPanel({
               className="flex items-center gap-3 rounded-lg border border-hairline bg-subtle-bg px-3 py-2.5"
             >
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-subtle-bg text-[11px] font-semibold text-text-tertiary">
-                #{index + 1}
+                {t("driverRanking.rankPosition", { position: index + 1 })}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[12px] font-medium text-text-primary">
                   {driver.name}
                 </p>
                 <p className="truncate font-mono-num text-[11px] text-text-tertiary">
-                  {driver.licenseNumber} - {driver.licensePlate}
+                  {t("driverRanking.licenseSeparator", {
+                    license: driver.licenseNumber,
+                    plate: driver.licensePlate,
+                  })}
                 </p>
               </div>
               <div className="shrink-0 text-right">
                 <p className="font-mono-num text-[12px] font-semibold text-accent-warn">
-                  {driver.totalAlerts} alerts
+                  {t("driverRanking.alertSummary", {
+                    alerts: driver.totalAlerts,
+                  })}
                 </p>
                 <p className="text-[11px] text-text-tertiary">
                   <span className="font-mono-num text-accent-critical">
-                    {driver.criticalAlerts}
+                    {t("driverRanking.criticalSummary", {
+                      count: driver.criticalAlerts,
+                    })}
                   </span>{" "}
-                  crit -{" "}
-                  {averageScore === null ? "No Score" : `Avg ${averageScore}`}
-                  {scoredTrips > 0 ? ` (${scoredTrips})` : ""}
+                  -{" "}
+                  {averageScore === null
+                    ? t("driverRanking.noScore")
+                    : scoredTrips > 0
+                      ? t("driverRanking.avgScoreWithCount", {
+                          score: averageScore,
+                          count: scoredTrips,
+                        })
+                      : t("driverRanking.avgScore", { score: averageScore })}
                 </p>
               </div>
             </div>
@@ -411,54 +466,57 @@ function TodayAlertDistributionPanel({
   isLoading: boolean;
   error: string | null;
 }) {
+  const { t } = useTranslation("dashboard");
   const total = alerts.length;
 
   return (
     <DashboardPanel
-      title="Today's Alert Distribution"
-      action={<LinkButton to="/alerts" label="Review Alerts" />}
+      title={t("todayDistribution.title")}
+      action={
+        <LinkButton to="/alerts" label={t("todayDistribution.actionLabel")} />
+      }
     >
       {error ? (
-        <PanelError message="Today's alert distribution is unavailable right now." />
+        <PanelError message={t("errors.todayAlertsUnavailable")} />
       ) : null}
       {!error && isLoading ? (
-        <PanelLoading label="Loading today's alerts..." />
+        <PanelLoading label={t("loading.todayAlerts")} />
       ) : null}
       {!error && !isLoading && total === 0 ? (
         <AdminEmptyState
-          title="No Alerts Today"
-          detail="Today's severity and acknowledgement mix will appear after alerts are reported."
+          title={t("todayDistribution.emptyTitle")}
+          detail={t("todayDistribution.emptyDetail")}
         />
       ) : null}
       {!error && !isLoading && total > 0 ? (
         <div className="flex flex-col gap-3">
           <DistributionRow
-            label="Critical Open"
+            label={t("todayDistribution.rows.criticalOpen")}
             value={distribution.criticalOpen}
             total={total}
             severity="critical"
-            status="Open"
+            status="open"
           />
           <DistributionRow
-            label="Critical Acknowledged"
+            label={t("todayDistribution.rows.criticalAcknowledged")}
             value={distribution.criticalAcknowledged}
             total={total}
             severity="critical"
-            status="Acknowledged"
+            status="acknowledged"
           />
           <DistributionRow
-            label="Warning Open"
+            label={t("todayDistribution.rows.warningOpen")}
             value={distribution.warnOpen}
             total={total}
             severity="warn"
-            status="Open"
+            status="open"
           />
           <DistributionRow
-            label="Warning Acknowledged"
+            label={t("todayDistribution.rows.warningAcknowledged")}
             value={distribution.warnAcknowledged}
             total={total}
             severity="warn"
-            status="Acknowledged"
+            status="acknowledged"
           />
         </div>
       ) : null}
@@ -477,11 +535,14 @@ function DistributionRow({
   value: number;
   total: number;
   severity: FleetEventSeverity;
-  status: "Open" | "Acknowledged";
+  status: "open" | "acknowledged";
 }) {
-  const severityClass = severity === "critical" ? "bg-accent-critical" : "bg-accent-warn";
+  const { t } = useTranslation("dashboard");
+  const { formatNumber } = useAppLocale();
+  const severityClass =
+    severity === "critical" ? "bg-accent-critical" : "bg-accent-warn";
   const statusClass =
-    status === "Acknowledged" ? "text-accent-active" : "text-text-secondary";
+    status === "acknowledged" ? "text-accent-active" : "text-text-secondary";
   const percent = total > 0 ? Math.round((value / total) * 100) : 0;
 
   return (
@@ -490,11 +551,15 @@ function DistributionRow({
         <span className="flex min-w-0 items-center gap-2 text-[12px] font-medium text-text-secondary">
           <span
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${severityClass}`}
+            aria-hidden
           />
           <span className="truncate">{label}</span>
         </span>
         <span className="shrink-0 font-mono-num text-[12px] text-text-tertiary">
-          {value} <span className={statusClass}>({percent}%)</span>
+          {formatNumber(value)}{" "}
+          <span className={statusClass}>
+            {t("todayDistribution.percent", { value: percent })}
+          </span>
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-subtle-bg">
@@ -518,20 +583,22 @@ function AlertsLastSevenDaysPanel({
   isLoading: boolean;
   error: string | null;
 }) {
+  const { t } = useTranslation("dashboard");
+  const { formatNumber } = useAppLocale();
   const max = Math.max(...days.map((day) => day.count), 1);
 
   return (
-    <DashboardPanel title="Alerts in Last 7 Days">
+    <DashboardPanel title={t("weekTrend.title")}>
       {error ? (
-        <PanelError message="The 7-day alert trend is unavailable right now." />
+        <PanelError message={t("errors.weekTrendUnavailable")} />
       ) : null}
       {!error && isLoading ? (
-        <PanelLoading label="Loading alert trend..." />
+        <PanelLoading label={t("loading.weekTrend")} />
       ) : null}
       {!error && !isLoading && days.every((day) => day.count === 0) ? (
         <AdminEmptyState
-          title="No Recent Alert Volume"
-          detail="Daily alert totals for the last 7 days will appear here."
+          title={t("weekTrend.emptyTitle")}
+          detail={t("weekTrend.emptyDetail")}
         />
       ) : null}
       {!error && !isLoading && days.some((day) => day.count > 0) ? (
@@ -546,7 +613,9 @@ function AlertsLastSevenDaysPanel({
                 key={day.key}
                 className="grid grid-cols-[3.5rem_1fr_2.5rem] items-center gap-3"
               >
-                <span className="text-[11px] text-text-tertiary">{day.label}</span>
+                <span className="text-[11px] text-text-tertiary">
+                  {day.label}
+                </span>
                 <div className="h-6 overflow-hidden rounded-md bg-subtle-bg">
                   <motion.div
                     initial={{ width: 0 }}
@@ -560,7 +629,7 @@ function AlertsLastSevenDaysPanel({
                   />
                 </div>
                 <span className="text-right font-mono-num text-[12px] text-text-secondary">
-                  {day.count}
+                  {formatNumber(day.count)}
                 </span>
               </div>
             );
@@ -606,22 +675,31 @@ function PanelHeader({
 }
 
 function PanelLoading({ label }: { label: string }) {
+  const { t } = useTranslation("dashboard");
   return (
-    <div className="rounded-xl border border-hairline bg-subtle-bg px-5 py-8 text-center">
+    <div
+      className="rounded-xl border border-hairline bg-subtle-bg px-5 py-8 text-center"
+      role="status"
+      aria-live="polite"
+    >
       <p className="text-[12px] font-medium text-text-secondary">{label}</p>
       <p className="mt-1 text-[11px] text-text-tertiary">
-        Waiting for backend data...
+        {t("loading.waitingForBackend")}
       </p>
     </div>
   );
 }
 
 function PanelError({ message }: { message: string }) {
+  const { t } = useTranslation("dashboard");
   return (
-    <div className="rounded-xl border border-accent-critical/20 bg-accent-critical/8 px-4 py-3 text-center">
+    <div
+      className="rounded-xl border border-accent-critical/20 bg-accent-critical/8 px-4 py-3 text-center"
+      role="alert"
+    >
       <p className="text-[12px] font-medium text-accent-critical">{message}</p>
       <p className="mt-1 text-[11px] text-accent-critical/70">
-        The rest of the dashboard will continue using available data.
+        {t("errors.panelFallbackNote")}
       </p>
     </div>
   );
@@ -634,7 +712,7 @@ function LinkButton({ to, label }: { to: string; label: string }) {
       className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-subtle-bg px-2.5 py-1 text-[11px] text-text-secondary transition-colors duration-200 hover:bg-subtle-bg-hover hover:text-text-primary"
     >
       {label}
-      <ArrowUpRight size={11} />
+      <ArrowUpRight size={11} aria-hidden />
     </Link>
   );
 }
@@ -691,6 +769,7 @@ function buildAlertDistribution(
 function buildAlertDays(
   alerts: FleetAlertEvent[],
   now: number,
+  formatDayLabel: (date: Date) => string,
 ): AlertDaySummary[] {
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(now);
@@ -698,10 +777,7 @@ function buildAlertDays(
     date.setDate(date.getDate() - (6 - index));
     return {
       key: dateKey(date),
-      label: date.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      }),
+      label: formatDayLabel(date),
       count: 0,
     };
   });
@@ -743,21 +819,32 @@ function toNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function tripTitle(trip: BackendTrip): string {
-  return trip.code || "Trip without code";
+type DashboardT = ReturnType<typeof useTranslation<"dashboard">>["t"];
+
+function tripTitle(trip: BackendTrip, t: DashboardT): string {
+  return trip.code || t("activeTrips.fallback.tripWithoutCode");
 }
 
-function driverLabel(trip: BackendTrip): string {
-  return trip.driver_name ?? trip.driver_email ?? "Unassigned";
+function driverLabel(trip: BackendTrip, t: DashboardT): string {
+  return (
+    trip.driver_name ??
+    trip.driver_email ??
+    t("activeTrips.fallback.unassigned")
+  );
 }
 
-function routeLabel(trip: BackendTrip): string {
+function routeLabel(trip: BackendTrip, t: DashboardT): string {
   if (trip.origin && trip.destination)
-    return `${trip.origin} to ${trip.destination}`;
-  return trip.origin ?? trip.destination ?? "Route unavailable";
+    return t("activeTrips.route", {
+      origin: trip.origin,
+      destination: trip.destination,
+    });
+  return (
+    trip.origin ?? trip.destination ?? t("activeTrips.routeUnavailable")
+  );
 }
 
-function scoreBadge(trip: BackendTrip): ReactElement {
+function scoreBadge(trip: BackendTrip, t: DashboardT): ReactElement {
   const score = tripScore(trip);
   const grade =
     trip.safety_grade ??
@@ -765,7 +852,11 @@ function scoreBadge(trip: BackendTrip): ReactElement {
       ? trip.safety_score.grade
       : null);
   if (score === null)
-    return <span className="text-[11px] text-text-tertiary">No Score</span>;
+    return (
+      <span className="text-[11px] text-text-tertiary">
+        {t("driverRanking.noScore")}
+      </span>
+    );
   const tone =
     score < 60
       ? "text-accent-critical"
@@ -780,8 +871,12 @@ function scoreBadge(trip: BackendTrip): ReactElement {
   );
 }
 
-function formatDate(value?: string | null): string {
-  return value ? new Date(value).toLocaleString() : "-";
+function formatTripDate(
+  value: string | null | undefined,
+  formatDateTime: (value: Date | string | number) => string,
+): string {
+  if (!value) return "-";
+  return formatDateTime(value);
 }
 
 export default DashboardPage;

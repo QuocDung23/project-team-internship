@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { DriverStats } from "../../types/drivers";
 
 interface DriverStatsBarProps {
@@ -5,11 +6,33 @@ interface DriverStatsBarProps {
 }
 
 function DriverStatsBar({ stats }: DriverStatsBarProps) {
-  const items: ReadonlyArray<{ label: string; value: number; tone: string }> = [
-    { label: "Driving", value: stats.driving, tone: "text-accent-active" },
-    { label: "Idle", value: stats.idle, tone: "text-text-secondary" },
-    { label: "Disable", value: stats.disable, tone: "text-accent-critical" },
-    { label: "Eyes closed", value: stats.eyesClosed, tone: "text-accent-warn" },
+  const { t } = useTranslation("drivers");
+
+  const items: ReadonlyArray<{
+    label: string;
+    value: number;
+    tone: string;
+  }> = [
+    {
+      label: t("statsBar.driving"),
+      value: stats.driving,
+      tone: "text-accent-active",
+    },
+    {
+      label: t("statsBar.idle"),
+      value: stats.idle,
+      tone: "text-text-secondary",
+    },
+    {
+      label: t("statsBar.disable"),
+      value: stats.disable,
+      tone: "text-accent-critical",
+    },
+    {
+      label: t("statsBar.eyesClosed"),
+      value: stats.eyesClosed,
+      tone: "text-accent-warn",
+    },
   ];
 
   return (

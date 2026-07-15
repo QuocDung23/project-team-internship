@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { AdminDialog } from "../component/admin/AdminDialog";
 import { AdminErrorBanner, AdminPage } from "../component/admin/AdminShell";
 import DriverDialogFooter from "../component/drivers/DriverDialogFooter";
@@ -28,7 +29,17 @@ import {
   type DriverFormState,
 } from "../utils/drivers/driverFormHelpers";
 
+const PASSWORD_MIN_LENGTH = 12;
+
+function coerceErrorMessage(error: unknown): string | null {
+  if (error === null || error === undefined) return null;
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 function DriversPage() {
+  const { t } = useTranslation("drivers");
   const backendDrivers = useBackendDrivers();
   const backendTrips = useBackendTrips(false);
   const allDriverAlerts = useBackendAlerts(undefined, { status: "all" });
@@ -39,7 +50,7 @@ function DriversPage() {
   const [dialogMode, setDialogMode] = useState<"create" | "manage">("create");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [form, setForm] = useState<DriverFormState>(EMPTY_FORM);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formErrorKey, setFormErrorKey] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [updatingDriverId, setUpdatingDriverId] = useState<string | null>(null);
   const selectedDriverAlerts = useBackendAlerts(
@@ -127,7 +138,7 @@ function DriversPage() {
     setDialogMode("create");
     setSelectedDriverId(null);
     setForm(EMPTY_FORM);
-    setFormError(null);
+    setFormErrorKey(null);
     setDialogOpen(true);
   };
 
@@ -138,7 +149,7 @@ function DriversPage() {
     setDialogMode("manage");
     setSelectedDriverId(driver.id);
     setForm(driverFormFromBackend(backendDriver, driver));
-    setFormError(null);
+    setFormErrorKey(null);
     setDialogOpen(true);
   };
 
@@ -153,20 +164,20 @@ function DriversPage() {
     const licenseNumber = form.licenseNumber.trim();
     const email = form.email.trim();
     if (!fullName || !licenseNumber) {
-      setFormError("Full name and license number are required.");
+      setFormErrorKey("errors.validation.nameAndLicenseRequired");
       return;
     }
     if (dialogMode === "create" && !email) {
-      setFormError("Email is required so the driver can log in.");
+      setFormErrorKey("errors.validation.emailRequiredForCreate");
       return;
     }
-    if (dialogMode === "create" && form.password.length < 12) {
-      setFormError("Password must be at least 12 characters.");
+    if (dialogMode === "create" && form.password.length < PASSWORD_MIN_LENGTH) {
+      setFormErrorKey("errors.validation.passwordMinimum");
       return;
     }
 
     setIsSaving(true);
-    setFormError(null);
+    setFormErrorKey(null);
     try {
       const payload = {
         full_name: fullName,
@@ -186,9 +197,8 @@ function DriversPage() {
       }
       setDialogOpen(false);
     } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Failed to save driver",
-      );
+      console.error("Failed to save driver", err);
+      setFormErrorKey("errors.validation.saveFailed");
     } finally {
       setIsSaving(false);
     }
@@ -205,6 +215,20 @@ function DriversPage() {
     }
   };
 
+  const formErrorMessage = useMemo<string | null>(() => {
+    if (!formErrorKey) return null;
+    switch (formErrorKey) {
+      case "errors.validation.passwordMinimum":
+        return t(formErrorKey, { min: PASSWORD_MIN_LENGTH });
+      case "errors.validation.nameAndLicenseRequired":
+      case "errors.validation.emailRequiredForCreate":
+      case "errors.validation.saveFailed":
+        return t(formErrorKey);
+      default:
+        return null;
+    }
+  }, [formErrorKey, t]);
+
   return (
     <AdminPage scroll>
       <DriversHeroPanel
@@ -214,10 +238,22 @@ function DriversPage() {
         disable={stats.disable}
         onAdd={openCreateDialog}
       />
-      <AdminErrorBanner label="Drivers unavailable" message={backendDrivers.error} />
-      <AdminErrorBanner label="Trips unavailable" message={backendTrips.error} />
-      <AdminErrorBanner label="Alerts unavailable" message={allDriverAlerts.error} />
-      <AdminErrorBanner label="Driver alerts unavailable" message={selectedDriverAlerts.error} />
+      <AdminErrorBanner
+        label={t("errors.driversUnavailable")}
+        message={backendDrivers.error}
+      />
+      <AdminErrorBanner
+        label={t("errors.tripsUnavailable")}
+        message={backendTrips.error}
+      />
+      <AdminErrorBanner
+        label={t("errors.alertsUnavailable")}
+        message={coerceErrorMessage(allDriverAlerts.error)}
+      />
+      <AdminErrorBanner
+        label={t("errors.driverAlertsUnavailable")}
+        message={coerceErrorMessage(selectedDriverAlerts.error)}
+      />
 
       <DriverStatsBar stats={stats} />
       <motion.section
@@ -252,12 +288,16 @@ function DriversPage() {
       <AnimatePresence>
         {dialogOpen ? (
           <AdminDialog
-            title={dialogMode === "manage" ? "Manage Driver" : "Create New Driver"}
+            title={
+              dialogMode === "manage"
+                ? t("dialog.manageTitle")
+                : t("dialog.createTitle")
+            }
             width={dialogMode === "manage" ? "lg" : "md"}
             description={
               dialogMode === "manage"
-                ? "Update driver profile information and operation status."
-                : "Create a driver profile to assign shifts and monitor activity."
+                ? t("dialog.manageDescription")
+                : t("dialog.createDescription")
             }
             onClose={closeDialog}
             footer={
@@ -281,7 +321,7 @@ function DriversPage() {
               averageScore={selectedDriverSafety.averageScore}
               totalAlerts={selectedDriverSafety.totalAlerts}
               criticalAlerts={selectedDriverSafety.criticalAlerts}
-              formError={formError}
+              formError={formErrorMessage}
               onSubmit={handleSaveDriver}
             />
           </AdminDialog>

@@ -1,5 +1,6 @@
 import React, { type FormEvent } from "react";
 import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import {
   AtSign,
   IdCard,
@@ -15,6 +16,8 @@ import {
   SPRING,
   type DriverFormState,
 } from "../../utils/drivers/driverFormHelpers";
+
+const PASSWORD_MIN_LENGTH = 12;
 
 export default function DriverFormSections({
   mode,
@@ -47,6 +50,7 @@ export default function DriverFormSections({
   formError: string | null;
   onSubmit: (event: FormEvent) => void;
 }) {
+  const { t } = useTranslation("drivers");
   return (
     <form id="driver-form" onSubmit={onSubmit} className="grid gap-4">
       {formError ? (
@@ -54,6 +58,7 @@ export default function DriverFormSections({
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={SPRING}
+          role="alert"
           className="rounded-xl border border-accent-warn/25 bg-accent-warn/8 px-3.5 py-2.5 text-[12px] leading-relaxed text-accent-warn"
           style={{
             boxShadow: "inset 0 1px 0 var(--theme-subtle-border)",
@@ -65,9 +70,9 @@ export default function DriverFormSections({
 
       {mode === "manage" ? (
         <div className="flex items-center gap-2 rounded-xl border border-hairline bg-subtle-bg px-3.5 py-2 text-[11px] text-text-tertiary">
-          <IdCard size={13} strokeWidth={2} className="text-text-secondary" />
+          <IdCard size={13} strokeWidth={2} className="text-text-secondary" aria-hidden />
           <span className="uppercase tracking-[0.14em]">
-            Driver ID
+            {t("form.driverIdLabel")}
           </span>
           <span className="font-mono-num text-text-primary">
             {selectedDriverId}
@@ -78,13 +83,13 @@ export default function DriverFormSections({
       <div className="rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]">
         <div className="grid gap-3 rounded-[calc(1rem-1.5px)] bg-surface p-4">
           <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
-            <User size={12} strokeWidth={2} className="text-accent-active" />
-            Identity Information
+            <User size={12} strokeWidth={2} className="text-accent-active" aria-hidden />
+            {t("form.identitySection")}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <DriverTextField
               icon={<User size={13} strokeWidth={2} />}
-              label="Full Name"
+              label={t("form.fields.fullName")}
               value={form.fullName}
               required
               onChange={(fullName) =>
@@ -93,7 +98,7 @@ export default function DriverFormSections({
             />
             <DriverTextField
               icon={<IdCard size={13} strokeWidth={2} />}
-              label="Driver License Number"
+              label={t("form.fields.licenseNumber")}
               value={form.licenseNumber}
               required
               onChange={(licenseNumber) =>
@@ -107,13 +112,13 @@ export default function DriverFormSections({
       <div className="rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]">
         <div className="grid gap-3 rounded-[calc(1rem-1.5px)] bg-surface p-4">
           <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
-            <MapPin size={12} strokeWidth={2} className="text-accent-active" />
-            Contact
+            <MapPin size={12} strokeWidth={2} className="text-accent-active" aria-hidden />
+            {t("form.contactSection")}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <DriverTextField
               icon={<Phone size={13} strokeWidth={2} />}
-              label="Phone Number"
+              label={t("form.fields.phoneNumber")}
               value={form.phone}
               onChange={(phone) =>
                 setForm((current) => ({ ...current, phone }))
@@ -121,7 +126,7 @@ export default function DriverFormSections({
             />
             <DriverTextField
               icon={<AtSign size={13} strokeWidth={2} />}
-              label="Login Email"
+              label={t("form.fields.loginEmail")}
               value={form.email}
               type="email"
               onChange={(email) =>
@@ -132,11 +137,11 @@ export default function DriverFormSections({
           {mode === "create" ? (
             <DriverTextField
               icon={<ShieldCheck size={13} strokeWidth={2} />}
-              label="Initial Password"
+              label={t("form.fields.initialPassword")}
               value={form.password}
               required
               type="password"
-              hint="At least 12 characters."
+              hint={t("form.passwordHint", { min: PASSWORD_MIN_LENGTH })}
               onChange={(password) =>
                 setForm((current) => ({ ...current, password }))
               }
@@ -148,11 +153,11 @@ export default function DriverFormSections({
       <div className="rounded-2xl border border-hairline bg-subtle-bg p-[1.5px]">
         <div className="grid gap-2 rounded-[calc(1rem-1.5px)] bg-surface p-4">
           <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-text-tertiary">
-            <Activity size={12} strokeWidth={2} className="text-accent-active" />
-            Driver Status
+            <Activity size={12} strokeWidth={2} className="text-accent-active" aria-hidden />
+            {t("form.statusSection")}
           </div>
           <label className="grid gap-1.5 text-[11px] text-text-secondary">
-            <span className="font-medium">Availability</span>
+            <span className="font-medium">{t("form.availabilityLabel")}</span>
             <select
               value={form.status}
               disabled={
@@ -166,12 +171,12 @@ export default function DriverFormSections({
               }
               className="rounded-xl border border-hairline bg-surface-2 px-3 py-2 text-[12px] text-text-primary outline-none transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] focus:border-accent-active/50 focus:bg-surface focus:shadow-[0_0_0_3px_var(--theme-focus-ring)]"
             >
-              <option value="active">Available</option>
-              <option value="inactive">Locked</option>
+              <option value="active">{t("form.statusAvailable")}</option>
+              <option value="inactive">{t("form.statusLocked")}</option>
             </select>
             {isDrivingForSelected ? (
               <span className="mt-1 text-[10px] leading-relaxed text-text-tertiary">
-                This driver is currently on a trip and cannot be locked until the trip is finished.
+                {t("form.onTripNote")}
               </span>
             ) : null}
           </label>

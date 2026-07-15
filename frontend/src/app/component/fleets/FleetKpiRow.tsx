@@ -4,6 +4,7 @@ import {
   LucideMapPin,
   LucideRoute,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import type { FleetKpi } from "../../types/fleets";
 
@@ -12,35 +13,37 @@ interface FleetKpiRowProps {
 }
 
 interface KpiItem {
-  label: string;
+  labelKey: "vehicle.kpi.total" | "vehicle.kpi.active" | "vehicle.kpi.todayTrips" | "vehicle.kpi.distance";
   value: ReactNode;
   tone: string;
   icon: ReactNode;
 }
 
 function FleetKpiRow({ kpi }: FleetKpiRowProps) {
+  const { t } = useTranslation("trips");
+
   const items: ReadonlyArray<KpiItem> = [
     {
-      label: "Total Vehicles",
+      labelKey: "vehicle.kpi.total",
       value: kpi.totalVehicles,
       tone: "text-text-primary",
       icon: <LucideTruck size={18} strokeWidth={1.5} />,
     },
     {
-      label: "Active",
+      labelKey: "vehicle.kpi.active",
       value: kpi.activeVehicles,
       tone: "text-accent-active",
       icon: <LucideCheckCircle size={18} strokeWidth={1.5} />,
     },
     {
-      label: "Trips Today",
+      labelKey: "vehicle.kpi.todayTrips",
       value: kpi.todayTrips,
       tone: "text-text-primary",
       icon: <LucideMapPin size={18} strokeWidth={1.5} />,
     },
     {
-      label: "Distance",
-      value: `${kpi.totalDistanceKm} km`,
+      labelKey: "vehicle.kpi.distance",
+      value: t("vehicle.kpi.distanceValue", { count: kpi.totalDistanceKm }),
       tone: "text-text-primary",
       icon: <LucideRoute size={18} strokeWidth={1.5} />,
     },
@@ -48,9 +51,9 @@ function FleetKpiRow({ kpi }: FleetKpiRowProps) {
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {items.map(({ label, value, tone, icon }) => (
+      {items.map(({ labelKey, value, tone, icon }) => (
         <div
-          key={label}
+          key={labelKey}
           className="group relative overflow-hidden rounded-2xl border border-hairline bg-subtle-bg p-4 transition-all duration-300 hover:border-hairline hover:bg-subtle-bg-hover"
         >
           <div className="absolute inset-0 bg-linear-to-br from-white/2 to-transparent" />
@@ -65,7 +68,7 @@ function FleetKpiRow({ kpi }: FleetKpiRowProps) {
                 {value}
               </p>
               <p className="mt-1 text-[10px] uppercase tracking-wider text-text-tertiary">
-                {label}
+                {t(labelKey)}
               </p>
             </div>
           </div>

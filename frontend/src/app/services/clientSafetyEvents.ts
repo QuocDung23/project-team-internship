@@ -1,19 +1,12 @@
-import type { ClientSafetyEvent, MonitoringAlert } from "../types/monitoring";
+import {
+  EVENT_TITLE_TRANSLATION_KEYS,
+  type ClientSafetyEvent,
+  type MonitoringAlert,
+} from "../types/monitoring";
 
 const DROWSINESS_PAIR_WINDOW_MS = 30_000;
 const DROWSINESS_ESCALATION_WINDOW_MS = 60_000;
 const YAWNING_PAIR_WINDOW_MS = 20_000;
-
-function eventTitle(eventType: ClientSafetyEvent["event_type"]): string {
-  switch (eventType) {
-    case "drowsiness_detected":
-      return "Buồn ngủ / mắt nhắm";
-    case "yawning_detected":
-      return "Ngáp";
-    case "head_nodding_detected":
-      return "Gật đầu / mất tư thế đầu";
-  }
-}
 
 function eventSeverity(severity: ClientSafetyEvent["severity"]): MonitoringAlert["severity"] {
   return severity === "high" ? "critical" : "warn";
@@ -40,7 +33,7 @@ export function mapClientSafetyEventToMonitorAlert(event: ClientSafetyEvent): Mo
     id: event.event_id,
     ts: eventTimestamp(event.occurred_at),
     severity: eventSeverity(event.severity),
-    title: eventTitle(event.event_type),
+    titleKey: EVENT_TITLE_TRANSLATION_KEYS[event.event_type],
     detail: eventDetail(event),
   };
 }

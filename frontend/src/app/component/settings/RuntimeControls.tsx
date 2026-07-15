@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import NumberField from "./NumberField";
 import SoundSelector from "./SoundSelector";
 import type { AlarmSoundOption } from "../../services/backendApi";
@@ -23,6 +24,7 @@ export default function RuntimeControls({
   onFrameHeightChange,
 }: RuntimeControlsProps) {
   const reduceMotion = useReducedMotion();
+  const { t } = useTranslation("settings");
 
   return (
     <motion.section
@@ -33,10 +35,10 @@ export default function RuntimeControls({
     >
       <div className="mb-5">
         <h2 className="text-sm font-semibold text-text-primary">
-          Runtime Controls
+          {t("runtime.title")}
         </h2>
         <p className="mt-1 text-xs text-text-tertiary">
-          Adjustable parameters during operation
+          {t("runtime.description")}
         </p>
       </div>
 
@@ -60,18 +62,18 @@ export default function RuntimeControls({
           transition={{ duration: 0.4, delay: 0.4 }}
         >
           <h3 className="mb-4 text-xs font-medium text-text-tertiary">
-            Camera Resolution
+            {t("runtime.cameraResolution")}
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <NumberField
-              label="Width"
+              label={t("runtime.frameWidth")}
               value={frameWidth}
               step="1"
               min={1}
               onChange={onFrameWidthChange}
             />
             <NumberField
-              label="Height"
+              label={t("runtime.frameHeight")}
               value={frameHeight}
               step="1"
               min={1}

@@ -1,10 +1,11 @@
 import type { Driver } from "../../types";
-import { formatTime } from "../../hook/useTicker";
 import { StatusBadge } from "../monitoring/StatusBadge";
 import DashboardConstants from "../../constants/dashboards";
 import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
+import { useAppLocale } from "../../i18n/useAppLocale";
 
-const { STATUS_LABEL, STATUS_TONE } = DashboardConstants;
+const { STATUS_LABEL_KEYS, STATUS_TONE } = DashboardConstants;
 
 interface DriverTableProps {
   drivers: Driver[];
@@ -38,12 +39,15 @@ export default function DriverTable({
   drivers,
   maxRows = 8,
 }: DriverTableProps) {
+  const { t } = useTranslation(["dashboard", "common"]);
+  const { formatNumber, formatTime } = useAppLocale();
+
   const rows = drivers.slice(0, maxRows);
   return (
     <section className="rounded-xl border border-hairline bg-subtle-bg px-5 py-4">
       <header className="mb-3">
         <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
-          Realtime Driver Status
+          {t("driverTable.title")}
         </h2>
       </header>
 
@@ -51,14 +55,14 @@ export default function DriverTable({
         <table className="w-full text-left text-[12px]">
           <thead className="text-[10px] uppercase tracking-wider text-text-tertiary">
             <tr className="border-b border-hairline">
-              <th className="py-2 pr-4 font-medium">ID</th>
-              <th className="py-2 pr-4 font-medium">Driver</th>
-              <th className="py-2 pr-4 font-medium">Plate</th>
-              <th className="py-2 pr-4 font-medium">Team</th>
-              <th className="py-2 pr-4 font-medium">EAR</th>
-              <th className="py-2 pr-4 font-medium">Status</th>
-              <th className="py-2 pr-4 font-medium">Alerts</th>
-              <th className="py-2 pl-4 font-medium">Updated</th>
+              <th className="py-2 pr-4 font-medium">{t("driverTable.columns.id")}</th>
+              <th className="py-2 pr-4 font-medium">{t("driverTable.columns.driver")}</th>
+              <th className="py-2 pr-4 font-medium">{t("driverTable.columns.plate")}</th>
+              <th className="py-2 pr-4 font-medium">{t("driverTable.columns.team")}</th>
+              <th className="py-2 pr-4 font-medium">{t("driverTable.columns.ear")}</th>
+              <th className="py-2 pr-4 font-medium">{t("driverTable.columns.status")}</th>
+              <th className="py-2 pr-4 font-medium">{t("driverTable.columns.alerts")}</th>
+              <th className="py-2 pl-4 font-medium">{t("driverTable.columns.updated")}</th>
             </tr>
           </thead>
           <motion.tbody
@@ -73,7 +77,7 @@ export default function DriverTable({
                   colSpan={8}
                   className="py-8 text-center text-[12px] text-text-tertiary"
                 >
-                  No backend driver data available.
+                  {t("driverTable.empty")}
                 </td>
               </tr>
             )}
@@ -94,12 +98,14 @@ export default function DriverTable({
                 </td>
                 <td className="py-2.5 pr-4 text-text-tertiary">{d.team}</td>
                 <td className="py-2.5 pr-4 font-mono-num text-text-secondary">
-                  {d.ear.toFixed(2)}
+                  {t("driverTable.earValue", {
+                    value: formatNumber(d.ear, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                  })}
                 </td>
                 <td className="py-2.5 pr-4">
                   <StatusBadge
                     tone={STATUS_TONE[d.status]}
-                    label={STATUS_LABEL[d.status]}
+                    label={t(STATUS_LABEL_KEYS[d.status])}
                   />
                 </td>
                 <td className="py-2.5 pr-4">

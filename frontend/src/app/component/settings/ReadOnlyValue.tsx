@@ -1,13 +1,15 @@
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
 
 interface ReadOnlyValueProps {
-  label: string;
+  labelKey: string;
   value: string;
   index?: number;
 }
 
-export default function ReadOnlyValue({ label, value, index = 0 }: ReadOnlyValueProps) {
+export default function ReadOnlyValue({ labelKey, value, index = 0 }: ReadOnlyValueProps) {
   const reduceMotion = useReducedMotion();
+  const { t } = useTranslation("settings");
 
   return (
     <motion.div
@@ -19,14 +21,14 @@ export default function ReadOnlyValue({ label, value, index = 0 }: ReadOnlyValue
         ease: [0.16, 1, 0.3, 1],
       }}
       whileHover={reduceMotion ? {} : { scale: 1.02 }}
-      className="group relative overflow-hidden rounded-xl border border-hairline bg-[var(--theme-subtle-bg)] px-4 py-3 transition-colors duration-300 hover:bg-[var(--theme-subtle-bg-hover)]"
+      className="group relative overflow-hidden rounded-xl border border-hairline bg-(--theme-subtle-bg) px-4 py-3 transition-colors duration-300 hover:bg-(--theme-subtle-bg-hover)"
     >
-      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-text-tertiary">
-        {label}
+      <div className="text-[10px] font-medium uppercase tracking-widest text-text-tertiary">
+        {t(labelKey, { defaultValue: labelKey })}
       </div>
       <motion.div
         className="mt-1.5 font-mono text-sm font-medium tabular-nums text-text-primary"
-        layoutId={`value-${label}`}
+        layoutId={`value-${labelKey}`}
       >
         {value}
       </motion.div>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import DriverRow from "./DriverRow";
 import type { Driver } from "../../types";
 
@@ -18,6 +19,7 @@ function DriverTable({
   onSelectDriver,
   onSetAvailability,
 }: DriverTableProps) {
+  const { t } = useTranslation("drivers");
   const filteredOut = drivers.length < totalCount;
   return (
     <div className="panel flex flex-1 flex-col gap-0 overflow-hidden">
@@ -25,12 +27,24 @@ function DriverTable({
         <table className="w-full min-w-[920px] text-left text-[12px]">
           <thead className="sticky top-0 z-10 border-b border-hairline bg-surface-1 text-[10px] uppercase tracking-wider text-text-tertiary">
             <tr>
-              <th className="px-4 py-3 font-medium">Driver</th>
-              <th className="py-3 pr-4 font-medium">Vehicle plate</th>
-              <th className="py-3 pr-4 font-medium">Status</th>
-              <th className="py-3 pr-4 font-medium">Alerts</th>
-              <th className="py-3 pr-4 font-medium">Contact</th>
-              <th className="py-3 pl-3 pr-4 font-medium">Actions</th>
+              <th className="px-4 py-3 font-medium">
+                {t("table.columns.driver")}
+              </th>
+              <th className="py-3 pr-4 font-medium">
+                {t("table.columns.vehiclePlate")}
+              </th>
+              <th className="py-3 pr-4 font-medium">
+                {t("table.columns.status")}
+              </th>
+              <th className="py-3 pr-4 font-medium">
+                {t("table.columns.alerts")}
+              </th>
+              <th className="py-3 pr-4 font-medium">
+                {t("table.columns.contact")}
+              </th>
+              <th className="py-3 pl-3 pr-4 font-medium">
+                {t("table.columns.actions")}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline/50">
@@ -40,7 +54,7 @@ function DriverTable({
                   colSpan={6}
                   className="py-12 text-center text-[12px] text-text-tertiary"
                 >
-                  No matching drivers found.
+                  {t("table.empty")}
                 </td>
               </tr>
             ) : (
@@ -58,16 +72,17 @@ function DriverTable({
         </table>
       </div>
       <div className="border-t border-hairline px-4 py-3 text-[11px] text-text-tertiary">
-        Showing {drivers.length} / {totalCount} drivers
-        {filteredOut && (
+        {t("table.summary", { shown: drivers.length, total: totalCount })}
+        {filteredOut ? (
           <button
             type="button"
             onClick={onClearFilters}
+            aria-label={t("table.clearFilters")}
             className="ml-2 text-accent-active hover:text-accent-active/80"
           >
-            Clear filters
+            {t("table.clearFilters")}
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "title": "Sentinel Fleet | Driver Monitoring"
+  },
+  "brand": {
+    "name": "Driver Safety",
+    "sentinelFleet": "Sentinel Fleet"
+  },
+  "actions": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "close": "Close",
+    "closeDialog": "Close dialog",
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "clear": "Clear",
+    "search": "Search",
+    "edit": "Edit",
+    "delete": "Delete",
+    "enable": "Enable",
+    "disable": "Disable",
+    "start": "Start",
+    "stop": "Stop",
+    "view": "View",
+    "back": "Back",
+    "signOut": "Sign out"
+  },
+  "status": {
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "live": "Live",
+    "connecting": "Connecting",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "active": "Active",
+    "inactive": "Inactive",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "open": "Open",
+    "closed": "Closed",
+    "acknowledged": "Acknowledged",
+    "unknown": "Unknown",
+    "starting": "Starting",
+    "running": "Running",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
+  },
+  "driverStatus": {
+    "driving": "Driving",
+    "idle": "Idle",
+    "disable": "Disabled"
+  },
+  "tripStatus": {
+    "scheduled": "Scheduled",
+    "in_progress": "In progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "aborted": "Aborted"
+  },
+  "alertSeverity": {
+    "critical": "Critical",
+    "warn": "Warning",
+    "warning": "Warning",
+    "info": "Information"
+  },
+  "alertType": {
+    "drowsiness_alert": "Drowsiness",
+    "eyes_closed": "Eyes closed",
+    "yawning": "Yawning",
+    "yawn": "Yawning",
+    "distraction": "Distraction",
+    "no_face": "Face not detected",
+    "head_pose": "Head pose",
+    "audio_alert": "Audio alert",
+    "unknown": "Safety alert"
+  },
+  "fallback": {
+    "notAvailable": "Not available",
+    "unknownDriver": "Unknown driver",
+    "unassigned": "Unassigned",
+    "noLicense": "No license",
+    "noEmail": "No email",
+    "signedIn": "Signed in",
+    "routeUnavailable": "Route unavailable",
+    "routeNotProvided": "Route not provided",
+    "tripWithoutCode": "Trip without code",
+    "noDriverContext": "No driver context"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "backendUnavailable": "The backend is unavailable. Please try again later.",
+    "networkUnavailable": "Unable to reach the server. Check your connection and try again.",
+    "requestTimeout": "The request took too long. Please try again.",
+    "unauthorized": "Your session is no longer valid. Please sign in again.",
+    "notFound": "The requested data could not be found.",
+    "conflict": "This change conflicts with existing data.",
+    "validation": "Some information is invalid. Review the fields and try again."
+  },
+  "root": {
+    "loadingSession": "Loading session...",
+    "pageNotFound": "Page not found."
+  },
+  "units": {
+    "secondsShort": "{{value}}s",
+    "minutesShort": "{{value}}m",
+    "hoursShort": "{{value}}h",
+    "kilometersShort": "{{value}} km",
+    "frames": "{{count}} frame",
+    "frames_other": "{{count}} frames"
+  },
+  "relativeTime": {
+    "justNow": "Just now",
+    "secondsAgo": "{{count}}s ago",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago"
+  },
+  "counts": {
+    "alerts_one": "{{count}} alert",
+    "alerts_other": "{{count}} alerts",
+    "trips_one": "{{count}} trip",
+    "trips_other": "{{count}} trips",
+    "events_one": "{{count}} event",
+    "events_other": "{{count}} events"
+  }
+}
