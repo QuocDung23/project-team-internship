@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     db_user: str = "postgres"
     db_password: str = ""
     db_port: int = 5432
+    database_dsn: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DROWSINESS_DATABASE_URL", "DATABASE_URL"),
+    )
 
     cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -62,6 +66,9 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.database_dsn:
+            return self._normalize_database_scheme(self.database_dsn)
+
         url = URL.create(
             "postgresql+psycopg2",
             username=self.db_user,
@@ -71,6 +78,22 @@ class Settings(BaseSettings):
             database=self.db_name,
         )
         return url.render_as_string(hide_password=False)
+
+    @property
+    def psycopg_dsn(self) -> str | None:
+        if not self.database_dsn:
+            return None
+        return self._normalize_database_scheme(self.database_dsn).replace(
+            "postgresql+psycopg2://",
+            "postgresql://",
+            1,
+        )
+
+    @staticmethod
+    def _normalize_database_scheme(value: str) -> str:
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql://", 1)
+        return value
 
 
 @lru_cache(maxsize=1)
