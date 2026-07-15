@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -34,8 +35,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DROWSINESS_DATABASE_URL", "DATABASE_URL"),
     )
 
-    cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    cors_origins_value: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173",
+        validation_alias=AliasChoices("DROWSINESS_CORS_ORIGINS", "CORS_ORIGINS"),
     )
     log_level: str = "INFO"
     log_file: str | None = None
@@ -45,17 +47,6 @@ class Settings(BaseSettings):
     schema_path: Path = Field(
         default=BASE_DIR / "database" / "drowsiness_safety_db_schema.sql",
     )
-
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def _parse_cors_origins(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, list):
-            return [str(item).strip() for item in value if str(item).strip()]
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return [str(value).strip()]
 
     @field_validator("schema_path", mode="before")
     @classmethod
@@ -78,6 +69,23 @@ class Settings(BaseSettings):
             database=self.db_name,
         )
         return url.render_as_string(hide_password=False)
+
+    @property
+    def cors_origins(self) -> list[str]:
+        raw_value = self.cors_origins_value.strip()
+        if raw_value.startswith("["):
+            try:
+                parsed = json.loads(raw_value)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list):
+                return [str(origin).strip() for origin in parsed if str(origin).strip()]
+
+        return [
+            origin.strip()
+            for origin in raw_value.split(",")
+            if origin.strip()
+        ]
 
     @property
     def psycopg_dsn(self) -> str | None:
