@@ -1,0 +1,32 @@
+{
+  "aria": {
+    "primaryNavigation": "Primary navigation",
+    "signOut": "Sign out"
+  },
+  "console": {
+    "admin": "Admin Console",
+    "driver": "Driver Console"
+  },
+  "primary": {
+    "dashboard": "Dashboard",
+    "drivers": "Drivers",
+    "trips": "Trips",
+    "alerts": "Alerts",
+    "myTrip": "My Trip",
+    "myAlerts": "My Alerts",
+    "settings": "Settings"
+  },
+  "sections": {
+    "operations": "Operations",
+    "system": "System"
+  },
+  "workspace": {
+    "backend": "Production backend",
+    "description": "Realtime detector data",
+    "live": "Backend live"
+  },
+  "user": {
+    "fallbackName": "User",
+    "signedIn": "Signed in"
+  }
+}

@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle, Frown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { FleetAlertEvent } from "../../types/alerts";
-import { formatTime } from "../../hook/useTicker";
+import { useAppLocale } from "../../i18n/useAppLocale";
 import AlertRow from "./AlertRow";
 
 const DROWSINESS_GROUP_SIZE = 3;
@@ -28,12 +29,14 @@ export default function AlertList({
   onAcknowledge,
   onAcknowledgeGroup,
 }: AlertListProps) {
+  const { t } = useTranslation("alerts");
+
   if (events.length === 0) {
     return (
       <div className="panel flex flex-col items-center justify-center gap-3 py-16">
         <AlertTriangle size={32} className="text-text-tertiary" />
         <p className="text-[13px] text-text-tertiary">
-          No alerts found
+          {t("list.empty")}
         </p>
       </div>
     );
@@ -117,10 +120,13 @@ function DrowsinessGroupRow({
   isAcknowledging: boolean;
   onAcknowledgeGroup?: (events: FleetAlertEvent[], groupId: string) => void;
 }) {
+  const { t } = useTranslation("alerts");
+  const { formatTime: localizedTime } = useAppLocale();
   const newest = Math.max(...group.events.map((event) => event.timestamp));
   const oldest = Math.min(...group.events.map((event) => event.timestamp));
   const first = group.events[0]!;
   const isCritical = group.events.some((event) => event.severity === "critical");
+  const count = group.events.length;
 
   return (
     <div
@@ -140,7 +146,7 @@ function DrowsinessGroupRow({
           </span>
           <div>
             <p className="text-[12px] font-medium text-text-primary">
-              3 drowsiness alerts
+              {t("list.group.title", { count })}
             </p>
             <p className="font-mono-num text-[10px] text-text-tertiary">
               {first.driverName} · {first.licensePlate}
@@ -148,14 +154,14 @@ function DrowsinessGroupRow({
           </div>
         </div>
         <span className="font-mono-num text-[10px] text-text-tertiary">
-          {formatTime(newest)}
+          {localizedTime(newest)}
         </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-secondary">
-        <span>Grouped 3 drowsiness alerts close in time</span>
+        <span>{t("list.group.summary", { count })}</span>
         <span className="font-mono-num">
-          {formatTime(oldest)} - {formatTime(newest)}
+          {localizedTime(oldest)} - {localizedTime(newest)}
         </span>
       </div>
 
@@ -164,10 +170,11 @@ function DrowsinessGroupRow({
           type="button"
           onClick={() => onAcknowledgeGroup(group.events, group.id)}
           disabled={isAcknowledging}
+          aria-label={t("aria.acknowledgeGroup")}
           className="inline-flex w-fit items-center gap-1 rounded-md border border-accent-active/25 bg-accent-active/10 px-2 py-1 text-[10px] font-medium text-accent-active transition-colors hover:bg-accent-active/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <CheckCircle size={11} />
-          {isAcknowledging ? "Acknowledging..." : "Acknowledge group"}
+          {isAcknowledging ? t("actions.acknowledging") : t("actions.acknowledgeGroup")}
         </button>
       ) : null}
     </div>

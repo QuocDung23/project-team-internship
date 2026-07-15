@@ -1,0 +1,133 @@
+{
+  "header": {
+    "title": "Alert Log",
+    "subtitle": "Real-time alert stream · continuously updated",
+    "refreshAria": "Refresh alerts",
+    "refresh": "Refresh",
+    "status": {
+      "critical": "{{count}} critical",
+      "critical_one": "{{count}} critical",
+      "critical_other": "{{count}} critical",
+      "warning": "{{count}} warning",
+      "warning_one": "{{count}} warning",
+      "warning_other": "{{count}} warning",
+      "allClear": "No new alerts"
+    }
+  },
+  "stats": {
+    "total": "Total Events",
+    "critical": "Critical",
+    "warning": "Warning",
+    "acknowledged": "Acknowledged"
+  },
+  "filters": {
+    "label": "Filters",
+    "severity": {
+      "all": "All",
+      "critical": "Critical",
+      "warn": "Warning"
+    },
+    "type": {
+      "all": "All",
+      "drowsiness_alert": "Drowsiness",
+      "yawn_alert": "Yawn",
+      "distraction_alert": "Distraction",
+      "speed_alert": "Speed",
+      "collision_warning": "Collision",
+      "lane_departure": "Lane departure"
+    },
+    "showAcknowledged": "Show acknowledged"
+  },
+  "actions": {
+    "acknowledge": "Acknowledge",
+    "acknowledging": "Acknowledging...",
+    "acknowledgeGroup": "Acknowledge group"
+  },
+  "list": {
+    "empty": "No alerts found",
+    "loading": "Loading alerts...",
+    "group": {
+      "title_one": "{{count}} drowsiness alert",
+      "title_other": "{{count}} drowsiness alerts",
+      "summary_one": "Grouped {{count}} drowsiness alert close in time",
+      "summary_other": "Grouped {{count}} drowsiness alerts close in time"
+    }
+  },
+  "row": {
+    "ear": "EAR",
+    "acknowledged": "Acknowledged",
+    "metric": {
+      "ear": "EAR",
+      "mar": "MAR",
+      "pitch": "Pitch",
+      "frame": "{{count}} frame",
+      "frame_other": "{{count}} frames",
+      "cnn": "CNN {{value}}%",
+      "earValue": "EAR {{value}}"
+    }
+  },
+  "driverFilter": {
+    "label": "Driver",
+    "placeholder": "Search driver name, license, or email",
+    "allDrivers": "All drivers",
+    "noMatches": "No drivers match this search.",
+    "clearAria": "Clear driver filter"
+  },
+  "errors": {
+    "loadFailed": "Failed to load alerts",
+    "acknowledgeFailed": "Failed to acknowledge alert",
+    "acknowledgeGroupFailed": "Failed to acknowledge alert group",
+    "banners": {
+      "backendUnavailable": "Backend unavailable",
+      "driversUnavailable": "Drivers unavailable",
+      "actionFailed": "Alert action failed"
+    }
+  },
+  "type": {
+    "drowsiness_alert": "Drowsiness",
+    "yawn_alert": "Yawn",
+    "distraction_alert": "Distraction",
+    "speed_alert": "Speed",
+    "collision_warning": "Collision",
+    "lane_departure": "Lane departure",
+    "unknown": "Safety alert"
+  },
+  "severity": {
+    "critical": "Critical",
+    "warn": "Warning",
+    "warning": "Warning",
+    "info": "Information"
+  },
+  "source": {
+    "browser_cnn": "Detected via AI camera",
+    "cnn_classifier": "Detection classifier",
+    "unknown": "Unknown source"
+  },
+  "detail": {
+    "typeUnknown": "Distraction Alert",
+    "typeDrowsiness": "Drowsiness / Eyes Closed",
+    "typeYawning": "Yawning",
+    "typeHeadNod": "Head Nod / Loss of Head Position",
+    "typeNoFace": "No Face Detected",
+    "ear": "EAR {{value}}",
+    "frames_one": "{{count}} frame",
+    "frames_other": "{{count}} frames",
+    "cnn": "CNN {{value}}%",
+    "alarmTriggered": "Audio alert triggered"
+  },
+  "fallback": {
+    "noLicense": "No license",
+    "unknownDriver": "Unknown driver",
+    "unknownSource": "Unknown source"
+  },
+  "aria": {
+    "filterSeverity": "Filter by severity",
+    "filterType": "Filter by alert type",
+    "filterShowAcknowledged": "Show acknowledged alerts",
+    "acknowledge": "Acknowledge alert",
+    "acknowledgeGroup": "Acknowledge alert group",
+    "alertRow": "Alert details",
+    "criticalCount": "{{count}} critical alerts",
+    "warningCount": "{{count}} warning alerts"
+  }
+}

@@ -1,4 +1,6 @@
 import { LucideTruck } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useAppLocale } from "../../i18n/useAppLocale";
 import type { FleetViewMode } from "../../types/fleets";
 
 interface FleetHeaderProps {
@@ -7,9 +9,9 @@ interface FleetHeaderProps {
   onViewModeChange: (next: FleetViewMode) => void;
 }
 
-const VIEW_OPTIONS: ReadonlyArray<{ value: FleetViewMode; label: string }> = [
-  { value: "all", label: "All Vehicles" },
-  { value: "waiting", label: "Queued / Waiting" },
+const VIEW_OPTIONS: ReadonlyArray<{ value: FleetViewMode; labelKey: "pages.fleetOverview.view.all" | "pages.fleetOverview.view.waiting" }> = [
+  { value: "all", labelKey: "pages.fleetOverview.view.all" },
+  { value: "waiting", labelKey: "pages.fleetOverview.view.waiting" },
 ];
 
 const VIEW_ACTIVE: Record<FleetViewMode, string> = {
@@ -18,6 +20,9 @@ const VIEW_ACTIVE: Record<FleetViewMode, string> = {
 };
 
 function FleetHeader({ now, viewMode, onViewModeChange }: FleetHeaderProps) {
+  const { t } = useTranslation("trips");
+  const { formatTime: localizedTime } = useAppLocale();
+
   return (
     <header className="panel flex flex-wrap items-center justify-between gap-4 px-5 py-4">
       <div className="flex items-center gap-3">
@@ -30,10 +35,10 @@ function FleetHeader({ now, viewMode, onViewModeChange }: FleetHeaderProps) {
         </div>
         <div>
           <h1 className="text-base font-semibold tracking-tight text-text-primary">
-            Fleet Overview
+            {t("pages.fleetOverview.title")}
           </h1>
           <p className="mt-0.5 text-[12px] text-text-tertiary">
-            Live vehicle monitoring from central backend
+            {t("pages.fleetOverview.subtitle")}
           </p>
         </div>
       </div>
@@ -41,7 +46,7 @@ function FleetHeader({ now, viewMode, onViewModeChange }: FleetHeaderProps) {
         <div className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-subtle-bg px-3 py-1.5">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-active" />
           <span className="font-mono-num text-[11px] text-text-secondary">
-            {new Date(now).toLocaleTimeString("en-US")}
+            {localizedTime(new Date(now))}
           </span>
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-hairline bg-subtle-bg p-1">
@@ -56,7 +61,7 @@ function FleetHeader({ now, viewMode, onViewModeChange }: FleetHeaderProps) {
                   : "text-text-tertiary hover:bg-subtle-bg-hover hover:text-text-secondary"
               }`}
             >
-              {opt.label}
+              {t(opt.labelKey)}
             </button>
           ))}
         </div>

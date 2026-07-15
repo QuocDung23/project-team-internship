@@ -18,12 +18,17 @@ const EYE_ICONS: Record<Driver["eyeState"], ReactNode> = {
   yawning: <Laugh size={14} className="text-amber-400" strokeWidth={2} />,
 };
 
-// Vietnamese labels for the driver status.
-const STATUS_LABEL: Record<DriverStatus, string> = {
-  driving: "Driving",
-  idle: "Idle",
-  disable: "Disable",
-};
+// Translation key for the driver status badge / filter labels.
+// Resolved by the consumers via i18next's `drivers` namespace.
+export const DRIVER_STATUS_LABEL_KEY = {
+  driving: "filters.options.status.driving",
+  idle: "filters.options.status.idle",
+  disable: "filters.options.status.disable",
+} as const satisfies Record<DriverStatus, string>;
+
+export function driverStatusLabelKey(status: DriverStatus): string {
+  return DRIVER_STATUS_LABEL_KEY[status];
+}
 
 // Map driver status → badge tone shared by `StatusBadge` and `KpiCard`.
 const STATUS_TONE: Record<DriverStatus, KpiTone> = {
@@ -34,7 +39,6 @@ const STATUS_TONE: Record<DriverStatus, KpiTone> = {
 
 const DriverConstants = {
   EYE_ICONS,
-  STATUS_LABEL,
   STATUS_TONE,
   PHONE_ON_ICON: <Phone size={12} strokeWidth={2} />,
   PHONE_OFF_ICON: <PhoneOff size={12} strokeWidth={2} />,

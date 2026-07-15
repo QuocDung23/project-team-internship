@@ -1,0 +1,252 @@
+{
+  "pages": {
+    "fleet": {
+      "eyebrow": "An toàn",
+      "title": "An toàn chuyến đi",
+      "description": "Tổng hợp chuyến đang chạy và đã hoàn thành kèm điểm an toàn và cảnh báo",
+      "tripCount_one": "{{count}} chuyến đi",
+      "tripCount_other": "{{count}} chuyến đi",
+      "kpi": {
+        "active": "Đang chạy",
+        "activeDetail": "Chuyến đang thực hiện",
+        "completed": "Đã hoàn thành",
+        "completedDetail": "Chuyến đã hoàn thành",
+        "alerts": "Cảnh báo",
+        "alertsDetail_one": "{{count}} nghiêm trọng",
+        "alertsDetail_other": "{{count}} nghiêm trọng",
+        "avgScore": "Điểm TB",
+        "avgScoreDetail_one": "{{count}} đã chấm",
+        "avgScoreDetail_other": "{{count}} đã chấm"
+      },
+      "errors": {
+        "tripsUnavailable": "Không tải được danh sách chuyến",
+        "alertsUnavailable": "Không tải được cảnh báo"
+      },
+      "empty": {
+        "noTripsTitle": "Chưa có chuyến nào",
+        "noTripsDetail": "Chuyến sẽ hiển thị sau khi tài xế bắt đầu giám sát.",
+        "noTripsTable": "Các chuyến đã bắt đầu sẽ xuất hiện ở đây."
+      },
+      "table": {
+        "columns": {
+          "trip": "Chuyến",
+          "status": "Trạng thái",
+          "driver": "Tài xế",
+          "started": "Bắt đầu",
+          "score": "Điểm",
+          "alerts": "Cảnh báo"
+        }
+      },
+      "details": {
+        "labels": {
+          "driver": "Tài xế",
+          "tripCode": "Mã chuyến",
+          "route": "Lộ trình",
+          "score": "Điểm",
+          "alerts": "Cảnh báo",
+          "started": "Bắt đầu",
+          "ended": "Kết thúc",
+          "allAlerts": "Tất cả cảnh báo",
+          "noAlerts": "Chuyến này chưa có cảnh báo",
+          "alertsTotal_one": "{{count}} tổng",
+          "alertsTotal_other": "{{count}} tổng",
+          "alertsCritical_one": "{{count}} nghiêm trọng",
+          "alertsCritical_other": "{{count}} nghiêm trọng"
+        }
+      }
+    },
+    "fleetOverview": {
+      "title": "Tổng quan đội xe",
+      "subtitle": "Giám sát phương tiện trực tiếp từ máy chủ",
+      "view": {
+        "all": "Tất cả phương tiện",
+        "waiting": "Đang xếp hàng / Chờ"
+      }
+    },
+    "myTrip": {
+      "eyebrow": "Chuyến của tôi",
+      "title": "Chuyến của tài xế",
+      "activeInProgress_one": "{{count}} chuyến đang thực hiện",
+      "activeInProgress_other": "{{count}} chuyến đang thực hiện",
+      "completedRecorded_one": "{{count}} chuyến đã hoàn thành",
+      "completedRecorded_other": "{{count}} chuyến đã hoàn thành",
+      "tiles": {
+        "completed": "Hoàn thành",
+        "active": "Đang chạy",
+        "avgScore": "Điểm TB",
+        "alerts": "Cảnh báo"
+      },
+      "newTripCta": "Tạo chuyến mới",
+      "errors": {
+        "loadTrips": "Không tải được danh sách chuyến",
+        "camera": "Không thể bật giám sát camera",
+        "startTrip": "Không thể bắt đầu chuyến",
+        "endTrip": "Không thể kết thúc chuyến"
+      },
+      "history": {
+        "eyebrow": "Lịch sử",
+        "title": "Lịch sử chuyến đi",
+        "subtitle": "Chọn một chuyến để xem chi tiết và các cảnh báo đã lưu.",
+        "totalCount_one": "{{count}} chuyến",
+        "totalCount_other": "{{count}} chuyến",
+        "empty": "Chưa có chuyến nào.",
+        "columns": {
+          "tripId": "Mã chuyến",
+          "route": "Lộ trình",
+          "startTime": "Bắt đầu",
+          "endTime": "Kết thúc",
+          "safetyScore": "Điểm an toàn"
+        }
+      },
+      "driverInfo": {
+        "driver": "Tài xế",
+        "email": "Email",
+        "license": "Bằng lái"
+      }
+    }
+  },
+  "form": {
+    "cancel": "Hủy",
+    "startTrip": "Bắt đầu chuyến",
+    "endTrip": "Kết thúc chuyến",
+    "close": "Đóng",
+    "warning": {
+      "codeLength": "Mã chuyến phải có tối đa {{max}} ký tự.",
+      "originLength": "Điểm xuất phát phải có tối đa {{max}} ký tự.",
+      "destinationLength": "Điểm đến phải có tối đa {{max}} ký tự.",
+      "identicalRoute": "Điểm xuất phát và điểm đến giống nhau. Bạn vẫn có thể tiếp tục nhưng lộ trình có thể không rõ ràng."
+    },
+    "invalid": "Thông tin chuyến chưa hợp lệ"
+  },
+  "tripDialog": {
+    "eyebrow": {
+      "live": "Phiên trực tiếp",
+      "new": "Phiên mới"
+    },
+    "title": {
+      "active": "Chuyến đang chạy",
+      "new": "Chuyến mới"
+    },
+    "subtitle": {
+      "active": "Giám sát trực tiếp sẽ chạy cho đến khi kết thúc chuyến",
+      "new": "Bổ sung thông tin chuyến trước khi bắt đầu giám sát"
+    },
+    "fields": {
+      "tripCode": "Mã chuyến",
+      "tripCodePlaceholder": "Mã chuyến được tạo tự động",
+      "origin": "Điểm xuất phát",
+      "originPlaceholder": "Có thể bỏ trống",
+      "destination": "Điểm đến",
+      "destinationPlaceholder": "Có thể bỏ trống"
+    },
+    "metrics": {
+      "tripCode": "Mã chuyến",
+      "route": "Lộ trình",
+      "startTime": "Bắt đầu",
+      "driver": "Tài xế",
+      "detection": "Phát hiện",
+      "detectionRunning": "Đang chạy",
+      "detectionStarting": "Đang khởi động",
+      "waitingForLive": "Đang chờ giám sát trực tiếp."
+    },
+    "overlay": {
+      "drowsy": "Buồn ngủ",
+      "yawn": "Ngáp",
+      "stayAlert": "Tỉnh táo",
+      "escalationEngaged": "Đã kích hoạt quy trình cảnh báo"
+    },
+    "alertsTitle": "Cảnh báo trực tiếp",
+    "eventsCount_one": "{{count}} sự kiện",
+    "eventsCount_other": "{{count}} sự kiện",
+    "noLiveAlerts": "Chưa có cảnh báo trực tiếp."
+  },
+  "tripHistoryDialog": {
+    "eyebrow": "Hồ sơ chuyến",
+    "labels": {
+      "tripCode": "Mã chuyến",
+      "status": "Trạng thái",
+      "driver": "Tài xế",
+      "route": "Lộ trình",
+      "startTime": "Bắt đầu",
+      "endTime": "Kết thúc",
+      "safetyScore": "Điểm an toàn",
+      "alerts": "Cảnh báo",
+      "critical": "Nghiêm trọng",
+      "origin": "Điểm xuất phát",
+      "destination": "Điểm đến"
+    },
+    "routeNotProvided": "Chưa có thông tin lộ trình",
+    "alertsSection": {
+      "title": "Cảnh báo của chuyến",
+      "subtitle": "Các sự kiện an toàn đã được lưu trong chuyến này"
+    },
+    "loadingAlerts": "Đang tải cảnh báo...",
+    "noAlerts": "Chuyến này chưa có cảnh báo."
+  },
+  "vehicle": {
+    "status": {
+      "waiting": "Đang đợi",
+      "loading": "Đang xếp hàng",
+      "in_transit": "Đang chạy",
+      "idle": "Nhàn rỗi",
+      "maintenance": "Bảo dưỡng"
+    },
+    "kpi": {
+      "total": "Tổng phương tiện",
+      "active": "Đang chạy",
+      "todayTrips": "Chuyến hôm nay",
+      "distance": "Quãng đường",
+      "distanceValue_one": "{{count}} km",
+      "distanceValue_other": "{{count}} km"
+    },
+    "queue": {
+      "queued": "Đang chờ",
+      "loading": "Đang xếp hàng",
+      "inTransit": "Đang vận chuyển",
+      "completedToday": "Hoàn thành hôm nay",
+      "avgWait": "Thời gian chờ TB",
+      "avgWaitValue": "{{count}} phút",
+      "byZone": "Theo khu vực:"
+    },
+    "card": {
+      "extendedWait": "Đợi lâu {{minutes}} phút",
+      "speedUnit": "km/h",
+      "fuelUnit": "%",
+      "tempUnit": "°C",
+      "loadPercent": "{{count}}% đã xếp",
+      "wait": "{{count}} phút"
+    },
+    "gridEmpty": "Không có phương tiện trong hàng đợi"
+  },
+  "monitoring": {
+    "metricLabels": {
+      "ear": "EAR",
+      "mar": "MAR",
+      "pitch": "Pitch",
+      "dws": "DWS",
+      "fps": "FPS",
+      "noFace": "--"
+    },
+    "eventTitle": {
+      "drowsiness": "Buồn ngủ / mắt nhắm",
+      "yawning": "Ngáp",
+      "headNodding": "Gật đầu / mất tư thế đầu"
+    },
+    "severity": {
+      "warn": "Cảnh báo",
+      "critical": "Nghiêm trọng"
+    },
+    "status": {
+      "active": "Bình thường",
+      "warn": "Cảnh báo",
+      "critical": "Nguy hiểm"
+    },
+    "errors": {
+      "cameraDeniedTitle": "Không khả dụng camera",
+      "cameraDeniedMessage": "Quyền truy cập camera bị từ chối. Hãy cho phép camera để bật giám sát trực tiếp."
+    }
+  },
+  "audio": {
+    "voiceDisabled": "Cảnh báo giọng nói chưa khả dụng cho ngôn ngữ này."
+  }
+}

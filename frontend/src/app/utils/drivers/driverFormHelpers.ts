@@ -27,21 +27,57 @@ export const SPRING = {
   mass: 0.9,
 };
 
-export function tripScoreLabel(trip: BackendTrip): string {
-  if (trip.safety_score && typeof trip.safety_score === "object") {
-    return `${trip.safety_score.score} ${trip.safety_score.grade}`;
-  }
-  if (trip.safety_score !== null && trip.safety_score !== undefined) {
-    return trip.safety_grade ? `${trip.safety_score} ${trip.safety_grade}` : String(trip.safety_score);
-  }
-  return "-";
+export type TranslationKey =
+  | "activity.scoreWithGrade"
+  | "activity.scoreOnly"
+  | "activity.alertsTotal"
+  | "activity.alertsTotalWithCritical"
+  | "activity.alertsZero"
+  | "activity.fallback.noScore";
+
+export interface TranslationDescriptor {
+  key: TranslationKey;
+  values?: Record<string, string | number>;
 }
 
-export function tripAlertLabel(trip: BackendTrip): string {
+export function tripScoreLabel(trip: BackendTrip): TranslationDescriptor {
+  if (trip.safety_score && typeof trip.safety_score === "object") {
+    return {
+      key: "activity.scoreWithGrade",
+      values: {
+        score: trip.safety_score.score,
+        grade: trip.safety_score.grade,
+      },
+    };
+  }
+  if (trip.safety_score !== null && trip.safety_score !== undefined) {
+    if (trip.safety_grade) {
+      return {
+        key: "activity.scoreWithGrade",
+        values: { score: trip.safety_score, grade: trip.safety_grade },
+      };
+    }
+    return {
+      key: "activity.scoreOnly",
+      values: { score: trip.safety_score },
+    };
+  }
+  return { key: "activity.fallback.noScore" };
+}
+
+export function tripAlertLabel(trip: BackendTrip): TranslationDescriptor {
   const total = Number(trip.total_alerts_count ?? 0);
   const critical = tripCriticalAlerts(trip);
-  if (total <= 0) return "0 alerts";
-  return critical > 0 ? `${total} alerts · ${critical} crit` : `${total} alerts`;
+  if (total <= 0) {
+    return { key: "activity.alertsZero" };
+  }
+  if (critical > 0) {
+    return {
+      key: "activity.alertsTotalWithCritical",
+      values: { count: total, critical },
+    };
+  }
+  return { key: "activity.alertsTotal", values: { count: total } };
 }
 
 export function tripCriticalAlerts(trip: BackendTrip): number {

@@ -6,6 +6,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { motion } from "motion/react";
+import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 const SPRING = {
   type: "spring" as const,
@@ -24,6 +26,18 @@ interface TripHeroHeaderProps {
   onNewTrip: () => void;
 }
 
+interface Tile {
+  labelKey:
+    | "pages.myTrip.tiles.completed"
+    | "pages.myTrip.tiles.active"
+    | "pages.myTrip.tiles.avgScore"
+    | "pages.myTrip.tiles.alerts";
+  value: string;
+  tone: string;
+  iconColor: string;
+  icon: ReactNode;
+}
+
 export default function TripHeroHeader({
   activeTripCount,
   completedCount,
@@ -33,16 +47,17 @@ export default function TripHeroHeader({
   canStartNew,
   onNewTrip,
 }: TripHeroHeaderProps) {
-  const tiles = [
+  const { t } = useTranslation("trips");
+  const tiles: Tile[] = [
     {
-      label: "Completed",
+      labelKey: "pages.myTrip.tiles.completed",
       value: String(completedCount),
       tone: "text-accent-active bg-accent-active/10 border-accent-active/25",
       iconColor: "text-accent-active",
       icon: <CheckCircle2 size={12} strokeWidth={2} />,
     },
     {
-      label: "Active",
+      labelKey: "pages.myTrip.tiles.active",
       value: String(activeTripCount),
       tone:
         activeTripCount > 0
@@ -53,7 +68,7 @@ export default function TripHeroHeader({
       icon: <Clock4 size={12} strokeWidth={2} />,
     },
     {
-      label: "Avg score",
+      labelKey: "pages.myTrip.tiles.avgScore",
       value: avgScore === null ? "-" : String(avgScore),
       tone:
         avgScore !== null && avgScore < 60
@@ -66,7 +81,7 @@ export default function TripHeroHeader({
       icon: <ShieldCheck size={12} strokeWidth={2} />,
     },
     {
-      label: "Alerts",
+      labelKey: "pages.myTrip.tiles.alerts",
       value: `${totalAlerts}/${criticalAlerts}`,
       tone:
         criticalAlerts > 0
@@ -107,22 +122,22 @@ export default function TripHeroHeader({
                     : "bg-accent-active shadow-[0_0_8px_rgba(16,185,129,0.6)]"
                 }`}
               />
-              <span>My Trips</span>
+              <span>{t("pages.myTrip.eyebrow")}</span>
             </div>
             <h1 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] text-text-primary">
-              Driver trips
+              {t("pages.myTrip.title")}
             </h1>
             <p className="mt-2 text-[13px] text-text-secondary">
               {activeTripCount > 0
-                ? `${activeTripCount} active trip in progress`
-                : `${completedCount} completed trips recorded`}
+                ? t("pages.myTrip.activeInProgress", { count: activeTripCount })
+                : t("pages.myTrip.completedRecorded", { count: completedCount })}
             </p>
           </div>
 
           <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 lg:w-auto lg:min-w-[460px]">
             {tiles.map((tile, index) => (
               <motion.div
-                key={tile.label}
+                key={tile.labelKey}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ ...SPRING, delay: 0.08 + index * 0.04 }}
@@ -130,7 +145,7 @@ export default function TripHeroHeader({
               >
                 <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em]">
                   <span className={tile.iconColor}>{tile.icon}</span>
-                  <span className="text-text-secondary/80">{tile.label}</span>
+                  <span className="text-text-secondary/80">{t(tile.labelKey)}</span>
                 </div>
                 <div className="font-mono-num text-[20px] font-semibold tabular-nums leading-none">
                   {tile.value}
@@ -147,10 +162,11 @@ export default function TripHeroHeader({
           whileTap={canStartNew ? { scale: 0.97 } : undefined}
           transition={SPRING}
           disabled={!canStartNew}
+          aria-label={t("pages.myTrip.newTripCta")}
           className="cta-primary mt-5 w-full sm:w-auto"
         >
           <Plus size={14} strokeWidth={2.5} />
-          <span>New Trip</span>
+          <span>{t("pages.myTrip.newTripCta")}</span>
           <span
             aria-hidden
             className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/30 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5"

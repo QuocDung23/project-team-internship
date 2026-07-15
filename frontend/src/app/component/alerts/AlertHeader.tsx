@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "motion/react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface AlertHeaderProps {
   criticalCount: number;
@@ -13,6 +14,7 @@ export default function AlertHeader({
   warnCount,
   onRefresh,
 }: AlertHeaderProps) {
+  const { t } = useTranslation("alerts");
   const hasIncidents = criticalCount > 0 || warnCount > 0;
   return (
     <motion.header
@@ -23,7 +25,7 @@ export default function AlertHeader({
     >
       <div className="relative rounded-[1.375rem] bg-surface p-5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-accent-warn/5 via-transparent to-transparent" />
-        
+
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-accent-warn/20 ring-1 ring-accent-warn/20">
@@ -41,14 +43,14 @@ export default function AlertHeader({
             </div>
             <div>
               <h1 className="text-lg font-semibold tracking-tight text-text-primary">
-                Alert Log
+                {t("header.title")}
               </h1>
               <p className="mt-0.5 text-xs text-text-tertiary">
-                Real-time alert stream · continuously updated
+                {t("header.subtitle")}
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               {criticalCount > 0 && (
@@ -56,9 +58,10 @@ export default function AlertHeader({
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="inline-flex items-center gap-1.5 rounded-full bg-accent-critical/15 px-3 py-1.5 text-xs font-medium text-accent-critical ring-1 ring-accent-critical/20 backdrop-blur-sm"
+                  aria-label={t("aria.criticalCount", { count: criticalCount })}
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-accent-critical shadow-[0_0_6px_rgba(220,38,38,0.8)]" />
-                  {criticalCount} critical
+                  {t("header.status.critical", { count: criticalCount })}
                 </motion.span>
               )}
               {warnCount > 0 && (
@@ -67,28 +70,30 @@ export default function AlertHeader({
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.05 }}
                   className="inline-flex items-center gap-1.5 rounded-full bg-accent-warn/15 px-3 py-1.5 text-xs font-medium text-accent-warn ring-1 ring-accent-warn/20 backdrop-blur-sm"
+                  aria-label={t("aria.warningCount", { count: warnCount })}
                 >
-                  {warnCount} warning
+                  {t("header.status.warning", { count: warnCount })}
                 </motion.span>
               )}
               {!hasIncidents && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-active/15 px-3 py-1.5 text-xs font-medium text-accent-active ring-1 ring-accent-active/20 backdrop-blur-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-accent-active" />
-                  No new alerts
+                  {t("header.status.allClear")}
                 </span>
               )}
             </div>
-            
+
             <motion.button
               type="button"
               onClick={onRefresh}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              aria-label={t("header.refreshAria")}
               className="group relative overflow-hidden rounded-full border border-hairline bg-subtle-bg px-4 py-2 text-xs font-medium text-text-secondary backdrop-blur-sm transition-all hover:border-hairline hover:bg-subtle-bg-hover hover:text-text-primary"
             >
               <span className="relative flex items-center gap-2">
                 <RefreshCw size={13} className="transition-transform group-hover:rotate-180" />
-                Refresh
+                {t("header.refresh")}
               </span>
             </motion.button>
           </div>

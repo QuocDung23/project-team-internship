@@ -1,0 +1,135 @@
+{
+  "header": {
+    "title": "Drivers",
+    "subtitle": "Manage your fleet drivers, monitor status, and review live activity.",
+    "subline": "{{total}} drivers · {{driving}} driving · {{idle}} idle · {{disabled}} disabled"
+  },
+  "errors": {
+    "driversUnavailable": "Drivers unavailable",
+    "tripsUnavailable": "Trips unavailable",
+    "alertsUnavailable": "Alerts unavailable",
+    "driverAlertsUnavailable": "Driver alerts unavailable",
+    "validation": {
+      "nameAndLicenseRequired": "Full name and license number are required.",
+      "emailRequiredForCreate": "Email is required so the driver can log in.",
+      "passwordMinimum": "Password must be at least {{min}} characters.",
+      "saveFailed": "Failed to save driver"
+    }
+  },
+  "headerStats": {
+    "driving": "Driving",
+    "idle": "Idle",
+    "disabled": "Disabled"
+  },
+  "hero": {
+    "eyebrow": "Driver Roster",
+    "titleStart": "Driver",
+    "titleAccent": "Team",
+    "titleEnd": "On Shift",
+    "summary": "Monitor the real-time status, safety score, and alerts of {{total}} drivers · {{driving}} driving · {{idle}} idle · {{disabled}} disabled.",
+    "addDriver": "Add driver"
+  },
+  "statsBar": {
+    "driving": "Driving",
+    "idle": "Idle",
+    "disable": "Disable",
+    "eyesClosed": "Eyes closed"
+  },
+  "filters": {
+    "searchPlaceholder": "Search by name or driver code...",
+    "eyeLabel": "Eyes:",
+    "statusLabel": "Status:",
+    "all": "All",
+    "options": {
+      "eye": {
+        "all": "All",
+        "open": "Open",
+        "yawning": "Yawning",
+        "closed": "Closed"
+      },
+      "status": {
+        "all": "All",
+        "driving": "Driving",
+        "idle": "Idle",
+        "disable": "Disable"
+      }
+    }
+  },
+  "table": {
+    "columns": {
+      "driver": "Driver",
+      "vehiclePlate": "Vehicle plate",
+      "status": "Status",
+      "alerts": "Alerts",
+      "contact": "Contact",
+      "actions": "Actions"
+    },
+    "empty": "No matching drivers found.",
+    "summary": "Showing {{shown}} / {{total}} drivers",
+    "clearFilters": "Clear filters"
+  },
+  "row": {
+    "licenseAndEmail": "License {{license}} | {{email}}",
+    "saving": "Saving",
+    "enable": "Enable",
+    "disable": "Disable",
+    "criticalCount": "{{count}} critical"
+  },
+  "dialog": {
+    "createTitle": "Create New Driver",
+    "manageTitle": "Manage Driver",
+    "createDescription": "Create a driver profile to assign shifts and monitor activity.",
+    "manageDescription": "Update driver profile information and operation status."
+  },
+  "form": {
+    "driverIdLabel": "Driver ID",
+    "identitySection": "Identity Information",
+    "contactSection": "Contact",
+    "statusSection": "Driver Status",
+    "availabilityLabel": "Availability",
+    "statusAvailable": "Available",
+    "statusLocked": "Locked",
+    "onTripNote": "This driver is currently on a trip and cannot be locked until the trip is finished.",
+    "fields": {
+      "fullName": "Full Name",
+      "licenseNumber": "Driver License Number",
+      "phoneNumber": "Phone Number",
+      "loginEmail": "Login Email",
+      "initialPassword": "Initial Password"
+    },
+    "passwordHint": "At least {{min}} characters."
+  },
+  "footer": {
+    "cancel": "Cancel",
+    "createDriver": "Create driver",
+    "saveChanges": "Save changes"
+  },
+  "activity": {
+    "sectionTitle": "Recent activity",
+    "stats": {
+      "trips": "Trips",
+      "avgScore": "Avg score",
+      "alerts": "Alerts",
+      "critical": "Critical"
+    },
+    "tripsAndScores": "Trips & Scores",
+    "newAlerts": "New alerts",
+    "noTrips": "The driver has no trips yet.",
+    "noAlertsWithTrips": "There are no alerts for this driver's trips yet.",
+    "noAlertsNoTrips": "There are no alerts because the driver has no linked trips.",
+    "acknowledged": "Acknowledged",
+    "scoreWithGrade": "{{score}} {{grade}}",
+    "scoreOnly": "{{score}}",
+    "alertsTotal": "{{count}} alerts",
+    "alertsTotalWithCritical": "{{count}} alerts · {{critical}} crit",
+    "alertsZero": "0 alerts",
+    "fallback": {
+      "unknownDriver": "Unknown driver",
+      "noScore": "-"
+    }
+  },
+  "fallback": {
+    "unknownDriver": "Unknown driver",
+    "noScore": "-"
+  }
+}

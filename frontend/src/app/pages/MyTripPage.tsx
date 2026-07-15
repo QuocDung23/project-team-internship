@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   bulkIngestSafetyEvents,
   completeTrip,
@@ -25,6 +26,7 @@ import TripHistoryDialog from "../component/myTrips/TripHistoryDialog";
 import useDrowsinessAudio from "../hook/useDrowsinessAudio";
 
 export default function MyTripPage() {
+  const { t } = useTranslation(["trips", "common"]);
   const [trips, setTrips] = useState<BackendTrip[]>([]);
   const [tripForm, setTripForm] = useState<StartMyTripPayload>(EMPTY_TRIP_FORM);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -68,6 +70,36 @@ export default function MyTripPage() {
     activeTrip?.trip_id ?? null,
   );
 
+  const handleRefreshError = useCallback(
+    (err: unknown) => {
+      setError(err instanceof Error ? err.message : t("trips:pages.myTrip.errors.loadTrips"));
+    },
+    [t],
+  );
+
+  const handleStartMonitoringError = useCallback(
+    (err: unknown) => {
+      setError(
+        err instanceof Error ? err.message : t("trips:pages.myTrip.errors.camera"),
+      );
+    },
+    [t],
+  );
+
+  const handleStartTripError = useCallback(
+    (err: unknown) => {
+      setError(err instanceof Error ? err.message : t("trips:pages.myTrip.errors.startTrip"));
+    },
+    [t],
+  );
+
+  const handleEndTripError = useCallback(
+    (err: unknown) => {
+      setError(err instanceof Error ? err.message : t("trips:pages.myTrip.errors.endTrip"));
+    },
+    [t],
+  );
+
   const refresh = useCallback(async () => {
     setError("");
     const nextTrips = await fetchMyTrips();
@@ -76,12 +108,10 @@ export default function MyTripPage() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void refresh().catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load trips"),
-      );
+      void refresh().catch(handleRefreshError);
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [refresh]);
+  }, [refresh, handleRefreshError]);
 
   const startMonitoring = useCallback(
     async (tripId: string) => {
@@ -91,14 +121,10 @@ export default function MyTripPage() {
         await cnnStart(tripId);
         monitoringStartedTripIdRef.current = tripId;
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to start camera monitoring",
-        );
+        handleStartMonitoringError(err);
       }
     },
-    [cnnStart],
+    [cnnStart, handleStartMonitoringError],
   );
 
   useEffect(() => {
@@ -136,10 +162,11 @@ export default function MyTripPage() {
 
   async function handleStartTrip() {
     const warnings = tripFormWarnings(tripForm);
-    if (warnings.some((warning) => warning.blocking)) {
+    const blockingWarning = warnings.find((warning) => warning.blocking);
+    if (blockingWarning) {
       setError(
-        warnings.find((warning) => warning.blocking)?.message ??
-          "Trip details are invalid",
+        t(blockingWarning.key, blockingWarning.params) ??
+          t("trips:form.invalid"),
       );
       return;
     }
@@ -151,7 +178,7 @@ export default function MyTripPage() {
       setDialogOpen(true);
       if (!result.resumed) await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start trip");
+      handleStartTripError(err);
     } finally {
       setIsBusy(false);
     }
@@ -174,12 +201,24 @@ export default function MyTripPage() {
       setDialogOpen(false);
       setTripForm(EMPTY_TRIP_FORM);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to end trip");
+      handleEndTripError(err);
     } finally {
       setIsBusy(false);
     }
   }
 
+  const historyEyebrow = t("trips:pages.myTrip.history.eyebrow");
+  const historyTitle = t("trips:pages.myTrip.history.title");
+  const historySubtitle = t("trips:pages.myTrip.history.subtitle");
+  const historyTotalLabel = t("trips:pages.myTrip.history.totalCount", { count: trips.length });
+  const historyColumns = {
+    tripId: t("trips:pages.myTrip.history.columns.tripId"),
+    route: t("trips:pages.myTrip.history.columns.route"),
+    startTime: t("trips:pages.myTrip.history.columns.startTime"),
+    endTime: t("trips:pages.myTrip.history.columns.endTime"),
+    safetyScore: t("trips:pages.myTrip.history.columns.safetyScore"),
+  };
+  const historyEmpty = t("trips:pages.myTrip.history.empty");
   return (
     <div className="flex flex-1 flex-col gap-5 p-4 md:gap-6 md:p-6">
       <TripHeroHeader
@@ -206,23 +245,23 @@ export default function MyTripPage() {
             <div>
               <div className="eyebrow-chip mb-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent-active" />
-                <span>History</span>
+                <span>{historyEyebrow}</span>
               </div>
-              <h2 className="section-headline">Trip history</h2>
+              <h2 className="section-headline">{historyTitle}</h2>
               <p className="section-subline">
-                Select a trip to review details and persisted alerts.
+                {historySubtitle}
               </p>
             </div>
             <span className="rounded-full border border-hairline bg-subtle-bg px-2.5 py-1 font-mono-num text-[11px] font-medium text-text-secondary tabular-nums">
-              {trips.length} total
+              {historyTotalLabel}
             </span>
           </div>
           <div className="grid grid-cols-[1.1fr_1.4fr_1fr_1fr_0.85fr_auto] gap-4 border-b border-hairline bg-subtle-bg px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
-            <span>Trip ID</span>
-            <span>Route</span>
-            <span>Start time</span>
-            <span>End time</span>
-            <span>Safety score</span>
+            <span>{historyColumns.tripId}</span>
+            <span>{historyColumns.route}</span>
+            <span>{historyColumns.startTime}</span>
+            <span>{historyColumns.endTime}</span>
+            <span>{historyColumns.safetyScore}</span>
             <span aria-hidden className="w-7" />
           </div>
           <div className="max-h-[520px] overflow-y-auto">
@@ -236,7 +275,7 @@ export default function MyTripPage() {
               ))
             ) : (
               <div className="px-4 py-14 text-center text-sm text-text-tertiary">
-                No trips yet.
+                {historyEmpty}
               </div>
             )}
           </div>
@@ -272,7 +311,13 @@ export default function MyTripPage() {
       {selectedHistoryTrip ? (
         <TripHistoryDialog
           alerts={historyAlerts.monitorAlerts ?? []}
-          alertsError={historyAlerts.error}
+          alertsError={
+            historyAlerts.error instanceof Error
+              ? historyAlerts.error.message
+              : historyAlerts.error
+                ? String(historyAlerts.error)
+                : null
+          }
           driverName={
             myDriver.row?.full_name ??
             selectedHistoryTrip.driver_name ??

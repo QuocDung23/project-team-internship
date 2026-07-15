@@ -1,12 +1,12 @@
-import { Warning } from "@phosphor-icons/react";
+import { AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { StatusBadge } from "../monitoring/StatusBadge";
 import type { Driver } from "../../types";
-import DriverConstants from "../../constants/drivers";
+import DriverConstants, {
+  DRIVER_STATUS_LABEL_KEY,
+} from "../../constants/drivers";
 
-const {
-  STATUS_LABEL,
-  STATUS_TONE,
-} = DriverConstants;
+const { STATUS_TONE } = DriverConstants;
 
 interface DriverRowProps {
   driver: Driver;
@@ -32,7 +32,9 @@ function DriverRow({
   onSelect,
   onSetAvailability,
 }: DriverRowProps) {
-  const canToggleAvailability = Boolean(onSetAvailability) && driver.status !== "driving";
+  const { t } = useTranslation("drivers");
+  const canToggleAvailability =
+    Boolean(onSetAvailability) && driver.status !== "driving";
   return (
     <tr
       tabIndex={onSelect ? 0 : undefined}
@@ -52,6 +54,7 @@ function DriverRow({
         <div className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[14px] font-semibold ${avatarTone(driver.status)}`}
+            aria-hidden
           >
             {driver.name.charAt(0)}
           </div>
@@ -65,7 +68,10 @@ function DriverRow({
               </span>
             </div>
             <p className="mt-1 truncate text-[11px] text-text-tertiary">
-              License {driver.licenseNumber} | {driver.email}
+              {t("row.licenseAndEmail", {
+                license: driver.licenseNumber,
+                email: driver.email,
+              })}
             </p>
           </div>
         </div>
@@ -78,7 +84,7 @@ function DriverRow({
       <td className="py-4 pr-4 align-middle">
         <StatusBadge
           tone={STATUS_TONE[driver.status]}
-          label={STATUS_LABEL[driver.status]}
+          label={t(DRIVER_STATUS_LABEL_KEY[driver.status])}
         />
       </td>
       <td className="py-4 pr-4 align-middle">
@@ -90,12 +96,12 @@ function DriverRow({
                 : "bg-surface-2 text-text-secondary ring-1 ring-hairline"
             }`}
           >
-            <Warning size={13} />
+            <AlertTriangle size={13} />
             {driver.totalAlerts}
           </span>
           {driver.criticalAlerts > 0 ? (
             <span className="rounded-md bg-accent-critical/10 px-2 py-1 font-mono-num text-[11px] font-semibold text-accent-critical ring-1 ring-accent-critical/20">
-              {driver.criticalAlerts} critical
+              {t("row.criticalCount", { count: driver.criticalAlerts })}
             </span>
           ) : null}
         </div>
@@ -115,9 +121,18 @@ function DriverRow({
               event.stopPropagation();
               onSetAvailability(driver, driver.status === "disable");
             }}
+            aria-label={
+              driver.status === "disable"
+                ? t("row.enable")
+                : t("row.disable")
+            }
             className="rounded-md border border-hairline px-3 py-1.5 text-[11px] font-semibold text-text-secondary transition hover:bg-subtle-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {isUpdating ? "Saving" : driver.status === "disable" ? "Enable" : "Disable"}
+            {isUpdating
+              ? t("row.saving")
+              : driver.status === "disable"
+                ? t("row.enable")
+                : t("row.disable")}
           </button>
         ) : null}
       </td>

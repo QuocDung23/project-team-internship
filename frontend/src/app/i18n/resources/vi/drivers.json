@@ -1,0 +1,135 @@
+{
+  "header": {
+    "title": "Tài xế",
+    "subtitle": "Quản lý tài xế trong đội xe, theo dõi trạng thái và xem hoạt động trực tiếp.",
+    "subline": "{{total}} tài xế · {{driving}} đang lái · {{idle}} đang rảnh · {{disabled}} đã vô hiệu hóa"
+  },
+  "errors": {
+    "driversUnavailable": "Không thể tải danh sách tài xế",
+    "tripsUnavailable": "Không thể tải chuyến đi",
+    "alertsUnavailable": "Không thể tải cảnh báo",
+    "driverAlertsUnavailable": "Không thể tải cảnh báo của tài xế",
+    "validation": {
+      "nameAndLicenseRequired": "Họ tên và số giấy phép là bắt buộc.",
+      "emailRequiredForCreate": "Email là bắt buộc để tài xế có thể đăng nhập.",
+      "passwordMinimum": "Mật khẩu phải có ít nhất {{min}} ký tự.",
+      "saveFailed": "Không thể lưu tài xế"
+    }
+  },
+  "headerStats": {
+    "driving": "Đang lái",
+    "idle": "Đang rảnh",
+    "disabled": "Đã vô hiệu hóa"
+  },
+  "hero": {
+    "eyebrow": "Đội ngũ tài xế",
+    "titleStart": "Đội ngũ",
+    "titleAccent": "tài xế",
+    "titleEnd": "đang trực ca",
+    "summary": "Theo dõi trạng thái thời gian thực, điểm an toàn và cảnh báo của {{total}} tài xế · {{driving}} đang lái · {{idle}} đang rảnh · {{disabled}} đã vô hiệu hóa.",
+    "addDriver": "Thêm tài xế"
+  },
+  "statsBar": {
+    "driving": "Đang lái",
+    "idle": "Đang rảnh",
+    "disable": "Đã vô hiệu hóa",
+    "eyesClosed": "Nhắm mắt"
+  },
+  "filters": {
+    "searchPlaceholder": "Tìm theo tên hoặc mã tài xế...",
+    "eyeLabel": "Mắt:",
+    "statusLabel": "Trạng thái:",
+    "all": "Tất cả",
+    "options": {
+      "eye": {
+        "all": "Tất cả",
+        "open": "Mở",
+        "yawning": "Ngáp",
+        "closed": "Nhắm"
+      },
+      "status": {
+        "all": "Tất cả",
+        "driving": "Đang lái",
+        "idle": "Đang rảnh",
+        "disable": "Đã vô hiệu hóa"
+      }
+    }
+  },
+  "table": {
+    "columns": {
+      "driver": "Tài xế",
+      "vehiclePlate": "Biển số xe",
+      "status": "Trạng thái",
+      "alerts": "Cảnh báo",
+      "contact": "Liên hệ",
+      "actions": "Hành động"
+    },
+    "empty": "Không tìm thấy tài xế phù hợp.",
+    "summary": "Đang hiển thị {{shown}} / {{total}} tài xế",
+    "clearFilters": "Xóa bộ lọc"
+  },
+  "row": {
+    "licenseAndEmail": "GPLX {{license}} | {{email}}",
+    "saving": "Đang lưu",
+    "enable": "Bật",
+    "disable": "Vô hiệu",
+    "criticalCount": "{{count}} nghiêm trọng"
+  },
+  "dialog": {
+    "createTitle": "Tạo tài xế mới",
+    "manageTitle": "Quản lý tài xế",
+    "createDescription": "Tạo hồ sơ tài xế để phân công ca trực và theo dõi hoạt động.",
+    "manageDescription": "Cập nhật thông tin hồ sơ và trạng thái vận hành của tài xế."
+  },
+  "form": {
+    "driverIdLabel": "Mã tài xế",
+    "identitySection": "Thông tin định danh",
+    "contactSection": "Liên hệ",
+    "statusSection": "Trạng thái tài xế",
+    "availabilityLabel": "Tình trạng",
+    "statusAvailable": "Sẵn sàng",
+    "statusLocked": "Đã khóa",
+    "onTripNote": "Tài xế đang thực hiện chuyến đi và không thể bị khóa cho đến khi kết thúc.",
+    "fields": {
+      "fullName": "Họ và tên",
+      "licenseNumber": "Số giấy phép lái xe",
+      "phoneNumber": "Số điện thoại",
+      "loginEmail": "Email đăng nhập",
+      "initialPassword": "Mật khẩu ban đầu"
+    },
+    "passwordHint": "Ít nhất {{min}} ký tự."
+  },
+  "footer": {
+    "cancel": "Hủy",
+    "createDriver": "Tạo tài xế",
+    "saveChanges": "Lưu thay đổi"
+  },
+  "activity": {
+    "sectionTitle": "Hoạt động gần đây",
+    "stats": {
+      "trips": "Chuyến đi",
+      "avgScore": "Điểm TB",
+      "alerts": "Cảnh báo",
+      "critical": "Nghiêm trọng"
+    },
+    "tripsAndScores": "Chuyến đi & Điểm số",
+    "newAlerts": "Cảnh báo mới",
+    "noTrips": "Tài xế chưa có chuyến đi nào.",
+    "noAlertsWithTrips": "Chưa có cảnh báo nào cho các chuyến đi của tài xế này.",
+    "noAlertsNoTrips": "Chưa có cảnh báo vì tài xế chưa có chuyến đi được liên kết.",
+    "acknowledged": "Đã xác nhận",
+    "scoreWithGrade": "{{score}} {{grade}}",
+    "scoreOnly": "{{score}}",
+    "alertsTotal": "{{count}} cảnh báo",
+    "alertsTotalWithCritical": "{{count}} cảnh báo · {{critical}} nghiêm trọng",
+    "alertsZero": "0 cảnh báo",
+    "fallback": {
+      "unknownDriver": "Tài xế không xác định",
+      "noScore": "-"
+    }
+  },
+  "fallback": {
+    "unknownDriver": "Tài xế không xác định",
+    "noScore": "-"
+  }
+}

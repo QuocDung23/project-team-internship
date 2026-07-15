@@ -1,0 +1,135 @@
+{
+  "header": {
+    "eyebrow": "Admin Console",
+    "title": "Operations Command Center",
+    "description": "Live admin overview for the current demo environment.",
+    "lastRefreshed": "Last refreshed",
+    "backendLive": "Backend Live",
+    "partialData": "Partial Data"
+  },
+  "fleetHeader": {
+    "title": "Fleet Overview",
+    "description": "Active shifts across {{regions}} regions, continuously synced from central backend",
+    "live": "Live",
+    "connecting": "Connecting"
+  },
+  "kpi": {
+    "labels": {
+      "driving": "Driving",
+      "activeTrips": "Active Trips",
+      "openCritical": "Open Critical",
+      "totalAlerts": "Total Alerts"
+    },
+    "details": {
+      "drivingSummary": "{{idle}} idle · {{disabled}} disabled",
+      "activeTripsCompleted": "{{count}} completed",
+      "openAlerts": "{{count}} open alerts",
+      "alertsAcknowledged": "{{count}} acknowledged"
+    },
+    "tones": {
+      "ok": "OK",
+      "warn": "Warn",
+      "risk": "Risk"
+    }
+  },
+  "kpiGrid": {
+    "labels": {
+      "driving": "Driving",
+      "idle": "Idle",
+      "alerts": "Alerts",
+      "avgScore": "Avg Score"
+    },
+    "hints": {
+      "drivingBreakdown": "{{idle}} idle · {{disabled}} disabled · {{total}} total",
+      "idleBreakdown": "{{driving}} driving · {{disabled}} disabled",
+      "criticalCount": "{{count}} critical",
+      "avgScoreDescription": "Average completed trip score"
+    }
+  },
+  "errors": {
+    "driversUnavailable": "Drivers unavailable",
+    "tripsUnavailable": "Trips unavailable",
+    "alertsUnavailable": "Alerts unavailable",
+    "activeTripsUnavailable": "Active trips are unavailable right now.",
+    "driverRankingUnavailable": "Driver ranking is unavailable right now.",
+    "todayAlertsUnavailable": "Today's alert distribution is unavailable right now.",
+    "weekTrendUnavailable": "The 7-day alert trend is unavailable right now.",
+    "panelFallbackNote": "The rest of the dashboard will continue using available data."
+  },
+  "loading": {
+    "activeTrips": "Loading active trips...",
+    "driverRanking": "Loading driver ranking...",
+    "todayAlerts": "Loading today's alerts...",
+    "weekTrend": "Loading alert trend...",
+    "waitingForBackend": "Waiting for backend data..."
+  },
+  "activeTrips": {
+    "title": "Active Trips",
+    "actionLabel": "Open Trips",
+    "emptyTitle": "No Active Trips",
+    "emptyDetail": "Ongoing trips will appear here with driver, vehicle, score, and alert context.",
+    "columns": {
+      "trip": "Trip",
+      "driver": "Driver",
+      "vehicle": "Vehicle",
+      "started": "Started",
+      "alerts": "Alerts",
+      "score": "Score"
+    },
+    "fallback": {
+      "noEmail": "No email",
+      "unassigned": "Unassigned",
+      "tripWithoutCode": "Trip without code"
+    },
+    "criticalShort": "crit",
+    "alertsCount": "{{count}} alerts",
+    "route": "{{origin}} to {{destination}}",
+    "routeUnavailable": "Route unavailable"
+  },
+  "driverRanking": {
+    "title": "Driver Ranking",
+    "actionLabel": "Manage Drivers",
+    "emptyTitle": "No Driver Alert History",
+    "emptyDetail": "Drivers will be ranked here after alert activity is reported.",
+    "rankPosition": "#{{position}}",
+    "licenseSeparator": "{{license}} - {{plate}}",
+    "alertSummary": "{{alerts}} alerts",
+    "criticalSummary": "{{count}} crit",
+    "avgScore": "Avg {{score}}",
+    "avgScoreWithCount": "Avg {{score}} ({{count}})",
+    "noScore": "No Score"
+  },
+  "todayDistribution": {
+    "title": "Today's Alert Distribution",
+    "actionLabel": "Review Alerts",
+    "emptyTitle": "No Alerts Today",
+    "emptyDetail": "Today's severity and acknowledgement mix will appear after alerts are reported.",
+    "rows": {
+      "criticalOpen": "Critical Open",
+      "criticalAcknowledged": "Critical Acknowledged",
+      "warningOpen": "Warning Open",
+      "warningAcknowledged": "Warning Acknowledged"
+    },
+    "percent": "({{value}}%)"
+  },
+  "weekTrend": {
+    "title": "Alerts in Last 7 Days",
+    "emptyTitle": "No Recent Alert Volume",
+    "emptyDetail": "Daily alert totals for the last 7 days will appear here."
+  },
+  "driverTable": {
+    "title": "Realtime Driver Status",
+    "columns": {
+      "id": "ID",
+      "driver": "Driver",
+      "plate": "Plate",
+      "team": "Team",
+      "ear": "EAR",
+      "status": "Status",
+      "alerts": "Alerts",
+      "updated": "Updated"
+    },
+    "empty": "No backend driver data available.",
+    "earValue": "{{value}}"
+  }
+}

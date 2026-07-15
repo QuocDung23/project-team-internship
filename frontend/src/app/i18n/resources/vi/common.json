@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "title": "Sentinel Fleet | Giám sát tài xế"
+  },
+  "brand": {
+    "name": "An toàn tài xế",
+    "sentinelFleet": "Sentinel Fleet"
+  },
+  "actions": {
+    "save": "Lưu",
+    "saving": "Đang lưu...",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "closeDialog": "Đóng hộp thoại",
+    "confirm": "Xác nhận",
+    "retry": "Thử lại",
+    "refresh": "Làm mới",
+    "clear": "Xóa",
+    "search": "Tìm kiếm",
+    "edit": "Chỉnh sửa",
+    "delete": "Xóa",
+    "enable": "Bật",
+    "disable": "Tắt",
+    "start": "Bắt đầu",
+    "stop": "Dừng",
+    "view": "Xem",
+    "back": "Quay lại",
+    "signOut": "Đăng xuất"
+  },
+  "status": {
+    "loading": "Đang tải...",
+    "saving": "Đang lưu...",
+    "live": "Trực tiếp",
+    "connecting": "Đang kết nối",
+    "connected": "Đã kết nối",
+    "disconnected": "Mất kết nối",
+    "available": "Khả dụng",
+    "unavailable": "Không khả dụng",
+    "active": "Đang hoạt động",
+    "inactive": "Không hoạt động",
+    "enabled": "Đã bật",
+    "disabled": "Đã tắt",
+    "open": "Chưa xác nhận",
+    "closed": "Đã đóng",
+    "acknowledged": "Đã xác nhận",
+    "unknown": "Không xác định",
+    "starting": "Đang khởi động",
+    "running": "Đang chạy",
+    "completed": "Đã hoàn thành",
+    "cancelled": "Đã hủy"
+  },
+  "driverStatus": {
+    "driving": "Đang lái",
+    "idle": "Đang rảnh",
+    "disable": "Đã vô hiệu hóa"
+  },
+  "tripStatus": {
+    "scheduled": "Đã lên lịch",
+    "in_progress": "Đang diễn ra",
+    "completed": "Đã hoàn thành",
+    "cancelled": "Đã hủy",
+    "aborted": "Đã dừng"
+  },
+  "alertSeverity": {
+    "critical": "Nghiêm trọng",
+    "warn": "Cảnh báo",
+    "warning": "Cảnh báo",
+    "info": "Thông tin"
+  },
+  "alertType": {
+    "drowsiness_alert": "Buồn ngủ",
+    "eyes_closed": "Nhắm mắt",
+    "yawning": "Ngáp",
+    "yawn": "Ngáp",
+    "distraction": "Mất tập trung",
+    "no_face": "Không phát hiện khuôn mặt",
+    "head_pose": "Tư thế đầu",
+    "audio_alert": "Cảnh báo âm thanh",
+    "unknown": "Cảnh báo an toàn"
+  },
+  "fallback": {
+    "notAvailable": "Không có dữ liệu",
+    "unknownDriver": "Tài xế không xác định",
+    "unassigned": "Chưa phân công",
+    "noLicense": "Không có giấy phép",
+    "noEmail": "Không có email",
+    "signedIn": "Đã đăng nhập",
+    "routeUnavailable": "Không có thông tin lộ trình",
+    "routeNotProvided": "Chưa cung cấp lộ trình",
+    "tripWithoutCode": "Chuyến đi chưa có mã",
+    "noDriverContext": "Không có thông tin tài xế"
+  },
+  "errors": {
+    "generic": "Đã xảy ra lỗi. Vui lòng thử lại.",
+    "backendUnavailable": "Máy chủ hiện không khả dụng. Vui lòng thử lại sau.",
+    "networkUnavailable": "Không thể kết nối máy chủ. Hãy kiểm tra kết nối và thử lại.",
+    "requestTimeout": "Yêu cầu mất quá nhiều thời gian. Vui lòng thử lại.",
+    "unauthorized": "Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.",
+    "notFound": "Không tìm thấy dữ liệu được yêu cầu.",
+    "conflict": "Thay đổi này xung đột với dữ liệu hiện có.",
+    "validation": "Một số thông tin chưa hợp lệ. Hãy kiểm tra và thử lại."
+  },
+  "root": {
+    "loadingSession": "Đang tải phiên đăng nhập...",
+    "pageNotFound": "Không tìm thấy trang."
+  },
+  "units": {
+    "secondsShort": "{{value}} giây",
+    "minutesShort": "{{value}} phút",
+    "hoursShort": "{{value}} giờ",
+    "kilometersShort": "{{value}} km",
+    "frames": "{{count}} khung hình",
+    "frames_other": "{{count}} khung hình"
+  },
+  "relativeTime": {
+    "justNow": "Vừa xong",
+    "secondsAgo": "{{count}}s trước",
+    "minutesAgo": "{{count}}m trước",
+    "hoursAgo": "{{count}}h trước"
+  },
+  "counts": {
+    "alerts_one": "{{count}} cảnh báo",
+    "alerts_other": "{{count}} cảnh báo",
+    "trips_one": "{{count}} chuyến đi",
+    "trips_other": "{{count}} chuyến đi",
+    "events_one": "{{count}} sự kiện",
+    "events_other": "{{count}} sự kiện"
+  }
+}

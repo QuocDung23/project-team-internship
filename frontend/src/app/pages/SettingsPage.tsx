@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AdminErrorBanner, AdminPage } from "../component/admin/AdminShell";
 import { useBackendSettings } from "../hook/useBackendData";
 import {
@@ -7,15 +8,20 @@ import {
 } from "../constants/settings/constants";
 import SettingsHeader from "../component/settings/SettingsHeader";
 import AppearanceSettings from "../component/settings/AppearanceSettings";
+import LanguageSettings from "../component/settings/LanguageSettings";
 import ReadOnlyThresholds from "../component/settings/ReadOnlyThresholds";
 import RuntimeControls from "../component/settings/RuntimeControls";
 import SafetyGrades from "../component/settings/SafetyGrades";
 
+type ValidationErrorKey = "errors.frameSize" | "errors.gradeCutoffs";
+
 export default function SettingsPage() {
+  const { t } = useTranslation(["settings", "common"]);
   const backendSettings = useBackendSettings();
   const [draft, setDraft] = useState(DEFAULT_SETTINGS);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationError, setValidationError] =
+    useState<ValidationErrorKey | null>(null);
 
   useEffect(() => {
     if (backendSettings.settings) {
@@ -64,7 +70,7 @@ export default function SettingsPage() {
       !Number.isInteger(height) ||
       height <= 0
     ) {
-      setValidationError("Frame width and height must be positive integers.");
+      setValidationError("errors.frameSize");
       return;
     }
 
@@ -75,9 +81,7 @@ export default function SettingsPage() {
       gradeB > 100 ||
       gradeA < gradeB
     ) {
-      setValidationError(
-        "Grade cutoffs must be between 0 and 100, with Grade A at least Grade B.",
-      );
+      setValidationError("errors.gradeCutoffs");
       return;
     }
 
@@ -103,8 +107,14 @@ export default function SettingsPage() {
       />
 
       <AdminErrorBanner
-        label="Settings unavailable"
-        message={backendSettings.error ?? validationError}
+        label={t("errors.unavailable")}
+        message={
+          validationError
+            ? t(validationError)
+            : backendSettings.error
+              ? t("common:errors.backendUnavailable")
+              : null
+        }
       />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.08fr_0.92fr]">
@@ -112,6 +122,7 @@ export default function SettingsPage() {
 
         <div className="grid content-start gap-6">
           <AppearanceSettings />
+          <LanguageSettings />
 
           <RuntimeControls
             soundCatalog={soundCatalog}

@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { MainLayout } from "./component/layout/MainLayout";
-import { ThemeColorProvider } from "./themeColor";
 import DashboardPage from "./pages/DashboardPage";
 import DriversPage from "./pages/DriversPage";
 import FleetPage from "./pages/FleetPage";
@@ -16,26 +16,25 @@ import UserSettingsPage from "./pages/UserSettingsPage";
 export function AppLayout(): ReactElement {
   return (
     <BrowserRouter>
-      <ThemeColorProvider>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/*" element={<ProtectedApp />} />
-          </Routes>
-        </AuthProvider>
-      </ThemeColorProvider>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/*" element={<ProtectedApp />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
 
 function ProtectedApp(): ReactElement {
+  const { t } = useTranslation("common");
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-canvas text-sm text-text-secondary">
-        Loading session...
+        {t("root.loadingSession")}
       </div>
     );
   }
@@ -78,7 +77,7 @@ function ProtectedApp(): ReactElement {
           element={
             <div className="flex flex-1 items-center justify-center p-6">
               <div className="panel px-6 py-8 text-center text-[12px] text-text-secondary">
-                Page not found.
+                {t("root.pageNotFound")}
               </div>
             </div>
           }

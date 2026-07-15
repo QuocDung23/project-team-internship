@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ShieldCheck,
   ArrowRight,
@@ -11,11 +12,12 @@ import { motion, useReducedMotion } from "motion/react";
 import { useAuth } from "../auth/AuthContext";
 
 export function LoginPage() {
+  const { t } = useTranslation("auth");
   const { user, login } = useAuth();
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -26,12 +28,12 @@ export function LoginPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
+    setError(false);
     setIsSubmitting(true);
     try {
       await login(email, password);
     } catch {
-      setError("Invalid email or password.");
+      setError(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -100,16 +102,16 @@ export function LoginPage() {
                 <span
                   className="rounded-full border border-white/8 bg-white/2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500"
                 >
-                  Console
+                  {t("login.badge")}
                 </span>
               </div>
 
               <div className="grid gap-1.5">
                 <h1 className="text-[22px] font-semibold leading-tight tracking-tight text-text-primary">
-                  Driver Safety Console
+                  {t("login.title")}
                 </h1>
                 <p className="max-w-[34ch] text-[13px] leading-relaxed text-text-secondary">
-                  Sign in with your fleet operator credentials to monitor trips, drivers, and live alerts.
+                  {t("login.description")}
                 </p>
               </div>
             </header>
@@ -118,7 +120,7 @@ export function LoginPage() {
               {/* Email field: nested input architecture with leading icon. */}
               <label className="grid gap-1.5">
                 <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
-                  Email
+                  {t("login.emailLabel")}
                 </span>
                 <span
                   className="field-surface group flex h-11 items-center gap-2 px-3 transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-white/[0.14]"
@@ -132,7 +134,7 @@ export function LoginPage() {
                     type="email"
                     autoComplete="email"
                     inputMode="email"
-                    placeholder="operator@fleet.co"
+                    placeholder={t("login.emailPlaceholder")}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
@@ -144,7 +146,7 @@ export function LoginPage() {
               {/* Password field: same nested input architecture. */}
               <label className="grid gap-1.5">
                 <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-tertiary">
-                  Password
+                  {t("login.passwordLabel")}
                 </span>
                 <span
                   className="field-surface group flex h-11 items-center gap-2 px-3 transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-white/[0.14]"
@@ -157,7 +159,7 @@ export function LoginPage() {
                   <input
                     type="password"
                     autoComplete="current-password"
-                    placeholder="Enter password"
+                    placeholder={t("login.passwordPlaceholder")}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
@@ -176,7 +178,7 @@ export function LoginPage() {
                     aria-hidden
                     className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400"
                   />
-                  {error}
+                  {t("login.invalidCredentials")}
                 </p>
               ) : null}
 
@@ -190,7 +192,7 @@ export function LoginPage() {
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin" strokeWidth={2} />
                   ) : null}
-                  {isSubmitting ? "Signing in" : "Sign in to console"}
+                  {isSubmitting ? t("login.submitting") : t("login.submit")}
                 </span>
                 {!isSubmitting ? (
                   <span
@@ -206,10 +208,10 @@ export function LoginPage() {
             {/* Footer: legal-style helper line, no marketing fluff, no version stamp. */}
             <footer className="mt-7 flex items-center justify-between border-t border-white/6 pt-5">
               <span className="font-mono-num text-[10.5px] uppercase tracking-[0.18em] text-text-tertiary">
-                Restricted access
+                {t("login.restrictedAccess")}
               </span>
               <span className="text-[11px] text-text-tertiary">
-                Need help? Contact your fleet admin.
+                {t("login.help")}
               </span>
             </footer>
           </div>

@@ -1,16 +1,32 @@
 import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { BackendTrip } from "../../services/backendApi";
-import { tripTitle, routeLabel, dateLabel } from "../../utils/trips/tripFormatters";
+import { useAppLocale } from "../../i18n/useAppLocale";
 import { SafetyScoreValue } from "../../utils/safetyScore";
+
+interface RelativeTimeLabels {
+  justNow: string;
+  secondsAgo: string;
+  minutesAgo: string;
+  hoursAgo: string;
+}
 
 export default function TripRow({
   trip,
   onSelect,
+  relativeTimeLabels: _relativeTimeLabels,
+  tripIdLabel: _tripIdLabel = "Trip ID",
 }: {
   trip: BackendTrip;
   onSelect: (tripId: string) => void;
+  relativeTimeLabels?: RelativeTimeLabels;
+  tripIdLabel?: string;
 }) {
+  const { t } = useTranslation(["trips", "common"]);
+  const { formatDateTime } = useAppLocale();
   const isActive = trip.status === "in_progress";
+  const routeFallback = t("common:fallback.routeNotProvided");
+  const codeFallback = t("common:fallback.tripWithoutCode");
   return (
     <button
       type="button"
@@ -19,7 +35,7 @@ export default function TripRow({
     >
       <span className="min-w-0">
         <span className="block truncate font-mono-num text-xs font-semibold text-text-primary">
-          {tripTitle(trip)}
+          {trip.code || codeFallback}
         </span>
         <span className="mt-1 inline-flex items-center gap-1.5">
           <span
@@ -34,16 +50,28 @@ export default function TripRow({
               isActive ? "text-accent-warn" : "text-text-tertiary"
             }`}
           >
-            {trip.status.replace("_", " ")}
+            {trip.status === "in_progress"
+              ? t("common:tripStatus.in_progress")
+              : trip.status === "completed"
+                ? t("common:tripStatus.completed")
+                : trip.status === "cancelled"
+                  ? t("common:tripStatus.cancelled")
+                  : trip.status === "aborted"
+                    ? t("common:tripStatus.aborted")
+                    : t("common:status.unknown")}
           </span>
         </span>
       </span>
-      <span className="truncate text-xs text-text-secondary">{routeLabel(trip)}</span>
-      <span className="truncate font-mono-num text-xs text-text-tertiary tabular-nums">
-        {dateLabel(trip.actual_start_at ?? trip.start_time)}
+      <span className="truncate text-xs text-text-secondary">
+        {trip.origin && trip.destination
+          ? `${trip.origin} → ${trip.destination}`
+          : trip.origin || trip.destination || routeFallback}
       </span>
       <span className="truncate font-mono-num text-xs text-text-tertiary tabular-nums">
-        {dateLabel(trip.actual_end_at ?? trip.end_time)}
+        {trip.actual_start_at ?? trip.start_time ? formatDateTime(trip.actual_start_at ?? trip.start_time as string) : "-"}
+      </span>
+      <span className="truncate font-mono-num text-xs text-text-tertiary tabular-nums">
+        {trip.actual_end_at ?? trip.end_time ? formatDateTime(trip.actual_end_at ?? trip.end_time as string) : "-"}
       </span>
       <span className="truncate text-xs font-semibold text-text-secondary">
         <SafetyScoreValue trip={trip} />

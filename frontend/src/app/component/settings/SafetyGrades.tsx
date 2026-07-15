@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import NumberField from "./NumberField";
 
 interface SafetyGradesProps {
@@ -15,6 +16,7 @@ export default function SafetyGrades({
   onGradeBChange,
 }: SafetyGradesProps) {
   const reduceMotion = useReducedMotion();
+  const { t } = useTranslation("settings");
 
   return (
     <motion.section
@@ -29,11 +31,11 @@ export default function SafetyGrades({
         transition={{ duration: 0.4, delay: 0.55 }}
       >
         <h3 className="mb-4 text-xs font-medium text-text-tertiary">
-          Score Thresholds
+          {t("grades.title")}
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <NumberField
-            label="Grade A Minimum"
+            label={t("grades.gradeA")}
             value={gradeAMin}
             step="1"
             min={0}
@@ -41,7 +43,7 @@ export default function SafetyGrades({
             onChange={onGradeAChange}
           />
           <NumberField
-            label="Grade B Minimum"
+            label={t("grades.gradeB")}
             value={gradeBMin}
             step="1"
             min={0}

@@ -35,9 +35,25 @@ export interface MonitoringAlert {
   id: string;
   ts: number;
   severity: "warn" | "critical";
-  title: string;
+  titleKey: MonitoringEventKey;
   detail: string;
 }
+
+export type MonitoringEventKey =
+  | "monitoring.eventTitle.drowsiness"
+  | "monitoring.eventTitle.yawning"
+  | "monitoring.eventTitle.headNodding";
+
+export const EVENT_TITLE_TRANSLATION_KEYS = {
+  drowsiness_detected: "monitoring.eventTitle.drowsiness",
+  yawning_detected: "monitoring.eventTitle.yawning",
+  head_nodding_detected: "monitoring.eventTitle.headNodding",
+} as const satisfies Record<ClientSafetyEvent["event_type"], MonitoringEventKey>;
+
+export const MONITORING_SEVERITY_TRANSLATION_KEYS = {
+  warn: "monitoring.severity.warn",
+  critical: "monitoring.severity.critical",
+} as const satisfies Record<MonitoringAlert["severity"], string>;
 
 export type MonitoringSeries = Record<MetricKind, MetricSeries>;
 
@@ -73,14 +89,25 @@ export function overall(s: DriverSnapshot): MetricStatus {
   return "active";
 }
 
-export function statusWord(s: MetricStatus): string {
+export type MonitoringStatusKey =
+  | "monitoring.status.active"
+  | "monitoring.status.warn"
+  | "monitoring.status.critical";
+
+export const MONITORING_STATUS_KEYS: Record<MetricStatus, MonitoringStatusKey> = {
+  active: "monitoring.status.active",
+  warn: "monitoring.status.warn",
+  critical: "monitoring.status.critical",
+} as const;
+
+export function statusWord(s: MetricStatus): MonitoringStatusKey {
   switch (s) {
     case "active":
-      return "Binh thuong";
+      return "monitoring.status.active";
     case "warn":
-      return "Can chu y";
+      return "monitoring.status.warn";
     case "critical":
-      return "Nguy hiem";
+      return "monitoring.status.critical";
   }
 }
 
@@ -90,10 +117,10 @@ export function dwsStatusFn(score: number): MetricStatus {
   return "active";
 }
 
-export function dwsLabelFn(score: number): string {
-  if (score >= 70) return "Nguy hiem";
-  if (score >= 30) return "Can chu y";
-  return "Binh thuong";
+export function dwsLabelFn(score: number): MonitoringStatusKey {
+  if (score >= 70) return "monitoring.status.critical";
+  if (score >= 30) return "monitoring.status.warn";
+  return "monitoring.status.active";
 }
 
 export interface ClientSafetyEvent {

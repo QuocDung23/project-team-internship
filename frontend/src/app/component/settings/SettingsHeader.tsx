@@ -1,5 +1,7 @@
 import { Loader2, Save } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
+import { useAppLocale } from "../../i18n/useAppLocale";
 
 interface SettingsHeaderProps {
   isDirty: boolean;
@@ -17,11 +19,13 @@ export default function SettingsHeader({
   onSave,
 }: SettingsHeaderProps) {
   const reduceMotion = useReducedMotion();
+  const { t } = useTranslation("settings");
+  const { formatTime } = useAppLocale();
 
   const getStatusText = () => {
-    if (isDirty) return "Unsaved changes";
-    if (lastSavedAt) return `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`;
-    return "No changes";
+    if (isDirty) return t("header.unsaved");
+    if (lastSavedAt) return t("header.savedAt", { time: formatTime(lastSavedAt) });
+    return t("header.noChanges");
   };
 
   const getStatusColor = () => {
@@ -38,19 +42,19 @@ export default function SettingsHeader({
     >
       <div className="mb-2">
         <span className="text-[11px] font-medium uppercase tracking-[0.15em] text-text-tertiary">
-          System Settings
+          {t("header.eyebrow")}
         </span>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
-            Detection Settings
+            {t("header.title")}
           </h1>
           <p className="mt-1 text-sm text-text-tertiary">
             {isLive
-              ? "Supported runtime settings are loaded from the backend"
-              : "Backend is unavailable, showing defaults"}
+              ? t("header.liveDescription")
+              : t("header.offlineDescription")}
           </p>
         </div>
 
@@ -83,7 +87,7 @@ export default function SettingsHeader({
             ) : (
               <Save size={14} strokeWidth={2.4} />
             )}
-            <span>Save Changes</span>
+            <span>{isSaving ? t("header.saving") : t("header.save")}</span>
           </motion.button>
         </motion.div>
       </div>

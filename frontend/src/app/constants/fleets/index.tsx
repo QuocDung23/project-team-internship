@@ -10,22 +10,27 @@ import type { VehicleSnapshot } from "../../types/fleets";
 import type { KpiTone } from "../../types/dashboards";
 
 interface VehicleStatusConfig {
-  label: string;
+  labelKey:
+    | "trips:vehicle.status.waiting"
+    | "trips:vehicle.status.loading"
+    | "trips:vehicle.status.in_transit"
+    | "trips:vehicle.status.idle"
+    | "trips:vehicle.status.maintenance";
   tone: KpiTone;
   icon: ReactNode;
 }
 
-const STATUS_CONFIG: Record<VehicleSnapshot["status"], VehicleStatusConfig> = {
-  waiting: { label: "Đang đợi", tone: "warn", icon: <Timer size={12} /> },
+export const STATUS_CONFIG: Record<VehicleSnapshot["status"], VehicleStatusConfig> = {
+  waiting: { labelKey: "trips:vehicle.status.waiting", tone: "warn", icon: <Timer size={12} /> },
   loading: {
-    label: "Đang xếp hàng",
+    labelKey: "trips:vehicle.status.loading",
     tone: "active",
     icon: <SpinnerGap size={12} className="animate-spin" />,
   },
-  in_transit: { label: "Đang chạy", tone: "active", icon: <Truck size={12} /> },
-  idle: { label: "Idle", tone: "neutral", icon: <StopCircle size={12} /> },
+  in_transit: { labelKey: "trips:vehicle.status.in_transit", tone: "active", icon: <Truck size={12} /> },
+  idle: { labelKey: "trips:vehicle.status.idle", tone: "neutral", icon: <StopCircle size={12} /> },
   maintenance: {
-    label: "Bảo dưỡng",
+    labelKey: "trips:vehicle.status.maintenance",
     tone: "critical",
     icon: <Wrench size={12} />,
   },

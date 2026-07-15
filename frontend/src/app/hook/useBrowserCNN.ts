@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type * as TF from "@tensorflow/tfjs";
 import {
@@ -98,6 +99,7 @@ export interface BrowserCNNReturn {
 }
 
 export function useBrowserCNN(): BrowserCNNReturn {
+  const { t } = useTranslation("trips");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [metrics, setMetrics] = useState<DriverSnapshot | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -164,7 +166,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
       } catch (err) {
         console.error("[useBrowserCNN] Camera access denied:", err);
-        throw new Error("Camera access denied. Please allow camera access to run live detection.", {
+        throw new Error(t("monitoring.errors.cameraDeniedMessage"), {
           cause: err,
         });
       }
@@ -383,7 +385,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
 
       animFrameRef.current = requestAnimationFrame(loop);
     },
-    [pushEvent, stop],
+    [pushEvent, stop, t],
   );
 
   return { videoRef, metrics, isRunning, eventCount, events, start, stop };

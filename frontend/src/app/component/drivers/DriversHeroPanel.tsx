@@ -1,8 +1,19 @@
 import { Plus, ArrowRight, Gauge, ShieldCheck, Activity } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import DriverStatTile from "./DriverStatTile";
 import { SPRING } from "../../utils/drivers/driverFormHelpers";
+
+type HeroStatTileKey = "headerStats.driving" | "headerStats.idle" | "headerStats.disabled";
+
+interface HeroTileDescriptor {
+  icon: ReactNode;
+  labelKey: HeroStatTileKey;
+  value: number;
+  tone: "emerald" | "zinc" | "rose" | "amber";
+  delay: number;
+}
 
 export default function DriversHeroPanel({
   total,
@@ -17,30 +28,26 @@ export default function DriversHeroPanel({
   disable: number;
   onAdd: () => void;
 }) {
-  const tiles: ReadonlyArray<{
-    icon: ReactNode;
-    label: string;
-    value: number;
-    tone: "emerald" | "zinc" | "rose" | "amber";
-    delay: number;
-  }> = [
+  const { t } = useTranslation("drivers");
+
+  const tiles: ReadonlyArray<HeroTileDescriptor> = [
     {
       icon: <Activity size={14} strokeWidth={2} />,
-      label: "Driving",
+      labelKey: "headerStats.driving",
       value: driving,
       tone: "emerald",
       delay: 0.1,
     },
     {
       icon: <Gauge size={14} strokeWidth={2} />,
-      label: "Idle",
+      labelKey: "headerStats.idle",
       value: idle,
       tone: "zinc",
       delay: 0.15,
     },
     {
       icon: <ShieldCheck size={14} strokeWidth={2} />,
-      label: "Disabled",
+      labelKey: "headerStats.disabled",
       value: disable,
       tone: "rose",
       delay: 0.2,
@@ -85,45 +92,34 @@ export default function DriversHeroPanel({
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent-active" />
               </span>
               <span className="font-mono-num text-[10px] font-medium uppercase tracking-[0.18em] text-text-secondary">
-                Driver Roster
+                {t("hero.eyebrow")}
               </span>
             </div>
 
             <h1 className="text-[clamp(1.75rem,2.4vw,2.25rem)] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary">
-              Driver{" "}
+              {t("hero.titleStart")}{" "}
               <span className="bg-linear-to-r from-accent-active via-accent-active to-teal-400 bg-clip-text text-transparent">
-                Team
+                {t("hero.titleAccent")}
               </span>{" "}
-              On Shift
+              {t("hero.titleEnd")}
             </h1>
 
             <p className="mt-2.5 max-w-[58ch] text-[13px] leading-relaxed text-text-secondary">
-              Monitor the real-time status, safety score, and alerts of{" "}
-              <span className="font-mono-num font-semibold text-text-primary">
-                {total}
-              </span>{" "}
-              drivers ·{" "}
-              <span className="font-mono-num font-semibold text-accent-active">
-                {driving}
-              </span>{" "}
-              driving ·{" "}
-              <span className="font-mono-num font-semibold text-text-primary">
-                {idle}
-              </span>{" "}
-              idle ·{" "}
-              <span className="font-mono-num font-semibold text-accent-critical">
-                {disable}
-              </span>{" "}
-              disabled.
+              {t("hero.summary", {
+                total,
+                driving,
+                idle,
+                disabled: disable,
+              })}
             </p>
           </div>
 
           <div className="grid w-full grid-cols-3 gap-2 lg:w-auto lg:min-w-[360px]">
             {tiles.map((tile) => (
               <DriverStatTile
-                key={tile.label}
+                key={tile.labelKey}
                 icon={tile.icon}
-                label={tile.label}
+                label={t(tile.labelKey)}
                 value={tile.value}
                 tone={tile.tone}
                 delay={tile.delay}
@@ -137,6 +133,7 @@ export default function DriversHeroPanel({
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.97 }}
             transition={SPRING}
+            aria-label={t("hero.addDriver")}
             className="group relative inline-flex shrink-0 items-center gap-1 rounded-full border border-accent-active/30 bg-subtle-bg p-[1.5px] backdrop-blur-md transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-accent-active/50 hover:bg-accent-active/6"
           >
             <span
@@ -149,7 +146,7 @@ export default function DriversHeroPanel({
               }}
             >
               <Plus size={14} strokeWidth={2.5} className="text-accent-active" />
-              <span>Add driver</span>
+              <span>{t("hero.addDriver")}</span>
               <span
                 aria-hidden
                 className="ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/30 text-accent-active ring-1 ring-white/8 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5"

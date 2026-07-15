@@ -1,12 +1,14 @@
 "use client";
 import { motion } from "motion/react";
 import { Filter } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
-  ALERT_TYPE_LABELS,
   SEVERITY_FILTER_OPTIONS,
+  SEVERITY_LABEL_KEYS,
+  TYPE_FILTER_OPTIONS,
+  ALERT_TYPE_LABEL_KEYS,
 } from "../../constants/alerts";
 import type {
-  FleetEventType,
   SeverityFilter,
   TypeFilter,
 } from "../../types/alerts";
@@ -21,29 +23,28 @@ interface AlertFiltersProps {
 }
 
 const SEVERITY_CONFIG: Record<SeverityFilter, { active: string; inactive: string }> = {
-  all: { 
-    active: "bg-subtle-bg text-text-primary ring-hairline", 
-    inactive: "text-text-tertiary hover:text-text-secondary hover:bg-subtle-bg-hover" 
+  all: {
+    active: "bg-subtle-bg text-text-primary ring-hairline",
+    inactive: "text-text-tertiary hover:text-text-secondary hover:bg-subtle-bg-hover",
   },
-  critical: { 
-    active: "bg-gradient-to-r from-accent-critical/20 to-accent-critical/10 text-accent-critical ring-accent-critical/30", 
-    inactive: "text-text-tertiary hover:text-accent-critical hover:bg-accent-critical/10" 
+  critical: {
+    active: "bg-gradient-to-r from-accent-critical/20 to-accent-critical/10 text-accent-critical ring-accent-critical/30",
+    inactive: "text-text-tertiary hover:text-accent-critical hover:bg-accent-critical/10",
   },
-  warn: { 
-    active: "bg-gradient-to-r from-accent-warn/20 to-accent-warn/10 text-accent-warn ring-accent-warn/30", 
-    inactive: "text-text-tertiary hover:text-accent-warn hover:bg-accent-warn/10" 
+  warn: {
+    active: "bg-gradient-to-r from-accent-warn/20 to-accent-warn/10 text-accent-warn ring-accent-warn/30",
+    inactive: "text-text-tertiary hover:text-accent-warn hover:bg-accent-warn/10",
   },
 };
 
-const TYPE_OPTIONS: ReadonlyArray<TypeFilter> = [
-  "all",
-  "drowsiness_alert",
-  "yawn_alert",
-  "distraction_alert",
-  "speed_alert",
-  "collision_warning",
-  "lane_departure",
-];
+type DynamicTranslator = (
+  key: string,
+  values?: Record<string, string | number>,
+) => string;
+
+function joinKey(parts: readonly string[]): string {
+  return parts.join(".");
+}
 
 export default function AlertFilters({
   severityFilter,
@@ -53,6 +54,8 @@ export default function AlertFilters({
   onTypeChange,
   onToggleAcknowledged,
 }: AlertFiltersProps) {
+  const { t } = useTranslation("alerts");
+  const translate: DynamicTranslator = t as unknown as DynamicTranslator;
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -66,14 +69,20 @@ export default function AlertFilters({
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-subtle-bg ring-1 ring-hairline">
               <Filter size={13} className="text-text-tertiary" />
             </div>
-            <span className="text-xs font-medium text-text-tertiary">Filters</span>
+            <span className="text-xs font-medium text-text-tertiary">{t("filters.label")}</span>
           </div>
-          
-          <div className="flex items-center gap-1.5">
+
+          <div
+            className="flex items-center gap-1.5"
+            role="radiogroup"
+            aria-label={t("aria.filterSeverity")}
+          >
             {SEVERITY_FILTER_OPTIONS.map((opt, index) => (
               <motion.button
                 key={opt.value}
                 type="button"
+                role="radio"
+                aria-checked={severityFilter === opt.value}
                 onClick={() => onSeverityChange(opt.value)}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -86,16 +95,17 @@ export default function AlertFilters({
                     : SEVERITY_CONFIG[opt.value].inactive
                 }`}
               >
-                {opt.label}
+                {translate(joinKey(SEVERITY_LABEL_KEYS[opt.value]))}
               </motion.button>
             ))}
           </div>
-          
+
           <div className="h-4 w-px bg-hairline" />
-          
+
           <select
             value={typeFilter}
             onChange={(e) => onTypeChange(e.target.value as TypeFilter)}
+            aria-label={t("aria.filterType")}
             className="appearance-none cursor-pointer rounded-full border border-hairline bg-subtle-bg px-3.5 py-1.5 pr-8 text-xs font-medium text-text-secondary outline-none transition-all hover:border-hairline hover:bg-subtle-bg-hover focus:border-accent-active/40 focus:ring-1 focus:ring-accent-active/20"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
@@ -103,14 +113,14 @@ export default function AlertFilters({
               backgroundPosition: 'right 10px center',
             }}
           >
-            {TYPE_OPTIONS.map((value) => (
+            {TYPE_FILTER_OPTIONS.map((value) => (
               <option key={value} value={value}>
-                {ALERT_TYPE_LABELS[value as FleetEventType | "all"]}
+                {translate(joinKey(ALERT_TYPE_LABEL_KEYS[value]))}
               </option>
             ))}
           </select>
-          
-          <motion.label 
+
+          <motion.label
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all hover:bg-subtle-bg-hover"
@@ -120,12 +130,13 @@ export default function AlertFilters({
                 type="checkbox"
                 checked={showAcknowledged}
                 onChange={(e) => onToggleAcknowledged(e.target.checked)}
+                aria-label={t("aria.filterShowAcknowledged")}
                 className="peer sr-only"
               />
               <div className="h-4 w-8 rounded-full bg-subtle-bg-hover ring-1 ring-hairline transition-all peer-checked:bg-accent-active/40 peer-checked:ring-accent-active/30" />
               <div className="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-text-tertiary transition-all peer-checked:translate-x-4 peer-checked:bg-accent-active" />
             </div>
-            <span className="text-text-tertiary">Show acknowledged</span>
+            <span className="text-text-tertiary">{t("filters.showAcknowledged")}</span>
           </motion.label>
         </div>
       </div>
