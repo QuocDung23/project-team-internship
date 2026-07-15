@@ -110,10 +110,10 @@ The schema utility reads `database/drowsiness_safety_db_schema.sql` and does not
 This repo includes `render.yaml` for a Render Blueprint with three resources:
 
 - `drowsiness-detector-api`: FastAPI backend.
-- `drowsiness-detector-web`: React/Vite static frontend.
+- `drowsiness-detector-web`: React/Vite static frontend built from `frontend/`.
 - `drowsiness-detector-db`: managed PostgreSQL database.
 
-Create the Blueprint from the Render Dashboard and point it at this repository. Render will provision the database, pass its internal `DATABASE_URL` to the backend, build the frontend from `frontend/` with `npm ci`, and rewrite SPA routes to `index.html`.
+Create the Blueprint from the Render Dashboard and point it at this repository. Render will provision the database, pass its internal `DATABASE_URL` to the backend, build the frontend with `frontend/` as the static site's root directory, and rewrite SPA routes to `index.html`.
 
 After the database is created, initialize or restore data:
 
