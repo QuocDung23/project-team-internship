@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import { FaceLandmarker } from "@mediapipe/tasks-vision";
 import type * as TF from "@tensorflow/tfjs";
+import { preloadDetectorResources } from "./browserDetectorResources";
 import {
   EAR_THRESHOLD,
   MAR_THRESHOLD,
@@ -24,8 +25,11 @@ const LEFT_EYE_IDX = [362, 385, 387, 263, 373, 380];
 const RIGHT_EYE_IDX = [33, 160, 158, 133, 153, 144];
 const MOUTH_IDX = [61, 291, 0, 17, 39, 269, 405, 181];
 const MONITORING_PUBLISH_INTERVAL_MS = 1000;
+const MONITORING_STARTUP_DELAY_MS = 3000;
 const MONITORING_FRAME_MAX_WIDTH = 640;
 const MONITORING_FRAME_JPEG_QUALITY = 0.72;
+const DETECTION_INTERVAL_MS = 1000 / 15;
+const CNN_FRAME_INTERVAL = 3;
 
 interface Point2D {
   x: number;
@@ -103,7 +107,7 @@ function waitForVideoMetadata(video: HTMLVideoElement): Promise<void> {
 async function runCNN(
   video: HTMLVideoElement,
   landmarks: Point3D[],
-  model: TF.LayersModel,
+  model: TF.GraphModel,
 ): Promise<{ label: string; confidence: number }> {
   const xs = landmarks.map((l) => l.x * video.videoWidth) as number[];
   const ys = landmarks.map((l) => l.y * video.videoHeight) as number[];
@@ -125,10 +129,25 @@ async function runCNN(
     return gray.expandDims(0).div(255.0);
   });
 
-  const output = model.predict(tensor) as TF.Tensor;
+  const rawOutput = model.predict(tensor) as TF.Tensor | TF.Tensor[] | TF.NamedTensorMap;
+  const output = Array.isArray(rawOutput)
+    ? rawOutput[0]
+    : "dispose" in rawOutput
+      ? rawOutput
+      : rawOutput.output_0 ?? Object.values(rawOutput)[0];
+  if (!output) {
+    tensor.dispose();
+    throw new Error("CNN model did not return an output tensor.");
+  }
   const probs = await output.data();
   tensor.dispose();
-  output.dispose();
+  if (Array.isArray(rawOutput)) {
+    rawOutput.forEach((tensorOutput) => tensorOutput.dispose());
+  } else if ("dispose" in rawOutput) {
+    rawOutput.dispose();
+  } else {
+    Object.values(rawOutput).forEach((tensorOutput) => tensorOutput.dispose());
+  }
 
   const labels: ["closed", "open", "yawn"] = ["closed", "open", "yawn"];
   const probsArray = Array.from(probs);
@@ -158,11 +177,14 @@ export function useBrowserCNN(): BrowserCNNReturn {
   const runningRef = useRef(false);
   const animFrameRef = useRef<number | null>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
-  const modelRef = useRef<TF.LayersModel | null>(null);
+  const modelRef = useRef<TF.GraphModel | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const eventsRef = useRef<ClientSafetyEvent[]>([]);
   const tripIdRef = useRef<string>("");
   const detectionStateRef = useRef(createBrowserDetectionState());
+  const detectionFrameCountRef = useRef(0);
+  const monitoringStartedAtRef = useRef(0);
+  const lastCnnResultRef = useRef<{ label: string; confidence: number } | null>(null);
 
   // FPS tracking
   const lastFrameTsRef = useRef<number>(0);
@@ -215,6 +237,11 @@ export function useBrowserCNN(): BrowserCNNReturn {
     }
     monitoringPublishInFlightRef.current = false;
     lastMonitoringPublishTsRef.current = 0;
+    lastFrameTsRef.current = 0;
+    fpsRef.current = null;
+    detectionFrameCountRef.current = 0;
+    monitoringStartedAtRef.current = 0;
+    lastCnnResultRef.current = null;
 
     return eventsRef.current.slice();
   }, []);
@@ -228,6 +255,21 @@ export function useBrowserCNN(): BrowserCNNReturn {
       setEventCount(0);
       setEvents([]);
       resetBrowserDetectionState(detectionStateRef.current);
+      lastFrameTsRef.current = 0;
+      fpsRef.current = null;
+      detectionFrameCountRef.current = 0;
+      lastCnnResultRef.current = null;
+
+      try {
+        const resources = await preloadDetectorResources();
+        landmarkerRef.current = resources.landmarker;
+        modelRef.current = resources.cnnModel;
+      } catch (err) {
+        console.error("[useBrowserCNN] Failed to load detector resources:", err);
+        throw new Error(t("monitoring.errors.cameraDeniedMessage"), {
+          cause: err,
+        });
+      }
 
       // Camera
       let stream: MediaStream;
@@ -247,6 +289,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
       streamRef.current = stream;
       videoRef.current.srcObject = stream;
       runningRef.current = true;
+      monitoringStartedAtRef.current = performance.now();
       setIsRunning(true);
 
       try {
@@ -258,40 +301,6 @@ export function useBrowserCNN(): BrowserCNNReturn {
         throw new Error(t("monitoring.errors.cameraDeniedMessage"), {
           cause: err,
         });
-      }
-
-      // Load MediaPipe landmarker (lazy)
-      if (!landmarkerRef.current) {
-        try {
-          const vision = await FilesetResolver.forVisionTasks(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm",
-          );
-          landmarkerRef.current = await FaceLandmarker.createFromOptions(vision, {
-            baseOptions: {
-              modelAssetPath:
-                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-              delegate: "GPU",
-            },
-            runningMode: "VIDEO",
-            numFaces: 1,
-            outputFaceBlendshapes: false,
-            outputFacialTransformationMatrixes: false,
-          });
-        } catch (err) {
-          console.error("[useBrowserCNN] Failed to load FaceLandmarker:", err);
-          stop();
-          return;
-        }
-      }
-
-      // Load TF.js model (lazy, non-fatal)
-      if (!modelRef.current) {
-        try {
-          modelRef.current = await tf.loadLayersModel("/models/drowsiness_cnn/model.json");
-        } catch (err) {
-          console.warn("[useBrowserCNN] CNN model not available, running without it:", err);
-          // modelRef.current stays null — CNN inference skipped
-        }
       }
 
       const loop = async () => {
@@ -306,12 +315,21 @@ export function useBrowserCNN(): BrowserCNNReturn {
             return;
           }
 
-          // FPS
           const now = performance.now();
+          if (
+            lastFrameTsRef.current > 0 &&
+            now - lastFrameTsRef.current < DETECTION_INTERVAL_MS
+          ) {
+            animFrameRef.current = requestAnimationFrame(loop);
+            return;
+          }
+
+          // FPS
           if (lastFrameTsRef.current > 0) {
             fpsRef.current = Math.round(1000 / (now - lastFrameTsRef.current));
           }
           lastFrameTsRef.current = now;
+          detectionFrameCountRef.current += 1;
 
           // MediaPipe detection
           const result = landmarker.detectForVideo(video, now);
@@ -329,6 +347,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
           let alarmOn = false;
           let drowsinessWarningActive = false;
           let yawnWarningActive = false;
+          let overlay: DriverSnapshot["overlay"] | undefined;
 
           if (faceDetected) {
             const lm = result.faceLandmarks[0] as Point3D[];
@@ -350,12 +369,18 @@ export function useBrowserCNN(): BrowserCNNReturn {
             const rawPitch = (noseTip.y - chin.y) * 100;
 
             // CNN
-            if (modelRef.current) {
+            if (
+              modelRef.current &&
+              detectionFrameCountRef.current % CNN_FRAME_INTERVAL === 0
+            ) {
               try {
                 cnnResult = await runCNN(video, lm, modelRef.current);
+                lastCnnResultRef.current = cnnResult;
               } catch (err) {
                 console.warn("[useBrowserCNN] CNN frame error:", err);
               }
+            } else {
+              cnnResult = lastCnnResultRef.current;
             }
 
             const decision = processDetectionSample(detectionStateRef.current, {
@@ -395,6 +420,12 @@ export function useBrowserCNN(): BrowserCNNReturn {
               };
               pushEvent(event);
             }
+
+            overlay = {
+              earCounter: 0,
+              marCounter: 0,
+              poseCounter: 0,
+            };
           } else {
             // No face — reset counters
             processDetectionSample(detectionStateRef.current, {
@@ -431,9 +462,13 @@ export function useBrowserCNN(): BrowserCNNReturn {
             alarmOn,
             drowsinessWarningActive,
             yawnWarningActive,
+            overlay,
           };
 
-          if (now - lastMonitoringPublishTsRef.current >= MONITORING_PUBLISH_INTERVAL_MS) {
+          if (
+            now - monitoringStartedAtRef.current >= MONITORING_STARTUP_DELAY_MS &&
+            now - lastMonitoringPublishTsRef.current >= MONITORING_PUBLISH_INTERVAL_MS
+          ) {
             lastMonitoringPublishTsRef.current = now;
             void publishMonitoring(
               {
@@ -473,7 +508,8 @@ export function useBrowserCNN(): BrowserCNNReturn {
             prev.poseAlert !== newMetrics.poseAlert ||
             prev.alarmOn !== newMetrics.alarmOn ||
             prev.drowsinessWarningActive !== newMetrics.drowsinessWarningActive ||
-            prev.yawnWarningActive !== newMetrics.yawnWarningActive;
+            prev.yawnWarningActive !== newMetrics.yawnWarningActive ||
+            Boolean(newMetrics.overlay);
 
           if (changed) {
             lastMetricsRef.current = newMetrics;

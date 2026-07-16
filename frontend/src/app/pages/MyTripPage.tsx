@@ -12,6 +12,7 @@ import {
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useMyDriverProfile } from "../hook/useBackendData";
 import { useBrowserCNN } from "../hook/useBrowserCNN";
+import { preloadDetectorResources } from "../hook/browserDetectorResources";
 import { buildLiveMonitoringAlerts } from "../services/clientSafetyEvents";
 import {
   generateTripCode,
@@ -112,6 +113,12 @@ export default function MyTripPage() {
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [refresh, handleRefreshError]);
+
+  useEffect(() => {
+    void preloadDetectorResources().catch((err) => {
+      console.warn("[MyTripPage] Detector preload failed:", err);
+    });
+  }, []);
 
   const startMonitoring = useCallback(
     async (tripId: string) => {
