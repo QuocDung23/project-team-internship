@@ -36,6 +36,7 @@ export interface BackendAlert {
   consecutive_frame_count?: number | null;
   cnn_confidence?: number | null;
   cnn_label?: string | null;
+  captured_frame_path?: string | null;
   alarm_triggered?: boolean | null;
   occurred_at?: string | null;
 }
@@ -125,6 +126,7 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
         consecutive_frame_count: asNumber(input[7]),
         cnn_confidence: asNumber(input[8]),
         cnn_label: asString(input[9]) || null,
+        captured_frame_path: asString(input[10]) || null,
         alarm_triggered: Boolean(input[13]),
         acknowledged,
         acknowledged_at: asString(input[16]) || null,
@@ -145,6 +147,7 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
       consecutive_frame_count: asNumber(input[5]),
       cnn_confidence: asNumber(input[6]),
       cnn_label: asString(input[7]) || null,
+      captured_frame_path: null,
       alarm_triggered: Boolean(input[8]),
       acknowledged: false,
       occurred_at: asString(input[9]) || null,
@@ -227,6 +230,11 @@ export function mapBackendAlertToFleetEvent(
     acknowledged: isAcknowledged(alert),
     severity: severity(alert.severity),
     location: detectionMethodCode(alert.detection_method),
+    cnnConfidence: alert.cnn_confidence ?? null,
+    cnnLabel: alert.cnn_label ?? null,
+    alarmTriggered: Boolean(alert.alarm_triggered),
+    capturedFramePath: alert.captured_frame_path ?? null,
+    rawType: alert.raw_alert_type ?? alert.alert_type,
   };
 }
 

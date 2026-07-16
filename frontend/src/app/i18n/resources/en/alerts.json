@@ -56,6 +56,10 @@
   "row": {
     "ear": "EAR",
     "acknowledged": "Acknowledged",
+    "evidence": "Evidence",
+    "noEvidence": "Evidence frame not captured yet",
+    "alarmTriggered": "Audio alarm triggered",
+    "cnnLabel": "Label {{label}}",
     "metric": {
       "ear": "EAR",
       "mar": "MAR",

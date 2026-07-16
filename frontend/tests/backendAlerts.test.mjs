@@ -54,7 +54,20 @@ test("shows browser CNN alerts with a driver-friendly source label", () => {
     detection_method: "browser_cnn",
   });
 
-  assert.equal(event.location, "Detected via AI camera");
+  assert.equal(event.location, "browser_cnn");
+});
+
+test("preserves backend evidence metadata for alert rows", () => {
+  const event = mapBackendAlertToFleetEvent({
+    ...backendAlert,
+    captured_frame_path: "frames/alert-1.jpg",
+  });
+
+  assert.equal(event.cnnConfidence, 0.93);
+  assert.equal(event.cnnLabel, "closed");
+  assert.equal(event.alarmTriggered, true);
+  assert.equal(event.capturedFramePath, "frames/alert-1.jpg");
+  assert.equal(event.rawType, "drowsy_cnn");
 });
 
 test("maps acknowledged tuple alert rows from the current FastAPI response", () => {
@@ -93,8 +106,10 @@ test("maps backend detector alert to monitoring alert", () => {
 
   assert.equal(alert.id, "alert-1");
   assert.equal(alert.severity, "warn");
-  assert.equal(alert.title, "Head Nod / Loss of Head Position");
-  assert.match(alert.detail, /CNN 93%/);
+  assert.equal(alert.titleKey, "monitoring.eventTitle.headNodding");
+  const detail = JSON.parse(alert.detail);
+  assert.equal(detail.confidencePercent, 93);
+  assert.equal(detail.alarmTriggered, true);
 });
 
 test("maps backend tuple alert rows from the current FastAPI response", () => {
@@ -134,7 +149,7 @@ test("maps canonical backend alert types from safety event ingestion", () => {
 
   assert.equal(drowsiness.type, "drowsiness_alert");
   assert.equal(drowsiness.severity, "critical");
-  assert.equal(inattention.title, "Head Nod / Loss of Head Position");
+  assert.equal(inattention.titleKey, "monitoring.eventTitle.headNodding");
   assert.equal(camera.type, "distraction_alert");
 });
 

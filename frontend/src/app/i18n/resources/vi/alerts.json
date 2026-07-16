@@ -54,6 +54,10 @@
   "row": {
     "ear": "EAR",
     "acknowledged": "Đã xác nhận",
+    "evidence": "Bằng chứng",
+    "noEvidence": "Chưa có ảnh bằng chứng",
+    "alarmTriggered": "Đã bật âm báo",
+    "cnnLabel": "Nhãn {{label}}",
     "metric": {
       "ear": "EAR",
       "mar": "MAR",

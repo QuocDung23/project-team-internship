@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "motion/react";
-import { AlertTriangle, CheckCircle, MapPin, Truck } from "lucide-react";
+import { AlertTriangle, Bell, Camera, CheckCircle, MapPin, Truck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { FleetAlertEvent } from "../../types/alerts";
 import { StatusBadge } from "../monitoring/StatusBadge";
@@ -57,6 +57,10 @@ export default function AlertRow({
   const typeLabel = i18n.exists(typeKey)
     ? translate(typeKey)
     : translate("type.unknown");
+  const confidencePercent =
+    typeof event.cnnConfidence === "number"
+      ? Math.round(event.cnnConfidence * 100)
+      : null;
 
   return (
     <motion.div
@@ -127,6 +131,31 @@ export default function AlertRow({
             <span className="inline-flex items-center gap-1 rounded-full bg-subtle-bg px-2.5 py-1  ">
               {typeLabel}
             </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-hairline bg-subtle-bg px-3 py-2 text-[11px] text-text-secondary">
+            <span className="inline-flex items-center gap-1.5 font-medium text-text-primary">
+              <Camera size={12} className="text-text-tertiary" />
+              {event.capturedFramePath
+                ? t("row.evidence")
+                : t("row.noEvidence")}
+            </span>
+            {confidencePercent !== null ? (
+              <span className="font-mono-num text-text-tertiary">
+                {t("row.metric.cnn", { value: confidencePercent })}
+              </span>
+            ) : null}
+            {event.cnnLabel ? (
+              <span className="text-text-tertiary">
+                {t("row.cnnLabel", { label: event.cnnLabel })}
+              </span>
+            ) : null}
+            {event.alarmTriggered ? (
+              <span className="inline-flex items-center gap-1 text-accent-warn">
+                <Bell size={12} />
+                {t("row.alarmTriggered")}
+              </span>
+            ) : null}
           </div>
 
           {event.acknowledged ? (
