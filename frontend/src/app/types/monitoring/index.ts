@@ -12,6 +12,12 @@ export interface MetricSeries {
   samples: MetricSample[];
 }
 
+export interface DriverMonitoringOverlay {
+  earCounter: number;
+  marCounter: number;
+  poseCounter: number;
+}
+
 export interface DriverSnapshot {
   ts: number;
   ear: number;
@@ -29,6 +35,7 @@ export interface DriverSnapshot {
   alarmOn: boolean;
   drowsinessWarningActive: boolean;
   yawnWarningActive: boolean;
+  overlay?: DriverMonitoringOverlay;
 }
 
 export interface MonitoringAlert {

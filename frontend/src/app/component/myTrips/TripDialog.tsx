@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { motion } from "motion/react";
 import { Play, Stop, Warning, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
@@ -21,10 +21,10 @@ import { resolveAppLanguage } from "../../i18n";
 import { SPRING } from "../../utils/trips/tripMotion";
 import { TripMetric } from "./TripMetric";
 import { TextField } from "./TextField";
-import { LiveMetric } from "./LiveMetric";
 import { AlertInfoRow, type AlertInfo } from "./AlertInfoRow";
 
 type CnnMetrics = ReturnType<typeof useBrowserCNN>["metrics"];
+type ActiveCnnMetrics = NonNullable<CnnMetrics>;
 const NO_FACE_GUIDANCE_DELAY_MS = 2000;
 
 interface TripDialogProps {
@@ -255,29 +255,12 @@ export default function TripDialog({
                     cnnRunning ? "" : "hidden"
                   }`}
                 >
-                  <video
-                    ref={cnnVideoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="h-full w-full scale-x-[-1] object-contain"
+                  <CameraMonitoringOverlay
+                    metrics={cnnMetrics}
+                    videoRef={cnnVideoRef}
                   />
-                  {cnnMetrics?.drowsinessWarningActive ? (
-                    <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
-                      <span className="animate-pulse rounded-full bg-accent-critical/90 px-4 py-2 text-sm font-bold uppercase tracking-[0.14em] text-white shadow-[0_8px_30px_rgba(159,18,57,0.55)]">
-                        {t("tripDialog.overlay.drowsy")}
-                      </span>
-                    </div>
-                  ) : null}
-                  {cnnMetrics?.yawnWarningActive ? (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-                      <span className="rounded-full bg-accent-warn/90 px-4 py-2 text-sm font-bold uppercase tracking-[0.14em] text-text-primary shadow-[0_8px_30px_rgba(217,119,6,0.45)]">
-                        {t("tripDialog.overlay.yawn")}
-                      </span>
-                    </div>
-                  ) : null}
                   {showNoFaceGuidance ? (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 px-4 text-center backdrop-blur-[1px]">
+                    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/45 px-4 text-center backdrop-blur-[1px]">
                       <div className="max-w-md rounded-2xl border border-accent-warn/40 bg-accent-warn/90 px-4 py-3 text-text-primary shadow-[0_10px_34px_rgba(217,119,6,0.35)]">
                         <p className="text-sm font-bold uppercase tracking-[0.12em]">
                           {t("tripDialog.driverGuidance.noFace.title")}
@@ -289,7 +272,7 @@ export default function TripDialog({
                     </div>
                   ) : null}
                   {escalationActive ? (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-accent-critical/40 backdrop-blur-[2px]">
+                    <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-accent-critical/40 backdrop-blur-[2px]">
                       <span className="animate-pulse text-center text-3xl font-black uppercase tracking-[0.08em] text-white drop-shadow-[0_4px_22px_rgba(127,29,29,0.95)] sm:text-5xl">
                         {t("tripDialog.overlay.stayAlert")}
                       </span>
@@ -308,56 +291,6 @@ export default function TripDialog({
                   isCameraRunning={cnnRunning}
                   showNoFaceGuidance={showNoFaceGuidance}
                 />
-
-                {cnnMetrics ? (
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                    <LiveMetric
-                      labelKey="monitoring.metricLabels.ear"
-                      value={
-                        cnnMetrics.earAlert
-                          ? t("monitoring.metricValues.eyesCheck")
-                          : t("monitoring.metricValues.eyesOk")
-                      }
-                      alert={cnnMetrics.earAlert}
-                    />
-                    <LiveMetric
-                      labelKey="monitoring.metricLabels.mar"
-                      value={
-                        cnnMetrics.marAlert
-                          ? t("monitoring.metricValues.mouthCheck")
-                          : t("monitoring.metricValues.mouthOk")
-                      }
-                      alert={cnnMetrics.marAlert}
-                    />
-                    <LiveMetric
-                      labelKey="monitoring.metricLabels.pitch"
-                      value={
-                        cnnMetrics.poseAlert
-                          ? t("monitoring.metricValues.headCheck")
-                          : t("monitoring.metricValues.headOk")
-                      }
-                      alert={cnnMetrics.poseAlert}
-                    />
-                    <LiveMetric
-                      labelKey="monitoring.metricLabels.dws"
-                      value={
-                        cnnMetrics.dwsScore >= 70
-                          ? t("monitoring.metricValues.riskHigh")
-                          : t("monitoring.metricValues.riskOk")
-                      }
-                      alert={cnnMetrics.dwsScore >= 70}
-                    />
-                    <LiveMetric
-                      labelKey="monitoring.metricLabels.fps"
-                      value={
-                        cnnMetrics.fps
-                          ? String(cnnMetrics.fps)
-                          : t("monitoring.metricLabels.noFace")
-                      }
-                      alert={false}
-                    />
-                  </div>
-                ) : null}
               </div>
 
               <div className="grid content-start gap-4">
@@ -410,6 +343,168 @@ export default function TripDialog({
       </motion.section>
     </div>
   );
+}
+
+function CameraMonitoringOverlay({
+  metrics,
+  videoRef,
+}: {
+  metrics: CnnMetrics;
+  videoRef: RefObject<HTMLVideoElement | null>;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (!canvas) return;
+
+    const draw = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.round(rect.width * dpr));
+      const height = Math.max(1, Math.round(rect.height * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, width, height);
+      if (!metrics) return;
+
+      const videoWidth = video?.videoWidth || 4;
+      const videoHeight = video?.videoHeight || 3;
+      const videoAspect = videoWidth / Math.max(1, videoHeight);
+      const canvasAspect = width / height;
+      const drawWidth = videoAspect > canvasAspect ? width : height * videoAspect;
+      const drawHeight = videoAspect > canvasAspect ? width / videoAspect : height;
+      const offsetX = (width - drawWidth) / 2;
+      const offsetY = (height - drawHeight) / 2;
+
+      drawCameraOverlay(ctx, metrics, {
+        height,
+        offsetX,
+        offsetY,
+        width,
+        videoHeight: drawHeight,
+        videoWidth: drawWidth,
+      });
+    };
+
+    draw();
+    window.addEventListener("resize", draw);
+    return () => window.removeEventListener("resize", draw);
+  }, [metrics, videoRef]);
+
+  return (
+    <>
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className="h-full w-full scale-x-[-1] object-contain"
+      />
+      <canvas
+        ref={canvasRef}
+        className="pointer-events-none absolute inset-0 z-10 h-full w-full"
+        aria-hidden="true"
+      />
+    </>
+  );
+}
+
+function drawCameraOverlay(
+  ctx: CanvasRenderingContext2D,
+  metrics: ActiveCnnMetrics,
+  bounds: {
+    height: number;
+    offsetX: number;
+    offsetY: number;
+    width: number;
+    videoHeight: number;
+    videoWidth: number;
+  },
+) {
+  const scale = Math.max(0.85, Math.min(1.35, bounds.width / 760));
+  const left = bounds.offsetX + 12 * scale;
+  const top = bounds.offsetY + 26 * scale;
+  const right = bounds.offsetX + bounds.videoWidth - 12 * scale;
+  const bottom = bounds.offsetY + bounds.videoHeight - 18 * scale;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  drawOutlinedText(ctx, `EAR: ${metrics.ear.toFixed(3)}`, left, top, {
+    color: "#f8fafc",
+    fontSize: 16 * scale,
+  });
+  drawOutlinedText(ctx, `MAR: ${metrics.mar.toFixed(2)}`, left, top + 24 * scale, {
+    color: metrics.marAlert ? "#ef4444" : "#f8fafc",
+    fontSize: 16 * scale,
+  });
+  drawOutlinedText(ctx, `FPS: ${metrics.fps ?? "--"}`, right, top, {
+    align: "right",
+    color: "#f8fafc",
+    fontSize: 16 * scale,
+  });
+
+  drawOutlinedText(ctx, "=== TRANG THAI ===", left, bottom - 92 * scale, {
+    color: "#f8fafc",
+    fontSize: 14 * scale,
+  });
+  drawOutlinedText(
+    ctx,
+    `MAT: ${metrics.earAlert ? "NHAM" : "MO"}`,
+    left,
+    bottom - 66 * scale,
+    { color: metrics.earAlert ? "#ef4444" : "#22c55e", fontSize: 16 * scale },
+  );
+  drawOutlinedText(
+    ctx,
+    `MIENG: ${metrics.marAlert ? "NGAP" : "THUONG"}`,
+    left,
+    bottom - 40 * scale,
+    { color: metrics.marAlert ? "#ef4444" : "#22c55e", fontSize: 16 * scale },
+  );
+  drawOutlinedText(ctx, `DAU: ${metrics.poseAlert ? "GAT" : "BINH THUONG"}`, left, bottom - 14 * scale, {
+    color: metrics.poseAlert ? "#f59e0b" : "#22c55e",
+    fontSize: 16 * scale,
+  });
+
+  if (metrics.poseAlert) {
+    drawOutlinedText(ctx, "GAT DAU!", bounds.width / 2, bounds.offsetY + 116 * scale, {
+      align: "center",
+      color: "#f59e0b",
+      fontSize: 24 * scale,
+      lineWidth: 6 * scale,
+      weight: 800,
+    });
+  }
+}
+
+function drawOutlinedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  options: {
+    align?: CanvasTextAlign;
+    color: string;
+    fontSize: number;
+    lineWidth?: number;
+    weight?: number;
+  },
+) {
+  ctx.font = `${options.weight ?? 700} ${options.fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  ctx.textAlign = options.align ?? "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.lineWidth = options.lineWidth ?? 4;
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.88)";
+  ctx.fillStyle = options.color;
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
 }
 
 function DriverMonitoringBanner({
