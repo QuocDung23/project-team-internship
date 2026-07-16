@@ -364,13 +364,7 @@ function ActiveTripsPanel({
                     )}
                   </td>
                   <td className="py-2.5 pr-4 text-right">
-                    <span className="font-mono-num text-accent-warn">
-                      {formatNumber(toNumber(trip.total_alerts_count))}
-                    </span>
-                    <span className="ml-2 font-mono-num text-accent-critical">
-                      {formatNumber(toNumber(trip.critical_alerts_count))}{" "}
-                      {t("activeTrips.criticalShort")}
-                    </span>
+                    {alertSummaryBadge(trip, t, formatNumber)}
                   </td>
                   <td className="py-2.5 text-right">{scoreBadge(trip, t)}</td>
                 </tr>
@@ -853,6 +847,43 @@ function routeLabel(trip: BackendTrip, t: DashboardT): string {
     });
   return (
     trip.origin ?? trip.destination ?? t("activeTrips.routeUnavailable")
+  );
+}
+
+function alertSummaryBadge(
+  trip: BackendTrip,
+  t: DashboardT,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string,
+): ReactElement {
+  const total = toNumber(trip.total_alerts_count);
+  const critical = Math.min(toNumber(trip.critical_alerts_count), total);
+  const tone =
+    critical > 0
+      ? "text-accent-critical"
+      : total > 0
+        ? "text-accent-warn"
+        : "text-text-tertiary";
+  let label: string;
+
+  if (critical > 0 && critical === total) {
+    label = t("activeTrips.alertsCriticalCount", {
+      count: formatNumber(total),
+    });
+  } else if (critical > 0) {
+    label = t("activeTrips.alertsMixedCount", {
+      total: formatNumber(total),
+      critical: formatNumber(critical),
+    });
+  } else {
+    label = t("activeTrips.alertsCount", {
+      count: formatNumber(total),
+    });
+  }
+
+  return (
+    <span className={`font-mono-num text-[12px] font-semibold ${tone}`}>
+      {label}
+    </span>
   );
 }
 
