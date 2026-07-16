@@ -1,29 +1,19 @@
 import { Moon, Sun, type LucideIcon } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { useThemeColor, type ThemeMode } from "../../themeColor";
 
 const THEME_OPTIONS: ReadonlyArray<{
   mode: ThemeMode;
-  label: string;
-  description: string;
   icon: LucideIcon;
 }> = [
-  {
-    mode: "dark",
-    label: "Dark",
-    description: "Current console palette",
-    icon: Moon,
-  },
-  {
-    mode: "light",
-    label: "Light",
-    description: "Bright operations view",
-    icon: Sun,
-  },
+  { mode: "dark", icon: Moon },
+  { mode: "light", icon: Sun },
 ];
 
 export default function AppearanceSettings() {
   const reduceMotion = useReducedMotion();
+  const { t } = useTranslation("settings");
   const { themeMode, setThemeMode } = useThemeColor();
 
   return (
@@ -35,10 +25,10 @@ export default function AppearanceSettings() {
     >
       <div className="mb-5">
         <h2 className="text-sm font-semibold text-text-primary">
-          Appearance
+          {t("appearance.title")}
         </h2>
         <p className="mt-1 text-xs text-text-tertiary">
-          Choose how the console is displayed on this device
+          {t("appearance.description")}
         </p>
       </div>
 
@@ -72,10 +62,10 @@ export default function AppearanceSettings() {
               </span>
               <span>
                 <span className="block text-[12px] font-semibold">
-                  {option.label}
+                  {t(`appearance.options.${option.mode}.label`)}
                 </span>
                 <span className="mt-0.5 block text-[10px] text-text-tertiary">
-                  {option.description}
+                  {t(`appearance.options.${option.mode}.description`)}
                 </span>
               </span>
             </button>

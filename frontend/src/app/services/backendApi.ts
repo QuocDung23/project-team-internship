@@ -131,12 +131,15 @@ export interface BackendMonitoringSnapshot {
   received_at?: number;
   frame_available?: boolean;
   frame_timestamp?: number;
+  snapshot_seq?: number;
   server_time?: number;
   snapshot_received_at?: number | null;
   frame_received_at?: number | null;
+  age_seconds?: number | null;
   snapshot_age_seconds?: number | null;
   frame_age_seconds?: number | null;
   stale?: boolean;
+  health?: "online" | "stale" | "offline" | string;
   fps?: number | null;
   ear: number;
   mar: number;
@@ -162,7 +165,30 @@ export interface BackendMonitoringSnapshot {
 export interface BackendMonitoringUnavailable {
   available: false;
   server_time?: number;
+  age_seconds?: number | null;
   stale?: boolean;
+  health?: "offline" | "stale" | string;
+}
+
+export interface BrowserMonitoringSnapshotPayload {
+  trip_id?: string | null;
+  timestamp: number;
+  fps?: number | null;
+  ear: number;
+  mar: number;
+  pitch: number;
+  dws_score: number;
+  eyes_open: boolean;
+  mouth_closed: boolean;
+  face_detected: boolean;
+  ear_alert: boolean;
+  mar_alert: boolean;
+  pose_alert: boolean;
+  alarm_on: boolean;
+  ear_counter?: number;
+  mar_counter?: number;
+  pose_counter?: number;
+  cnn_enabled: boolean;
 }
 
 function apiEnv(name: string): string | undefined {
@@ -659,6 +685,33 @@ export async function fetchMonitoringSnapshot(): Promise<BackendMonitoringSnapsh
   return requestJson<BackendMonitoringSnapshot | BackendMonitoringUnavailable>("/monitoring/snapshot");
 }
 
+export async function postMonitoringSnapshot(payload: BrowserMonitoringSnapshotPayload): Promise<BackendMonitoringSnapshot> {
+  return requestJson<BackendMonitoringSnapshot>("/monitoring/snapshot", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function postMonitoringFrame(frameJpeg: Blob): Promise<{ ok: boolean; frame_seq: number }> {
+  const token = apiAuthToken();
+  const response = await fetch(`${apiBaseUrl()}/monitoring/frame`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "image/jpeg",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: frameJpeg,
+  });
+  if (!response.ok) {
+    throw new BackendApiError({
+      status: response.status,
+      detail: `Monitoring frame publish failed: ${response.status}`,
+      path: "/monitoring/frame",
+    });
+  }
+  return (await response.json()) as { ok: boolean; frame_seq: number };
+}
+
 export function monitoringFrameUrl(frameTimestamp?: number): string {
   const suffix = frameTimestamp ? `?t=${encodeURIComponent(String(frameTimestamp))}` : "";
   return `${apiBaseUrl()}/monitoring/frame${suffix}`;
@@ -666,6 +719,10 @@ export function monitoringFrameUrl(frameTimestamp?: number): string {
 
 export function monitoringStreamUrl(): string {
   return `${apiBaseUrl()}/monitoring/stream`;
+}
+
+export function monitoringEventsUrl(): string {
+  return `${apiBaseUrl()}/monitoring/events`;
 }
 
 export function buildFleetKpiFromTrips(trips: BackendTrip[]): FleetKpi {

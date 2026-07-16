@@ -30,4 +30,9 @@ export interface FleetAlertEvent {
   acknowledged: boolean;
   severity: FleetEventSeverity;
   location: string;
+  cnnConfidence?: number | null;
+  cnnLabel?: string | null;
+  alarmTriggered?: boolean;
+  capturedFramePath?: string | null;
+  rawType?: string | null;
 }

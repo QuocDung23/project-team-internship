@@ -8,6 +8,7 @@ _latest_snapshot: Optional[Dict[str, Any]] = None
 _latest_frame: Optional[bytes] = None
 _latest_frame_content_type = "image/jpeg"
 _frame_seq = 0
+_snapshot_seq = 0
 _snapshot_received_at: Optional[float] = None
 _frame_received_at: Optional[float] = None
 STALE_AFTER_SECONDS = 3.0
@@ -22,25 +23,30 @@ def _age_seconds(now: float, received_at: Optional[float]) -> Optional[float]:
 def _decorate_snapshot(snapshot: Dict[str, Any], now: Optional[float] = None) -> Dict[str, Any]:
     current_time = time.time() if now is None else now
     snapshot = dict(snapshot)
+    snapshot_age_seconds = _age_seconds(current_time, _snapshot_received_at)
+    frame_age_seconds = _age_seconds(current_time, _frame_received_at)
     snapshot["server_time"] = current_time
+    snapshot["snapshot_seq"] = _snapshot_seq
     snapshot["snapshot_received_at"] = _snapshot_received_at
     snapshot["frame_received_at"] = _frame_received_at
-    snapshot["snapshot_age_seconds"] = _age_seconds(current_time, _snapshot_received_at)
-    snapshot["frame_age_seconds"] = _age_seconds(current_time, _frame_received_at)
+    snapshot["snapshot_age_seconds"] = snapshot_age_seconds
+    snapshot["frame_age_seconds"] = frame_age_seconds
+    snapshot["age_seconds"] = snapshot_age_seconds
     snapshot["frame_available"] = _latest_frame is not None
     if _latest_frame is not None:
         snapshot["frame_timestamp"] = _frame_seq
     snapshot["stale"] = (
-        snapshot["snapshot_age_seconds"] is None
-        or snapshot["snapshot_age_seconds"] > STALE_AFTER_SECONDS
-        or snapshot["frame_age_seconds"] is None
-        or snapshot["frame_age_seconds"] > STALE_AFTER_SECONDS
+        snapshot_age_seconds is None
+        or snapshot_age_seconds > STALE_AFTER_SECONDS
+        or frame_age_seconds is None
+        or frame_age_seconds > STALE_AFTER_SECONDS
     )
+    snapshot["health"] = "stale" if snapshot["stale"] else "online"
     return snapshot
 
 
 def update_monitoring_snapshot(payload: Dict[str, Any]) -> Dict[str, Any]:
-    global _latest_snapshot, _snapshot_received_at
+    global _latest_snapshot, _snapshot_received_at, _snapshot_seq
 
     snapshot = dict(payload)
     snapshot.pop("frame_jpeg_base64", None)
@@ -49,11 +55,14 @@ def update_monitoring_snapshot(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     with _condition:
         _snapshot_received_at = received_at
+        _snapshot_seq += 1
         snapshot["frame_available"] = _latest_frame is not None
         if _latest_frame is not None:
             snapshot["frame_timestamp"] = _frame_seq
         _latest_snapshot = snapshot
-        return _decorate_snapshot(_latest_snapshot, now=received_at)
+        decorated = _decorate_snapshot(_latest_snapshot, now=received_at)
+        _condition.notify_all()
+        return decorated
 
 
 def update_monitoring_frame(frame: bytes, content_type: str = "image/jpeg") -> Dict[str, Any]:
@@ -108,3 +117,33 @@ def iter_mjpeg_stream(target_fps: float = 20.0) -> Iterator[bytes]:
             + b"\r\n"
         )
         time.sleep(wait_timeout)
+
+
+def iter_monitoring_snapshots() -> Iterator[Dict[str, Any]]:
+    last_seq = -1
+
+    while True:
+        with _condition:
+            _condition.wait_for(
+                lambda: _latest_snapshot is not None and _snapshot_seq != last_seq,
+                timeout=15.0,
+            )
+            if _latest_snapshot is None:
+                snapshot = {
+                    "available": False,
+                    "server_time": time.time(),
+                    "age_seconds": None,
+                    "stale": True,
+                    "health": "offline",
+                }
+            elif _snapshot_seq == last_seq:
+                snapshot = {
+                    "type": "keepalive",
+                    "server_time": time.time(),
+                }
+            else:
+                last_seq = _snapshot_seq
+                snapshot = _decorate_snapshot(_latest_snapshot)
+                snapshot["available"] = True
+
+        yield snapshot

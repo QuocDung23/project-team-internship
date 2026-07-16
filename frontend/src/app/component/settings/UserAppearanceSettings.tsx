@@ -1,29 +1,19 @@
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, type LucideIcon } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { useThemeColor, type ThemeMode } from "../../themeColor";
 
 const THEME_OPTIONS: ReadonlyArray<{
   mode: ThemeMode;
-  label: string;
-  description: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: LucideIcon;
 }> = [
-  {
-    mode: "light",
-    label: "Light",
-    description: "Bright and clear display",
-    icon: Sun,
-  },
-  {
-    mode: "dark",
-    label: "Dark",
-    description: "Easy on the eyes",
-    icon: Moon,
-  },
+  { mode: "light", icon: Sun },
+  { mode: "dark", icon: Moon },
 ];
 
 export default function UserAppearanceSettings() {
   const reduceMotion = useReducedMotion();
+  const { t } = useTranslation("settings");
   const { themeMode, setThemeMode } = useThemeColor();
 
   const handleSelect = (mode: ThemeMode) => {
@@ -45,8 +35,8 @@ export default function UserAppearanceSettings() {
             <Sun size={18} strokeWidth={1.7} className="text-accent-active" />
           </div>
           <div>
-            <h2 className="section-headline text-base">Appearance</h2>
-            <p className="section-subline">Choose your preferred display mode</p>
+            <h2 className="section-headline text-base">{t("appearance.title")}</h2>
+            <p className="section-subline">{t("appearance.userDescription")}</p>
           </div>
         </div>
 
@@ -80,10 +70,10 @@ export default function UserAppearanceSettings() {
                 </span>
                 <span className="text-center">
                   <span className="block text-[13px] font-semibold text-text-primary">
-                    {option.label}
+                    {t(`appearance.options.${option.mode}.label`)}
                   </span>
                   <span className="mt-0.5 block text-[10px] text-text-tertiary">
-                    {option.description}
+                    {t(`appearance.options.${option.mode}.userDescription`)}
                   </span>
                 </span>
                 {selected && (

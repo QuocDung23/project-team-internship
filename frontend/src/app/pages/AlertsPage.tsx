@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useBackendAlerts } from "../hook/useBackendAlerts";
 import { useBackendDrivers } from "../hook/useBackendData";
 import { useAuth } from "../auth/AuthContext";
@@ -17,11 +18,17 @@ import AlertFilters from "../component/alerts/AlertFilters";
 import AlertList from "../component/alerts/AlertList";
 import { acknowledgeAlert } from "../services/backendAlerts";
 import { AdminErrorBanner, AdminPage } from "../component/admin/AdminShell";
+import { getErrorTranslation } from "../i18n/errors";
 
 const EMPTY_EVENTS: FleetAlertEvent[] = [];
 const EMPTY_DRIVERS: Driver[] = [];
 
 export function AlertsPage() {
+  const { t } = useTranslation("alerts");
+  const translate = t as unknown as (
+    key: string,
+    values?: Record<string, string | number>,
+  ) => string;
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [driverIdFilter, setDriverIdFilter] = useState("");
@@ -29,7 +36,7 @@ export function AlertsPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [showAcknowledged, setShowAcknowledged] = useState(true);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<unknown>(null);
   const backendDrivers = useBackendDrivers(isAdmin);
   const backendAlerts = useBackendAlerts(undefined, {
     driverId: isAdmin ? driverIdFilter || undefined : undefined,
@@ -48,7 +55,7 @@ export function AlertsPage() {
         await acknowledgeAlert(event.id);
         await backendAlerts.refresh();
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Failed to acknowledge alert");
+        setActionError(err);
       } finally {
         setAcknowledgingId(null);
       }
@@ -68,7 +75,7 @@ export function AlertsPage() {
         await Promise.all(pendingEvents.map((event) => acknowledgeAlert(event.id)));
         await backendAlerts.refresh();
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Failed to acknowledge alert group");
+        setActionError(err);
       } finally {
         setAcknowledgingId(null);
       }
@@ -101,6 +108,24 @@ export function AlertsPage() {
     [events],
   );
 
+  const alertsErrorMessage = useMemo(() => {
+    if (!backendAlerts.error) return null;
+    const translation = getErrorTranslation(backendAlerts.error);
+    return translate(translation.key, translation.values);
+  }, [backendAlerts.error, translate]);
+
+  const driversErrorMessage = useMemo(() => {
+    if (!isAdmin || !backendDrivers.error) return null;
+    const translation = getErrorTranslation(backendDrivers.error);
+    return translate(translation.key, translation.values);
+  }, [backendDrivers.error, isAdmin, translate]);
+
+  const actionErrorMessage = useMemo(() => {
+    if (!actionError) return null;
+    const translation = getErrorTranslation(actionError, "alerts:errors.acknowledgeFailed");
+    return translate(translation.key, translation.values);
+  }, [actionError, translate]);
+
   return (
     <AdminPage scroll>
       <AlertHeader
@@ -113,10 +138,19 @@ export function AlertsPage() {
         }}
       />
 
-      <AdminErrorBanner label="Backend unavailable" message={backendAlerts.error} />
-      <AdminErrorBanner label="Drivers unavailable" message={isAdmin ? backendDrivers.error : null} />
+      <AdminErrorBanner
+        label={t("errors.banners.backendUnavailable")}
+        message={alertsErrorMessage}
+      />
+      <AdminErrorBanner
+        label={t("errors.banners.driversUnavailable")}
+        message={driversErrorMessage}
+      />
 
-      <AdminErrorBanner label="Alert action failed" message={actionError} />
+      <AdminErrorBanner
+        label={t("errors.banners.actionFailed")}
+        message={actionErrorMessage}
+      />
 
       <AlertStatsRow stats={stats} />
 
@@ -158,6 +192,7 @@ function DriverFilterDropdown({
   selectedDriverId: string;
   onDriverChange: (next: string) => void;
 }) {
+  const { t } = useTranslation("alerts");
   const selectedDriver = drivers.find((driver) => driver.id === selectedDriverId) ?? null;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -186,7 +221,7 @@ function DriverFilterDropdown({
         }
       }}
     >
-      <span>Driver</span>
+      <span>{t("driverFilter.label")}</span>
       <div className="relative">
         <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
         <input
@@ -198,7 +233,7 @@ function DriverFilterDropdown({
             if (selectedDriverId) onDriverChange("");
           }}
           className="w-full rounded-md border border-hairline bg-subtle-bg py-2 pl-9 pr-9 text-[12px] text-text-primary outline-none focus:border-accent-active/50"
-          placeholder="Search driver name, license, or email"
+          placeholder={t("driverFilter.placeholder")}
         />
         {selectedDriverId ? (
           <button
@@ -209,7 +244,7 @@ function DriverFilterDropdown({
               setOpen(false);
             }}
             className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-text-tertiary hover:bg-subtle-bg-hover hover:text-text-primary"
-            aria-label="Clear driver filter"
+            aria-label={t("driverFilter.clearAria")}
           >
             <X size={13} />
           </button>
@@ -229,10 +264,12 @@ function DriverFilterDropdown({
               selectedDriverId ? "text-text-secondary" : "bg-subtle-bg-hover text-accent-active"
             }`}
           >
-            All drivers
+            {t("driverFilter.allDrivers")}
           </button>
           {filteredDrivers.length === 0 ? (
-            <div className="px-3 py-3 text-[12px] text-text-tertiary">No drivers match this search.</div>
+            <div className="px-3 py-3 text-[12px] text-text-tertiary">
+              {t("driverFilter.noMatches")}
+            </div>
           ) : (
             filteredDrivers.map((driver) => (
               <button

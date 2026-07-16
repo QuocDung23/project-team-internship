@@ -1,22 +1,20 @@
 import type { DriverStatus } from "../../types";
 import type { KpiTone } from "../../types/dashboards";
 
-// Driver status → human label in Vietnamese.
-const STATUS_LABEL: Record<DriverStatus, string> = {
-  driving: "Driving",
-  idle: "Idle",
-  disable: "Disable",
-};
+const STATUS_LABEL_KEYS = {
+  driving: "common:driverStatus.driving",
+  idle: "common:driverStatus.idle",
+  disable: "common:driverStatus.disable",
+} as const satisfies Record<DriverStatus, string>;
 
-// Driver status → badge tone for the StatusBadge / KpiCard component.
-const STATUS_TONE: Record<DriverStatus, KpiTone> = {
+const STATUS_TONE = {
   driving: "active",
   idle: "neutral",
   disable: "critical",
-};
+} as const satisfies Record<DriverStatus, KpiTone>;
 
 const DashboardConstants = {
-  STATUS_LABEL,
+  STATUS_LABEL_KEYS,
   STATUS_TONE,
 } as const;
 

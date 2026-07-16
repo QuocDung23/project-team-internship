@@ -1,0 +1,259 @@
+{
+  "pages": {
+    "fleet": {
+      "eyebrow": "Safety",
+      "title": "Trip Safety",
+      "description": "Active and completed driver safety trips with score and alert summaries",
+      "tripCount": "{{count}} trips",
+      "kpi": {
+        "active": "Active",
+        "activeDetail": "Trips in progress",
+        "completed": "Completed",
+        "completedDetail": "Completed trips",
+        "alerts": "Alerts",
+        "alertsDetail": "{{count}} critical",
+        "avgScore": "Avg Score",
+        "avgScoreDetail": "{{count}} scored"
+      },
+      "errors": {
+        "tripsUnavailable": "Trips unavailable",
+        "alertsUnavailable": "Alerts unavailable"
+      },
+      "empty": {
+        "noTripsTitle": "No trips yet",
+        "noTripsDetail": "Trips will appear after drivers start monitoring sessions.",
+        "noTripsTable": "Started trips will appear in this table."
+      },
+      "table": {
+        "columns": {
+          "trip": "Trip",
+          "status": "Status",
+          "driver": "Driver",
+          "started": "Started",
+          "score": "Score",
+          "alerts": "Alerts"
+        }
+      },
+      "details": {
+        "labels": {
+          "driver": "Driver",
+          "tripCode": "Trip Code",
+          "route": "Route",
+          "score": "Score",
+          "alerts": "Alerts",
+          "started": "Started",
+          "ended": "Ended",
+          "allAlerts": "All Alerts",
+          "noAlerts": "No alerts for this trip",
+          "alertsTotal": "{{count}} total",
+          "alertsCritical": "{{count}} critical"
+        }
+      }
+    },
+    "fleetOverview": {
+      "title": "Fleet Overview",
+      "subtitle": "Live vehicle monitoring from central backend",
+      "view": {
+        "all": "All Vehicles",
+        "waiting": "Queued / Waiting"
+      }
+    },
+    "myTrip": {
+      "eyebrow": "My Trips",
+      "title": "Driver trips",
+      "activeInProgress_one": "{{count}} active trip in progress",
+      "activeInProgress_other": "{{count}} active trips in progress",
+      "completedRecorded_one": "{{count}} completed trip recorded",
+      "completedRecorded_other": "{{count}} completed trips recorded",
+      "tiles": {
+        "completed": "Completed",
+        "active": "Active",
+        "avgScore": "Avg score",
+        "alerts": "Alerts"
+      },
+      "newTripCta": "New Trip",
+      "errors": {
+        "loadTrips": "Failed to load trips",
+        "camera": "Failed to start camera monitoring",
+        "startTrip": "Failed to start trip",
+        "endTrip": "Failed to end trip"
+      },
+      "history": {
+        "eyebrow": "History",
+        "title": "Trip history",
+        "subtitle": "Select a trip to review details and persisted alerts.",
+        "totalCount": "{{count}} total",
+        "empty": "No trips yet.",
+        "columns": {
+          "tripId": "Trip ID",
+          "route": "Route",
+          "startTime": "Start time",
+          "endTime": "End time",
+          "safetyScore": "Safety score"
+        }
+      },
+      "driverInfo": {
+        "driver": "Driver",
+        "email": "Email",
+        "license": "License"
+      }
+    }
+  },
+  "form": {
+    "cancel": "Cancel",
+    "startTrip": "Start Trip",
+    "endTrip": "End Trip",
+    "close": "Close",
+    "warning": {
+      "codeLength": "Trip code must be {{max}} characters or less.",
+      "originLength": "Origin must be {{max}} characters or less.",
+      "destinationLength": "Destination must be {{max}} characters or less.",
+      "identicalRoute": "Origin and destination are identical. You can continue, but the route may be unclear."
+    },
+    "invalid": "Trip details are invalid"
+  },
+  "tripDialog": {
+    "eyebrow": {
+      "live": "Live session",
+      "new": "New session"
+    },
+    "title": {
+      "active": "Active Trip",
+      "new": "New Trip"
+    },
+    "subtitle": {
+      "active": "Live detection stays open until the trip ends",
+      "new": "Add optional trip details before monitoring starts"
+    },
+    "fields": {
+      "tripCode": "Trip code",
+      "tripCodePlaceholder": "Auto-generated trip code",
+      "origin": "Origin",
+      "originPlaceholder": "Optional origin",
+      "destination": "Destination",
+      "destinationPlaceholder": "Optional destination"
+    },
+    "metrics": {
+      "tripCode": "Trip code",
+      "route": "Route",
+      "startTime": "Start time",
+      "driver": "Driver",
+      "detection": "Detection",
+      "detectionRunning": "Running",
+      "detectionStarting": "Starting",
+      "waitingForLive": "Waiting for live detection."
+    },
+    "overlay": {
+      "drowsy": "Drowsy",
+      "yawn": "Yawn",
+      "stayAlert": "Stay alert",
+      "escalationEngaged": "Escalation protocol engaged"
+    },
+    "driverGuidance": {
+      "noFace": {
+        "title": "No person visible",
+        "message": "The camera may be blocked or no person is visible. Please check camera position and lighting."
+      },
+      "cameraStopped": {
+        "title": "Camera image unavailable",
+        "message": "Check camera permission or restart the detector before continuing."
+      },
+      "connectionLost": {
+        "title": "Monitoring connection lost",
+        "message": "The trip has not ended. Please check the connection and try again."
+      }
+    },
+    "alertsTitle": "Live Alerts",
+    "eventsCount": "{{count}} events",
+    "noLiveAlerts": "No live alerts yet."
+  },
+  "tripHistoryDialog": {
+    "eyebrow": "Trip record",
+    "labels": {
+      "tripCode": "Trip code",
+      "status": "Status",
+      "driver": "Driver",
+      "route": "Route",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "safetyScore": "Safety score",
+      "alerts": "Alerts",
+      "critical": "Critical",
+      "origin": "Origin",
+      "destination": "Destination"
+    },
+    "routeNotProvided": "Route not provided",
+    "alertsSection": {
+      "title": "Trip alerts",
+      "subtitle": "Persisted safety events captured during this trip"
+    },
+    "loadingAlerts": "Loading alerts...",
+    "noAlerts": "No alerts for this trip."
+  },
+  "vehicle": {
+    "status": {
+      "waiting": "Waiting",
+      "loading": "Loading",
+      "in_transit": "In transit",
+      "idle": "Idle",
+      "maintenance": "Maintenance"
+    },
+    "kpi": {
+      "total": "Total Vehicles",
+      "active": "Active",
+      "todayTrips": "Trips Today",
+      "distance": "Distance",
+      "distanceValue_one": "{{count}} km",
+      "distanceValue_other": "{{count}} km"
+    },
+    "queue": {
+      "queued": "Queued",
+      "loading": "Loading",
+      "inTransit": "In Transit",
+      "completedToday": "Completed Today",
+      "avgWait": "Avg Wait",
+      "avgWaitValue": "{{count}}m",
+      "byZone": "By Zone:"
+    },
+    "card": {
+      "extendedWait": "Extended wait {{minutes}}m",
+      "speedUnit": "km/h",
+      "fuelUnit": "%",
+      "tempUnit": "°C",
+      "loadPercent": "{{count}}% loaded",
+      "wait": "{{count}}m"
+    },
+    "gridEmpty": "No vehicles in queue"
+  },
+  "monitoring": {
+    "metricLabels": {
+      "ear": "EAR",
+      "mar": "MAR",
+      "pitch": "Pitch",
+      "dws": "DWS",
+      "fps": "FPS",
+      "noFace": "--"
+    },
+    "eventTitle": {
+      "drowsiness": "Drowsiness / Eyes Closed",
+      "yawning": "Yawning",
+      "headNodding": "Head Nod / Loss of Head Position"
+    },
+    "severity": {
+      "warn": "Warning",
+      "critical": "Critical"
+    },
+    "status": {
+      "active": "Normal",
+      "warn": "Caution",
+      "critical": "Danger"
+    },
+    "errors": {
+      "cameraDeniedTitle": "Camera unavailable",
+      "cameraDeniedMessage": "Camera access denied. Please allow camera access to run live detection."
+    }
+  },
+  "audio": {
+    "voiceDisabled": "Voice alert unavailable in this language."
+  }
+}

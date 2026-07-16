@@ -12,14 +12,18 @@ import {
   deleteDriver,
   fetchActiveTrips,
   fetchDrivers,
+  fetchMonitoringSnapshot,
   fetchMyDriverProfile,
   fetchSettings,
   fetchTrips,
   mapBackendDriverToDriver,
   mapBackendTripToVehicle,
+  monitoringEventsUrl,
   updateDriver,
   updateSettings,
   type BackendDriver,
+  type BackendMonitoringSnapshot,
+  type BackendMonitoringUnavailable,
   type BackendSettings,
   type BackendTrip,
 } from "../services/backendApi";
@@ -190,3 +194,97 @@ export function useBackendSettings() {
   return { settings, isLive: Boolean(settings), error, saving, refresh, save };
 }
 
+export function useMonitoringSnapshot(pollMs = 500) {
+  const [snapshot, setSnapshot] = useState<
+    BackendMonitoringSnapshot | BackendMonitoringUnavailable | null
+  >(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const next = await fetchMonitoringSnapshot();
+      setSnapshot(next);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load detector monitoring",
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    let closed = false;
+    let intervalId: number | null = null;
+    let fallbackId: number | null = null;
+    let initialLoadId: number | null = null;
+    let eventSource: EventSource | null = null;
+
+    const startPolling = () => {
+      if (closed || intervalId !== null) return;
+      initialLoadId = window.setTimeout(() => {
+        void refresh();
+      }, 0);
+      intervalId = window.setInterval(() => {
+        void refresh();
+      }, pollMs);
+    };
+
+    if (typeof EventSource === "undefined") {
+      startPolling();
+      return () => {
+        closed = true;
+        if (initialLoadId !== null) window.clearTimeout(initialLoadId);
+        if (intervalId !== null) window.clearInterval(intervalId);
+      };
+    }
+
+    initialLoadId = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+    eventSource = new EventSource(monitoringEventsUrl());
+    fallbackId = window.setTimeout(startPolling, 2500);
+
+    eventSource.addEventListener("snapshot", (event) => {
+      if (closed) return;
+      if (fallbackId !== null) {
+        window.clearTimeout(fallbackId);
+        fallbackId = null;
+      }
+      try {
+        setSnapshot(JSON.parse(event.data) as BackendMonitoringSnapshot | BackendMonitoringUnavailable);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to parse detector monitoring");
+      }
+    });
+    eventSource.addEventListener("keepalive", () => {
+      if (fallbackId !== null) {
+        window.clearTimeout(fallbackId);
+        fallbackId = null;
+      }
+    });
+    eventSource.onerror = () => {
+      if (closed) return;
+      eventSource?.close();
+      eventSource = null;
+      startPolling();
+    };
+
+    return () => {
+      closed = true;
+      if (fallbackId !== null) window.clearTimeout(fallbackId);
+      if (initialLoadId !== null) window.clearTimeout(initialLoadId);
+      if (intervalId !== null) window.clearInterval(intervalId);
+      eventSource?.close();
+    };
+  }, [pollMs, refresh]);
+
+  return {
+    snapshot,
+    isLive: Boolean(snapshot && snapshot.available !== false && !snapshot.stale),
+    error,
+    refresh,
+  };
+}

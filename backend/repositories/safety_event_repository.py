@@ -147,6 +147,7 @@ class SafetyEventRepository:
         *,
         aggregation_kind: str | None = None,
         aggregation_window_seconds: int | None = None,
+        create_immediate_alert: bool = False,
     ) -> dict[str, Any]:
         with self.engine.begin() as connection:
             existing = (
@@ -215,9 +216,70 @@ class SafetyEventRepository:
                     kind=aggregation_kind,
                     window_seconds=aggregation_window_seconds,
                 )
+            if alert_id is None and create_immediate_alert:
+                alert_id = self._maybe_create_single_event_alert(connection, event=event)
 
             event["alert_id"] = alert_id
             return event
+
+    def _maybe_create_single_event_alert(self, connection, *, event: dict[str, Any]) -> str | None:
+        try:
+            alert_type = self._alert_type(event["event_type"])
+        except ValueError:
+            return None
+
+        alert_severity = self._alert_severity(event["severity"])
+        alert_row = (
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO alerts (
+                        trip_id,
+                        driver_id,
+                        vehicle_id,
+                        severity,
+                        alert_type,
+                        title,
+                        message,
+                        escalated_at
+                    )
+                    VALUES (
+                        :trip_id,
+                        :driver_id,
+                        :vehicle_id,
+                        CAST(:alert_severity AS alert_severity),
+                        CAST(:alert_type AS alert_type),
+                        :title,
+                        :message,
+                        CASE WHEN :alert_severity = 'critical' THEN now() ELSE NULL END
+                    )
+                    RETURNING alert_id
+                    """
+                ),
+                {
+                    "trip_id": event["trip_id"],
+                    "driver_id": event["driver_id"],
+                    "vehicle_id": event["vehicle_id"],
+                    "alert_severity": alert_severity,
+                    "alert_type": alert_type,
+                    "title": self._alert_title(event["event_type"], event["severity"]),
+                    "message": f"Realtime monitoring detected {event['event_type'].value.replace('_', ' ')}.",
+                },
+            )
+            .mappings()
+            .one()
+        )
+        alert_id = str(alert_row["alert_id"])
+        connection.execute(
+            text(
+                """
+                INSERT INTO alert_safety_events (alert_id, safety_event_id)
+                VALUES (:alert_id, :safety_event_id)
+                """
+            ),
+            {"alert_id": alert_id, "safety_event_id": event["safety_event_id"]},
+        )
+        return alert_id
 
     def _maybe_create_aggregated_alert(
         self,

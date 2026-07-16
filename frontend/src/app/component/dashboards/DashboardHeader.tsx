@@ -1,16 +1,22 @@
 import { RefreshCw } from "lucide-react";
 import { motion } from "motion/react";
-import { formatTime } from "../../hook/useTicker";
+import { useTranslation } from "react-i18next";
+import { useAppLocale } from "../../i18n/useAppLocale";
 
 interface DashboardHeaderProps {
   now: number;
   connected: boolean;
+  regions?: number;
 }
 
 export default function DashboardHeader({
   now,
   connected,
+  regions = 3,
 }: DashboardHeaderProps) {
+  const { t } = useTranslation("dashboard");
+  const { formatTime } = useAppLocale();
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -8 }}
@@ -21,16 +27,19 @@ export default function DashboardHeader({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-[15px] font-semibold tracking-tight text-text-primary">
-            Fleet Overview
+            {t("fleetHeader.title")}
           </h1>
           <p className="mt-0.5 text-[12px] text-text-secondary">
-            Active shifts across 3 regions, continuously synced from central backend
+            {t("fleetHeader.description", { regions })}
           </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-subtle-bg px-3 py-1.5 text-[11px] text-text-secondary">
-            <RefreshCw size={11} className="text-text-tertiary" />
+          <span
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline bg-subtle-bg px-3 py-1.5 text-[11px] text-text-secondary"
+            aria-label={t("fleetHeader.title")}
+          >
+            <RefreshCw size={11} className="text-text-tertiary" aria-hidden />
             <span className="font-mono-num tabular-nums text-text-primary">
               {formatTime(now)}
             </span>
@@ -42,6 +51,7 @@ export default function DashboardHeader({
                 ? "bg-accent-active/10 text-accent-active ring-accent-active/20"
                 : "bg-accent-warn/10 text-accent-warn ring-accent-warn/20"
             }`}
+            aria-live="polite"
           >
             <motion.span
               animate={{ scale: connected ? [1, 1.3, 1] : 1 }}
@@ -49,8 +59,9 @@ export default function DashboardHeader({
               className={`h-1.5 w-1.5 rounded-full ${
                 connected ? "bg-accent-active" : "bg-accent-warn"
               }`}
+              aria-hidden
             />
-            {connected ? "Live" : "Connecting"}
+            {connected ? t("fleetHeader.live") : t("fleetHeader.connecting")}
           </span>
         </div>
       </div>

@@ -1,12 +1,7 @@
 """
-integrate_cnn.py  —  FIXED VERSION
+integrate_cnn.py 
 ====================================
 Các fix so với phiên bản cũ:
-  [FIX-1] HEAD POSE: Pitch 174° bug → normalize về [-90,90], chỉ báo GAT DAU khi pitch thực sự cúi
-  [FIX-2] NHAM MAT: EMA_ALPHA 0.3→0.6, EAR_CONSEC_FRAMES 40→20, CNN_CLOSED_THRESHOLD 0.55→0.50
-  [FIX-3] HIEU NANG: Batch CNN 2 mắt 1 lần predict, resize frame 480p trước pipeline
-  [FIX-4] NGAP CHAM: MAR_CONSEC_FRAMES 12→8
-  [FIX-5] XOA frame.copy() thừa trong draw_dashboard
 
 Yêu cầu file (cùng thư mục project):
   - best_model.h5

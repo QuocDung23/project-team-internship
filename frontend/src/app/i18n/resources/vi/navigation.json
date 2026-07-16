@@ -1,0 +1,32 @@
+{
+  "aria": {
+    "primaryNavigation": "Điều hướng chính",
+    "signOut": "Đăng xuất"
+  },
+  "console": {
+    "admin": "Bảng điều khiển quản trị",
+    "driver": "Bảng điều khiển tài xế"
+  },
+  "primary": {
+    "dashboard": "Tổng quan",
+    "drivers": "Tài xế",
+    "trips": "Chuyến đi",
+    "alerts": "Cảnh báo",
+    "myTrip": "Chuyến đi của tôi",
+    "myAlerts": "Cảnh báo của tôi",
+    "settings": "Cài đặt"
+  },
+  "sections": {
+    "operations": "Vận hành",
+    "system": "Hệ thống"
+  },
+  "workspace": {
+    "backend": "Máy chủ vận hành",
+    "description": "Dữ liệu phát hiện theo thời gian thực",
+    "live": "Máy chủ đang hoạt động"
+  },
+  "user": {
+    "fallbackName": "Người dùng",
+    "signedIn": "Đã đăng nhập"
+  }
+}

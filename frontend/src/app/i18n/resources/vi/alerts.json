@@ -1,0 +1,135 @@
+{
+  "header": {
+    "title": "Nhật ký cảnh báo",
+    "subtitle": "Luồng cảnh báo theo thời gian thực · liên tục cập nhật",
+    "refreshAria": "Làm mới cảnh báo",
+    "refresh": "Làm mới",
+    "status": {
+      "critical_one": "{{count}} nghiêm trọng",
+      "critical_other": "{{count}} nghiêm trọng",
+      "warning_one": "{{count}} cảnh báo",
+      "warning_other": "{{count}} cảnh báo",
+      "allClear": "Không có cảnh báo mới"
+    }
+  },
+  "stats": {
+    "total": "Tổng sự kiện",
+    "critical": "Nghiêm trọng",
+    "warning": "Cảnh báo",
+    "acknowledged": "Đã xác nhận"
+  },
+  "filters": {
+    "label": "Bộ lọc",
+    "severity": {
+      "all": "Tất cả",
+      "critical": "Nghiêm trọng",
+      "warn": "Cảnh báo"
+    },
+    "type": {
+      "all": "Tất cả",
+      "drowsiness_alert": "Buồn ngủ",
+      "yawn_alert": "Ngáp",
+      "distraction_alert": "Mất tập trung",
+      "speed_alert": "Tốc độ",
+      "collision_warning": "Va chạm",
+      "lane_departure": "Lệch làn"
+    },
+    "showAcknowledged": "Hiện đã xác nhận"
+  },
+  "actions": {
+    "acknowledge": "Xác nhận",
+    "acknowledging": "Đang xác nhận...",
+    "acknowledgeGroup": "Xác nhận cả nhóm"
+  },
+  "list": {
+    "empty": "Không có cảnh báo",
+    "loading": "Đang tải cảnh báo...",
+    "group": {
+      "title_one": "{{count}} cảnh báo buồn ngủ",
+      "title_other": "{{count}} cảnh báo buồn ngủ",
+      "summary_one": "Đã gộp {{count}} cảnh báo buồn ngủ gần nhau",
+      "summary_other": "Đã gộp {{count}} cảnh báo buồn ngủ gần nhau"
+    }
+  },
+  "row": {
+    "ear": "EAR",
+    "acknowledged": "Đã xác nhận",
+    "evidence": "Bằng chứng",
+    "noEvidence": "Chưa có ảnh bằng chứng",
+    "alarmTriggered": "Đã bật âm báo",
+    "cnnLabel": "Nhãn {{label}}",
+    "metric": {
+      "ear": "EAR",
+      "mar": "MAR",
+      "pitch": "Pitch",
+      "frame_one": "{{count}} khung hình",
+      "frame_other": "{{count}} khung hình",
+      "cnn": "CNN {{value}}%",
+      "earValue": "EAR {{value}}"
+    }
+  },
+  "driverFilter": {
+    "label": "Tài xế",
+    "placeholder": "Tìm theo tên, biển số hoặc email tài xế",
+    "allDrivers": "Tất cả tài xế",
+    "noMatches": "Không có tài xế phù hợp.",
+    "clearAria": "Xóa bộ lọc tài xế"
+  },
+  "errors": {
+    "loadFailed": "Không tải được cảnh báo",
+    "acknowledgeFailed": "Không xác nhận được cảnh báo",
+    "acknowledgeGroupFailed": "Không xác nhận được nhóm cảnh báo",
+    "banners": {
+      "backendUnavailable": "Không kết nối được máy chủ",
+      "driversUnavailable": "Không tải được danh sách tài xế",
+      "actionFailed": "Thao tác cảnh báo thất bại"
+    }
+  },
+  "type": {
+    "drowsiness_alert": "Buồn ngủ",
+    "yawn_alert": "Ngáp",
+    "distraction_alert": "Mất tập trung",
+    "speed_alert": "Tốc độ",
+    "collision_warning": "Va chạm",
+    "lane_departure": "Lệch làn",
+    "unknown": "Cảnh báo an toàn"
+  },
+  "severity": {
+    "critical": "Nghiêm trọng",
+    "warn": "Cảnh báo",
+    "warning": "Cảnh báo",
+    "info": "Thông tin"
+  },
+  "source": {
+    "browser_cnn": "Phát hiện qua camera AI",
+    "cnn_classifier": "Bộ phân loại phát hiện",
+    "unknown": "Nguồn không xác định"
+  },
+  "detail": {
+    "typeUnknown": "Cảnh báo mất tập trung",
+    "typeDrowsiness": "Buồn ngủ / nhắm mắt",
+    "typeYawning": "Ngáp",
+    "typeHeadNod": "Gật đầu / mất tư thế đầu",
+    "typeNoFace": "Không phát hiện khuôn mặt",
+    "ear": "EAR {{value}}",
+    "frames_one": "{{count}} khung hình",
+    "frames_other": "{{count}} khung hình",
+    "cnn": "CNN {{value}}%",
+    "alarmTriggered": "Đã kích hoạt cảnh báo âm thanh"
+  },
+  "fallback": {
+    "noLicense": "Không có giấy phép",
+    "unknownDriver": "Tài xế không xác định",
+    "unknownSource": "Nguồn không xác định"
+  },
+  "aria": {
+    "filterSeverity": "Lọc theo mức độ nghiêm trọng",
+    "filterType": "Lọc theo loại cảnh báo",
+    "filterShowAcknowledged": "Hiện các cảnh báo đã xác nhận",
+    "acknowledge": "Xác nhận cảnh báo",
+    "acknowledgeGroup": "Xác nhận cả nhóm cảnh báo",
+    "alertRow": "Chi tiết cảnh báo",
+    "criticalCount": "{{count}} cảnh báo nghiêm trọng",
+    "warningCount": "{{count}} cảnh báo"
+  }
+}

@@ -5,6 +5,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import KpiCard from "./KpiCard";
 import type { KpiTone } from "../../types/dashboards";
 
@@ -46,6 +47,8 @@ const itemVariants = {
 };
 
 export default function KpiGrid({ kpis }: KpiGridProps) {
+  const { t } = useTranslation("dashboard");
+
   const total = kpis.total;
   const driving = kpis.driving;
   const idle = kpis.idle;
@@ -66,9 +69,13 @@ export default function KpiGrid({ kpis }: KpiGridProps) {
     >
       <motion.div variants={itemVariants}>
         <KpiCard
-          label="Driving"
+          label={t("kpiGrid.labels.driving")}
           value={driving}
-          hint={`${idle} idle · ${disabled} disabled · ${total} total`}
+          hint={t("kpiGrid.hints.drivingBreakdown", {
+            idle,
+            disabled,
+            total,
+          })}
           tone="active"
           icon={<Truck size={16} strokeWidth={1.5} />}
         />
@@ -76,18 +83,23 @@ export default function KpiGrid({ kpis }: KpiGridProps) {
 
       <motion.div variants={itemVariants}>
         <KpiCard
-          label="Idle"
+          label={t("kpiGrid.labels.idle")}
           value={idle}
-          hint={`${driving} driving · ${disabled} disabled`}
+          hint={t("kpiGrid.hints.idleBreakdown", {
+            driving,
+            disabled,
+          })}
           icon={<Users size={16} strokeWidth={1.5} />}
         />
       </motion.div>
 
       <motion.div variants={itemVariants}>
         <KpiCard
-          label="Alerts"
+          label={t("kpiGrid.labels.alerts")}
           value={kpis.totalAlerts}
-          hint={`${kpis.criticalAlerts} critical`}
+          hint={t("kpiGrid.hints.criticalCount", {
+            count: kpis.criticalAlerts,
+          })}
           tone={alertsTone}
           icon={<AlertTriangle size={16} strokeWidth={1.5} />}
         />
@@ -95,9 +107,9 @@ export default function KpiGrid({ kpis }: KpiGridProps) {
 
       <motion.div variants={itemVariants}>
         <KpiCard
-          label="Avg Score"
+          label={t("kpiGrid.labels.avgScore")}
           value={kpis.averageScore === null ? "—" : kpis.averageScore}
-          hint="Average completed trip score"
+          hint={t("kpiGrid.hints.avgScoreDescription")}
           tone={
             kpis.averageScore !== null && kpis.averageScore < 60
               ? "critical"
@@ -106,6 +118,7 @@ export default function KpiGrid({ kpis }: KpiGridProps) {
           icon={<ShieldCheck size={16} strokeWidth={1.5} />}
         />
       </motion.div>
-    </motion.div>
+
+      </motion.div>
   );
 }

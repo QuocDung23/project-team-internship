@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export function TripMetric({ label, value }: { label: string; value: ReactNode }) {
+export function TripMetric({ label, value }: { label: ReactNode; value: ReactNode }) {
   return (
     <div className="tile px-3.5 py-2.5">
       <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-text-tertiary">

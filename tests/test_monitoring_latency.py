@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from ai_runtime.monitoring_publisher import AsyncMonitoringPublisher
-from backend.routes.monitoring_routes import stream_monitoring_frame
+from backend.routes.monitoring_routes import read_monitoring_snapshot, stream_monitoring_frame
 from backend.services import monitoring_service
 
 
@@ -140,6 +140,7 @@ class MonitoringStreamTest(unittest.TestCase):
             monitoring_service._latest_frame = None
             monitoring_service._latest_frame_content_type = "image/jpeg"
             monitoring_service._frame_seq = 0
+            monitoring_service._snapshot_seq = 0
             monitoring_service._snapshot_received_at = None
             monitoring_service._frame_received_at = None
 
@@ -172,9 +173,12 @@ class MonitoringStreamTest(unittest.TestCase):
         self.assertTrue(snapshot["frame_available"])
         self.assertEqual(snapshot["frame_timestamp"], 1)
         self.assertEqual(snapshot["snapshot_received_at"], 101.0)
+        self.assertEqual(snapshot["snapshot_seq"], 1)
         self.assertEqual(snapshot["frame_received_at"], 100.0)
         self.assertEqual(snapshot["snapshot_age_seconds"], 0.0)
+        self.assertEqual(snapshot["age_seconds"], 0.0)
         self.assertEqual(snapshot["frame_age_seconds"], 1.0)
+        self.assertEqual(snapshot["health"], "online")
         self.assertFalse(snapshot["stale"])
 
     def test_snapshot_marks_stale_when_frame_is_old(self):
@@ -200,6 +204,7 @@ class MonitoringStreamTest(unittest.TestCase):
         self.assertIsNotNone(snapshot)
         self.assertEqual(snapshot["frame_age_seconds"], 5.0)
         self.assertTrue(snapshot["stale"])
+        self.assertEqual(snapshot["health"], "stale")
 
     def test_mjpeg_stream_emits_newest_frame_sequence(self):
         monitoring_service.update_monitoring_frame(b"first")
@@ -220,6 +225,57 @@ class MonitoringStreamTest(unittest.TestCase):
         self.assertEqual(response.headers["cache-control"], "no-store, no-cache, must-revalidate, max-age=0")
         self.assertEqual(response.headers["pragma"], "no-cache")
         self.assertEqual(response.headers["expires"], "0")
+
+    def test_snapshot_route_reports_offline_when_detector_has_not_published(self):
+        snapshot = read_monitoring_snapshot()
+
+        self.assertFalse(snapshot["available"])
+        self.assertTrue(snapshot["stale"])
+        self.assertEqual(snapshot["health"], "offline")
+        self.assertIsNone(snapshot["age_seconds"])
+
+    def test_snapshot_event_stream_emits_latest_snapshot(self):
+        stream = monitoring_service.iter_monitoring_snapshots()
+        monitoring_service.update_monitoring_snapshot(
+            {
+                "timestamp": 101.0,
+                "ear": 0.3,
+                "mar": 0.4,
+                "pitch": 1.0,
+                "dws_score": 0,
+                "eyes_open": True,
+                "mouth_closed": True,
+                "face_detected": True,
+                "cnn_enabled": False,
+            }
+        )
+
+        snapshot = next(stream)
+
+        self.assertTrue(snapshot["available"])
+        self.assertEqual(snapshot["snapshot_seq"], 1)
+        self.assertEqual(snapshot["dws_score"], 0)
+
+    def test_snapshot_event_stream_does_not_yield_while_lock_is_held(self):
+        stream = monitoring_service.iter_monitoring_snapshots()
+        monitoring_service.update_monitoring_snapshot(
+            {
+                "timestamp": 101.0,
+                "ear": 0.3,
+                "mar": 0.4,
+                "pitch": 1.0,
+                "dws_score": 0,
+                "eyes_open": True,
+                "mouth_closed": True,
+                "face_detected": True,
+                "cnn_enabled": False,
+            }
+        )
+
+        next(stream)
+
+        self.assertTrue(monitoring_service._condition.acquire(blocking=False))
+        monitoring_service._condition.release()
 
 
 if __name__ == "__main__":

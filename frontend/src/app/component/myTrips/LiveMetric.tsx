@@ -1,10 +1,21 @@
+import { useTranslation } from "react-i18next";
+
+type MetricLabelKey =
+  | "monitoring.metricLabels.ear"
+  | "monitoring.metricLabels.mar"
+  | "monitoring.metricLabels.pitch"
+  | "monitoring.metricLabels.dws"
+  | "monitoring.metricLabels.fps"
+  | "monitoring.metricLabels.noFace";
+
 interface LiveMetricProps {
-  label: string;
+  labelKey: MetricLabelKey;
   value: string;
   alert: boolean;
 }
 
-export function LiveMetric({ label, value, alert }: LiveMetricProps) {
+export function LiveMetric({ labelKey, value, alert }: LiveMetricProps) {
+  const { t } = useTranslation("trips");
   return (
     <div
       className={`tile px-3 py-2.5 ${
@@ -13,7 +24,7 @@ export function LiveMetric({ label, value, alert }: LiveMetricProps) {
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-text-tertiary">
-          {label}
+          {t(labelKey)}
         </p>
         <span
           className={`h-1.5 w-1.5 rounded-full ${

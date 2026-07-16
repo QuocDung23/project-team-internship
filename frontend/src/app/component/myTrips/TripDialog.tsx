@@ -1,12 +1,11 @@
-import { type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { motion } from "motion/react";
-import {
-  Play,
-  Stop,
-  Warning,
-  X,
-} from "@phosphor-icons/react";
-import type { BackendTrip, StartMyTripPayload } from "../../services/backendApi";
+import { Play, Stop, Warning, X } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import type {
+  BackendTrip,
+  StartMyTripPayload,
+} from "../../services/backendApi";
 import type { useBrowserCNN } from "../../hook/useBrowserCNN";
 import {
   tripFormWarnings,
@@ -18,6 +17,7 @@ import {
   TRIP_CODE_MAX_LENGTH,
   ROUTE_POINT_MAX_LENGTH,
 } from "../../utils/trips/tripFormConstants";
+import { resolveAppLanguage } from "../../i18n";
 import { SPRING } from "../../utils/trips/tripMotion";
 import { TripMetric } from "./TripMetric";
 import { TextField } from "./TextField";
@@ -25,6 +25,7 @@ import { LiveMetric } from "./LiveMetric";
 import { AlertInfoRow, type AlertInfo } from "./AlertInfoRow";
 
 type CnnMetrics = ReturnType<typeof useBrowserCNN>["metrics"];
+const NO_FACE_GUIDANCE_DELAY_MS = 2000;
 
 interface TripDialogProps {
   activeTrip: BackendTrip | null;
@@ -63,7 +64,30 @@ export default function TripDialog({
   onUpdateForm,
   escalationActive,
 }: TripDialogProps) {
+  const { t, i18n } = useTranslation(["trips", "common"]);
   const warnings = tripFormWarnings(form);
+  const language = resolveAppLanguage(i18n.resolvedLanguage ?? i18n.language);
+  const localeTag = language === "vi" ? "vi-VN" : "en-US";
+  const titleFallback = t("common:fallback.tripWithoutCode");
+  const routeFallback = t("common:fallback.routeNotProvided");
+  const [showNoFaceGuidance, setShowNoFaceGuidance] = useState(false);
+  const shouldStartNoFaceTimer =
+    Boolean(activeTrip) && cnnRunning && cnnMetrics?.faceDetected === false;
+
+  useEffect(() => {
+    if (!shouldStartNoFaceTimer) {
+      const timeoutId = window.setTimeout(() => {
+        setShowNoFaceGuidance(false);
+      }, 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowNoFaceGuidance(true);
+    }, NO_FACE_GUIDANCE_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [shouldStartNoFaceTimer]);
 
   return (
     <div
@@ -94,21 +118,27 @@ export default function TripDialog({
                       : "bg-accent-active"
                   }`}
                 />
-                <span>{activeTrip ? "Live session" : "New session"}</span>
+                <span>
+                  {activeTrip
+                    ? t("tripDialog.eyebrow.live")
+                    : t("tripDialog.eyebrow.new")}
+                </span>
               </div>
               <h2 className="text-xl font-semibold tracking-[-0.02em] text-text-primary">
-                {activeTrip ? "Active Trip" : "New Trip"}
+                {activeTrip
+                  ? t("tripDialog.title.active")
+                  : t("tripDialog.title.new")}
               </h2>
               <p className="mt-1 text-xs text-text-tertiary">
                 {activeTrip
-                  ? "Live detection stays open until the trip ends"
-                  : "Add optional trip details before monitoring starts"}
+                  ? t("tripDialog.subtitle.active")
+                  : t("tripDialog.subtitle.new")}
               </p>
             </div>
             {canClose ? (
               <button
                 type="button"
-                aria-label="Close"
+                aria-label={t("form.close")}
                 onClick={onClose}
                 disabled={isBusy}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-subtle-bg text-text-secondary transition-colors duration-200 hover:bg-subtle-bg-hover hover:text-text-primary disabled:opacity-50"
@@ -128,9 +158,9 @@ export default function TripDialog({
             <div className="grid gap-4">
               <div className="grid gap-3">
                 <TextField
-                  label="Trip code"
+                  labelKey="tripDialog.fields.tripCode"
                   value={form.code ?? ""}
-                  placeholder="Auto-generated trip code"
+                  placeholderKey="tripDialog.fields.tripCodePlaceholder"
                   maxLength={TRIP_CODE_MAX_LENGTH}
                   readOnly
                   onChange={(value) => onUpdateForm("code", value)}
@@ -138,29 +168,29 @@ export default function TripDialog({
                 <div className="flex flex-col gap-3 md:flex-row">
                   <div className="flex-1">
                     <TextField
-                      label="Origin"
+                      labelKey="tripDialog.fields.origin"
                       value={form.origin ?? ""}
-                      placeholder="Optional origin"
+                      placeholderKey="tripDialog.fields.originPlaceholder"
                       maxLength={ROUTE_POINT_MAX_LENGTH}
                       onChange={(value) => onUpdateForm("origin", value)}
                     />
                   </div>
                   <div className="flex-1">
                     <TextField
-                      label="Destination"
+                      labelKey="tripDialog.fields.destination"
                       value={form.destination ?? ""}
-                      placeholder="Optional destination"
+                      placeholderKey="tripDialog.fields.destinationPlaceholder"
                       maxLength={ROUTE_POINT_MAX_LENGTH}
                       onChange={(value) => onUpdateForm("destination", value)}
                     />
                   </div>
                 </div>
               </div>
-      
+
               {warnings.length > 0 ? (
                 <div className="grid gap-1 rounded-xl border border-accent-warn/30 bg-accent-warn/6 px-4 py-2.5 text-xs text-accent-warn">
                   {warnings.map((warning) => (
-                    <p key={warning.message}>{warning.message}</p>
+                    <p key={warning.key}>{t(warning.key, warning.params)}</p>
                   ))}
                 </div>
               ) : null}
@@ -171,7 +201,7 @@ export default function TripDialog({
                   disabled={isBusy}
                   onClick={onClose}
                 >
-                  Cancel
+                  {t("form.cancel")}
                 </button>
                 <button
                   type="button"
@@ -180,7 +210,7 @@ export default function TripDialog({
                   onClick={onStartTrip}
                 >
                   <Play size={12} weight="fill" />
-                  <span>Start Trip</span>
+                  <span>{t("form.startTrip")}</span>
                 </button>
               </div>
             </div>
@@ -188,18 +218,35 @@ export default function TripDialog({
             <div className="grid gap-5 lg:grid-cols-[1.4fr_0.85fr]">
               <div className="grid gap-4">
                 <div className="grid gap-2.5 text-sm md:grid-cols-3 xl:grid-cols-5">
-                  <TripMetric label="Trip code" value={tripTitle(activeTrip)} />
-                  <TripMetric label="Route" value={routeLabel(activeTrip)} />
                   <TripMetric
-                    label="Start time"
+                    label={t("tripDialog.metrics.tripCode")}
+                    value={tripTitle(activeTrip, { fallback: titleFallback })}
+                  />
+                  <TripMetric
+                    label={t("tripDialog.metrics.route")}
+                    value={routeLabel(activeTrip, {
+                      fallback: routeFallback,
+                      arrow: "→",
+                    })}
+                  />
+                  <TripMetric
+                    label={t("tripDialog.metrics.startTime")}
                     value={dateLabel(
                       activeTrip.actual_start_at ?? activeTrip.start_time,
+                      localeTag,
                     )}
                   />
-                  <TripMetric label="Driver" value={driverName} />
                   <TripMetric
-                    label="Detection"
-                    value={cnnRunning ? "Running" : "Starting"}
+                    label={t("tripDialog.metrics.driver")}
+                    value={driverName}
+                  />
+                  <TripMetric
+                    label={t("tripDialog.metrics.detection")}
+                    value={
+                      cnnRunning
+                        ? t("tripDialog.metrics.detectionRunning")
+                        : t("tripDialog.metrics.detectionStarting")
+                    }
                   />
                 </div>
 
@@ -218,21 +265,33 @@ export default function TripDialog({
                   {cnnMetrics?.drowsinessWarningActive ? (
                     <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
                       <span className="animate-pulse rounded-full bg-accent-critical/90 px-4 py-2 text-sm font-bold uppercase tracking-[0.14em] text-white shadow-[0_8px_30px_rgba(159,18,57,0.55)]">
-                        Drowsy
+                        {t("tripDialog.overlay.drowsy")}
                       </span>
                     </div>
                   ) : null}
                   {cnnMetrics?.yawnWarningActive ? (
                     <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
                       <span className="rounded-full bg-accent-warn/90 px-4 py-2 text-sm font-bold uppercase tracking-[0.14em] text-text-primary shadow-[0_8px_30px_rgba(217,119,6,0.45)]">
-                        Yawn
+                        {t("tripDialog.overlay.yawn")}
                       </span>
+                    </div>
+                  ) : null}
+                  {showNoFaceGuidance ? (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 px-4 text-center backdrop-blur-[1px]">
+                      <div className="max-w-md rounded-2xl border border-accent-warn/40 bg-accent-warn/90 px-4 py-3 text-text-primary shadow-[0_10px_34px_rgba(217,119,6,0.35)]">
+                        <p className="text-sm font-bold uppercase tracking-[0.12em]">
+                          {t("tripDialog.driverGuidance.noFace.title")}
+                        </p>
+                        <p className="mt-1 text-xs font-medium leading-5">
+                          {t("tripDialog.driverGuidance.noFace.message")}
+                        </p>
+                      </div>
                     </div>
                   ) : null}
                   {escalationActive ? (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-accent-critical/40 backdrop-blur-[2px]">
                       <span className="animate-pulse text-center text-3xl font-black uppercase tracking-[0.08em] text-white drop-shadow-[0_4px_22px_rgba(127,29,29,0.95)] sm:text-5xl">
-                        Stay alert
+                        {t("tripDialog.overlay.stayAlert")}
                       </span>
                     </div>
                   ) : null}
@@ -240,35 +299,45 @@ export default function TripDialog({
 
                 {!cnnRunning ? (
                   <div className="rounded-2xl border border-hairline bg-subtle-bg px-4 py-10 text-center text-xs text-text-tertiary">
-                    Waiting for live detection.
+                    {t("tripDialog.metrics.waitingForLive")}
                   </div>
                 ) : null}
+
+                <DriverMonitoringBanner
+                  hasConnectionIssue={Boolean(error)}
+                  isCameraRunning={cnnRunning}
+                  showNoFaceGuidance={showNoFaceGuidance}
+                />
 
                 {cnnMetrics ? (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                     <LiveMetric
-                      label="EAR"
+                      labelKey="monitoring.metricLabels.ear"
                       value={cnnMetrics.ear.toFixed(3)}
                       alert={cnnMetrics.earAlert}
                     />
                     <LiveMetric
-                      label="MAR"
+                      labelKey="monitoring.metricLabels.mar"
                       value={cnnMetrics.mar.toFixed(3)}
                       alert={cnnMetrics.marAlert}
                     />
                     <LiveMetric
-                      label="Pitch"
+                      labelKey="monitoring.metricLabels.pitch"
                       value={cnnMetrics.pitch.toFixed(1)}
                       alert={cnnMetrics.poseAlert}
                     />
                     <LiveMetric
-                      label="DWS"
+                      labelKey="monitoring.metricLabels.dws"
                       value={`${cnnMetrics.dwsScore}%`}
                       alert={cnnMetrics.dwsScore >= 70}
                     />
                     <LiveMetric
-                      label="FPS"
-                      value={cnnMetrics.fps ? String(cnnMetrics.fps) : "--"}
+                      labelKey="monitoring.metricLabels.fps"
+                      value={
+                        cnnMetrics.fps
+                          ? String(cnnMetrics.fps)
+                          : t("monitoring.metricLabels.noFace")
+                      }
                       alert={false}
                     />
                   </div>
@@ -279,10 +348,10 @@ export default function TripDialog({
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-sm font-semibold tracking-[-0.01em] text-text-primary">
-                      Live Alerts
+                      {t("tripDialog.alertsTitle")}
                     </h3>
                     <span className="rounded-full border border-accent-active/30 bg-accent-active/10 px-2 py-0.5 font-mono-num text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-active tabular-nums">
-                      {cnnEventCount} events
+                      {t("tripDialog.eventsCount", { count: cnnEventCount })}
                     </span>
                   </div>
                 </div>
@@ -293,7 +362,7 @@ export default function TripDialog({
                     ))
                   ) : (
                     <div className="rounded-2xl border border-hairline bg-subtle-bg px-4 py-6 text-center text-xs text-text-tertiary">
-                      No live alerts yet.
+                      {t("tripDialog.noLiveAlerts")}
                     </div>
                   )}
                 </div>
@@ -305,13 +374,17 @@ export default function TripDialog({
                   onClick={onEndTrip}
                 >
                   <Stop size={12} weight="fill" />
-                  <span>End Trip</span>
+                  <span>{t("form.endTrip")}</span>
                 </button>
 
                 {escalationActive ? (
                   <div className="flex items-center gap-2 rounded-2xl border border-accent-critical/30 bg-accent-critical/6 px-3.5 py-2.5 text-[11px] text-accent-critical">
-                    <Warning size={14} weight="fill" className="text-accent-critical" />
-                    <span>Escalation protocol engaged</span>
+                    <Warning
+                      size={14}
+                      weight="fill"
+                      className="text-accent-critical"
+                    />
+                    <span>{t("tripDialog.overlay.escalationEngaged")}</span>
                   </div>
                 ) : null}
               </div>
@@ -319,6 +392,75 @@ export default function TripDialog({
           )}
         </div>
       </motion.section>
+    </div>
+  );
+}
+
+function DriverMonitoringBanner({
+  hasConnectionIssue,
+  isCameraRunning,
+  showNoFaceGuidance,
+}: {
+  hasConnectionIssue: boolean;
+  isCameraRunning: boolean;
+  showNoFaceGuidance: boolean;
+}) {
+  const { t } = useTranslation("trips");
+
+  if (hasConnectionIssue) {
+    return (
+      <MonitoringNotice
+        tone="critical"
+        title={t("tripDialog.driverGuidance.connectionLost.title")}
+        message={t("tripDialog.driverGuidance.connectionLost.message")}
+      />
+    );
+  }
+
+  if (!isCameraRunning) {
+    return (
+      <MonitoringNotice
+        tone="warn"
+        title={t("tripDialog.driverGuidance.cameraStopped.title")}
+        message={t("tripDialog.driverGuidance.cameraStopped.message")}
+      />
+    );
+  }
+
+  if (showNoFaceGuidance) {
+    return (
+      <MonitoringNotice
+        tone="warn"
+        title={t("tripDialog.driverGuidance.noFace.title")}
+        message={t("tripDialog.driverGuidance.noFace.message")}
+      />
+    );
+  }
+
+  return null;
+}
+
+function MonitoringNotice({
+  tone,
+  title,
+  message,
+}: {
+  tone: "warn" | "critical";
+  title: string;
+  message: string;
+}) {
+  const toneClass =
+    tone === "critical"
+      ? "border-accent-critical/30 bg-accent-critical/6 text-accent-critical"
+      : "border-accent-warn/30 bg-accent-warn/6 text-accent-warn";
+
+  return (
+    <div className={`flex gap-2 rounded-2xl border px-4 py-3 text-xs ${toneClass}`}>
+      <Warning size={16} weight="fill" className="mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <p className="font-semibold">{title}</p>
+        <p className="mt-0.5 leading-5 opacity-90">{message}</p>
+      </div>
     </div>
   );
 }

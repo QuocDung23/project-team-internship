@@ -1,12 +1,20 @@
+import { useTranslation } from "react-i18next";
+import { useAppLocale } from "../../i18n/useAppLocale";
+
 export interface AlertInfo {
   id: string;
-  title: string;
+  titleKey:
+    | "monitoring.eventTitle.drowsiness"
+    | "monitoring.eventTitle.yawning"
+    | "monitoring.eventTitle.headNodding";
   severity: "warn" | "critical";
   ts: number;
   detail: string;
 }
 
 export function AlertInfoRow({ alert }: { alert: AlertInfo }) {
+  const { t } = useTranslation("trips");
+  const { formatDateTime } = useAppLocale();
   const critical = alert.severity === "critical";
   return (
     <div
@@ -24,7 +32,7 @@ export function AlertInfoRow({ alert }: { alert: AlertInfo }) {
             }`}
           />
           <p className="truncate text-[13px] font-medium text-text-primary">
-            {alert.title}
+            {t(alert.titleKey)}
           </p>
         </div>
         <span
@@ -34,11 +42,11 @@ export function AlertInfoRow({ alert }: { alert: AlertInfo }) {
               : "bg-accent-warn/15 text-accent-warn"
           }`}
         >
-          {alert.severity}
+          {t(`monitoring.severity.${alert.severity}`)}
         </span>
       </div>
       <p className="mt-1.5 font-mono-num text-[11px] text-text-tertiary tabular-nums">
-        {new Date(alert.ts).toLocaleString()}
+        {formatDateTime(new Date(alert.ts))}
         <span className="mx-2 text-text-tertiary/50">/</span>
         <span className="text-text-tertiary">{alert.detail}</span>
       </p>

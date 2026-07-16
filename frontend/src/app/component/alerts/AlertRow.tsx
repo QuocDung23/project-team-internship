@@ -1,14 +1,14 @@
 "use client";
 import { motion } from "motion/react";
-import { AlertTriangle, CheckCircle, MapPin, Truck } from "lucide-react";
+import { AlertTriangle, Bell, Camera, CheckCircle, MapPin, Truck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { FleetAlertEvent } from "../../types/alerts";
-import { formatTime } from "../../hook/useTicker";
 import { StatusBadge } from "../monitoring/StatusBadge";
 import {
   ALERT_TYPE_ICONS,
-  ALERT_TYPE_LABELS,
-  SEVERITY_LABELS,
+  SEVERITY_KEYS,
 } from "../../constants/alerts";
+import { useAppLocale } from "../../i18n/useAppLocale";
 
 interface AlertRowProps {
   event: FleetAlertEvent;
@@ -16,11 +16,19 @@ interface AlertRowProps {
   onAcknowledge?: (event: FleetAlertEvent) => void;
 }
 
+type DynamicTranslator = (
+  key: string,
+  values?: Record<string, string | number>,
+) => string;
+
 export default function AlertRow({
   event,
   isAcknowledging = false,
   onAcknowledge,
 }: AlertRowProps) {
+  const { t, i18n } = useTranslation("alerts");
+  const translate: DynamicTranslator = t as unknown as DynamicTranslator;
+  const { formatTime: localizedTime } = useAppLocale();
   const isCritical = event.severity === "critical";
   const config = {
     critical: {
@@ -40,6 +48,20 @@ export default function AlertRow({
   };
   const style = config[event.severity];
 
+  const sourceKey = `source.${event.location}`;
+  const sourceLabel = i18n.exists(sourceKey)
+    ? translate(sourceKey)
+    : translate("source.unknown");
+
+  const typeKey = `type.${event.type}`;
+  const typeLabel = i18n.exists(typeKey)
+    ? translate(typeKey)
+    : translate("type.unknown");
+  const confidencePercent =
+    typeof event.cnnConfidence === "number"
+      ? Math.round(event.cnnConfidence * 100)
+      : null;
+
   return (
     <motion.div
       layout
@@ -48,6 +70,7 @@ export default function AlertRow({
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
       className={`group relative overflow-hidden rounded-2xl border bg-linear-to-br ${style.gradient} p-px ${style.border} ${style.ring}`}
+      aria-label={t("aria.alertRow")}
     >
       <div className="relative rounded-[1.25rem] bg-surface p-4">
         <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-linear-to-br from-white/3 to-transparent" />
@@ -75,10 +98,10 @@ export default function AlertRow({
             <div className="flex flex-col items-end gap-1.5">
               <StatusBadge
                 tone={isCritical ? "critical" : "warn"}
-                label={SEVERITY_LABELS[event.severity]}
+                label={translate(SEVERITY_KEYS[event.severity].join("."))}
               />
               <span className="font-mono-num text-xs text-text-tertiary">
-                {formatTime(event.timestamp)}
+                {localizedTime(event.timestamp)}
               </span>
             </div>
           </div>
@@ -90,11 +113,12 @@ export default function AlertRow({
             </span>
             <span className="inline-flex items-center gap-1.5">
               <MapPin size={11} className="text-text-tertiary" />
-              {event.location}
+              {sourceLabel}
             </span>
             {event.ear > 0 && (
               <span className="font-mono-num rounded-full bg-subtle-bg px-2.5 py-1  ">
-                EAR:{" "}
+                {t("row.metric.ear")}
+                :{" "}
                 <span
                   className={
                     event.ear < 0.17 ? "text-accent-critical" : "text-text-secondary"
@@ -105,20 +129,46 @@ export default function AlertRow({
               </span>
             )}
             <span className="inline-flex items-center gap-1 rounded-full bg-subtle-bg px-2.5 py-1  ">
-              {ALERT_TYPE_LABELS[event.type]}
+              {typeLabel}
             </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-hairline bg-subtle-bg px-3 py-2 text-[11px] text-text-secondary">
+            <span className="inline-flex items-center gap-1.5 font-medium text-text-primary">
+              <Camera size={12} className="text-text-tertiary" />
+              {event.capturedFramePath
+                ? t("row.evidence")
+                : t("row.noEvidence")}
+            </span>
+            {confidencePercent !== null ? (
+              <span className="font-mono-num text-text-tertiary">
+                {t("row.metric.cnn", { value: confidencePercent })}
+              </span>
+            ) : null}
+            {event.cnnLabel ? (
+              <span className="text-text-tertiary">
+                {t("row.cnnLabel", { label: event.cnnLabel })}
+              </span>
+            ) : null}
+            {event.alarmTriggered ? (
+              <span className="inline-flex items-center gap-1 text-accent-warn">
+                <Bell size={12} />
+                {t("row.alarmTriggered")}
+              </span>
+            ) : null}
           </div>
 
           {event.acknowledged ? (
             <div className="flex items-center gap-1.5 text-xs text-accent-active">
               <CheckCircle size={13} fill="currentColor" />
-              Acknowledged
+              {t("row.acknowledged")}
             </div>
           ) : onAcknowledge ? (
             <motion.button
               type="button"
               onClick={() => onAcknowledge(event)}
               disabled={isAcknowledging}
+              aria-label={t("aria.acknowledge")}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="group/btn relative overflow-hidden rounded-xl border border-accent-active/25 bg-linear-to-r from-accent-active/10 to-accent-active/5 min-w-[140px] px-4 py-2 text-xs font-medium text-accent-active transition-all hover:border-accent-active/40 hover:from-accent-active/20 hover:to-accent-active/10 disabled:cursor-not-allowed disabled:opacity-50"
@@ -129,7 +179,9 @@ export default function AlertRow({
                   size={13}
                   className="transition-transform group-hover/btn:scale-110"
                 />
-                {isAcknowledging ? "Acknowledging..." : "Acknowledge"}
+                {isAcknowledging
+                  ? t("actions.acknowledging")
+                  : t("actions.acknowledge")}
               </span>
             </motion.button>
           ) : null}

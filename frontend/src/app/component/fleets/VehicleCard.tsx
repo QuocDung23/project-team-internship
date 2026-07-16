@@ -6,8 +6,9 @@ import {
   Timer,
   Fuel,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { StatusBadge } from "../monitoring/StatusBadge";
-import { formatTime } from "../../hook/useTicker";
+import { useAppLocale } from "../../i18n/useAppLocale";
 import type { VehicleSnapshot } from "../../types/fleets";
 import FleetConstants from "../../constants/fleets";
 
@@ -18,6 +19,8 @@ interface VehicleCardProps {
 }
 
 function VehicleCard({ vehicle }: VehicleCardProps) {
+  const { t } = useTranslation("trips");
+  const { formatTime: localizedTime } = useAppLocale();
   const cfg = STATUS_CONFIG[vehicle.status];
   const isWaitingLong =
     vehicle.status === "waiting" && vehicle.waitMinutes > 20;
@@ -43,10 +46,10 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
-            <StatusBadge tone={cfg.tone} label={cfg.label} />
+            <StatusBadge tone={cfg.tone} label={t(cfg.labelKey as "vehicle.status.waiting" | "vehicle.status.loading" | "vehicle.status.in_transit" | "vehicle.status.idle" | "vehicle.status.maintenance")} />
             <span className="inline-flex items-center gap-1 font-mono-num text-[10px] text-text-tertiary">
               <Clock4 size={10} strokeWidth={1.5} />
-              {formatTime(vehicle.lastUpdate)}
+              {localizedTime(new Date(vehicle.lastUpdate))}
             </span>
           </div>
         </div>
@@ -69,7 +72,7 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
             <span className="font-mono-num text-[11px] text-text-primary">
               {vehicle.speedKmh}
             </span>
-            <span className="text-[10px] text-text-tertiary">km/h</span>
+            <span className="text-[10px] text-text-tertiary">{t("vehicle.card.speedUnit")}</span>
           </div>
           <div className="flex items-center gap-2">
             <Fuel
@@ -80,7 +83,7 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
             <span className="font-mono-num text-[11px] text-text-primary">
               {vehicle.fuelPercent}
             </span>
-            <span className="text-[10px] text-text-tertiary">%</span>
+            <span className="text-[10px] text-text-tertiary">{t("vehicle.card.fuelUnit")}</span>
           </div>
           <div className="flex items-center gap-2">
             <Thermometer
@@ -93,7 +96,7 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
                 vehicle.engineTemp > 90 ? "text-accent-warn" : "text-text-primary"
               }`}
             >
-              {vehicle.engineTemp}°C
+              {vehicle.engineTemp}{t("vehicle.card.tempUnit")}
             </span>
           </div>
           {vehicle.status === "waiting" && (
@@ -110,7 +113,7 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
                   isWaitingLong ? "text-accent-warn" : "text-text-primary"
                 }`}
               >
-                {vehicle.waitMinutes}m
+                {t("vehicle.card.wait", { count: vehicle.waitMinutes })}
               </span>
             </div>
           )}
@@ -123,7 +126,7 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
                 />
               </div>
               <span className="font-mono-num text-[9px] text-text-tertiary">
-                {vehicle.loadProgress}% loaded
+                {t("vehicle.card.loadPercent", { count: vehicle.loadProgress })}
               </span>
             </div>
           )}
@@ -133,7 +136,7 @@ function VehicleCard({ vehicle }: VehicleCardProps) {
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-accent-warn/10 px-3 py-2 ring-1 ring-accent-warn/20">
             <Timer size={12} strokeWidth={1.5} className="text-accent-warn" />
             <span className="text-[11px] font-medium text-accent-warn">
-              Extended wait {vehicle.waitMinutes}m
+              {t("vehicle.card.extendedWait", { minutes: vehicle.waitMinutes })}
             </span>
           </div>
         )}

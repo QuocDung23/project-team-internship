@@ -1,0 +1,104 @@
+{
+  "header": {
+    "eyebrow": "System",
+    "title": "Detection Settings",
+    "description": "Configure detector runtime, safety grading, appearance, and local preferences.",
+    "backendLive": "Backend live",
+    "defaults": "Using defaults",
+    "save": "Save settings",
+    "saving": "Saving settings...",
+    "unsaved": "Unsaved changes",
+    "savedAt": "Saved at {{time}}",
+    "noChanges": "No changes",
+    "liveDescription": "Supported runtime settings are loaded from the backend",
+    "offlineDescription": "Backend is unavailable, showing defaults"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "description": "Choose how the console is displayed on this device",
+    "userDescription": "Choose your preferred display mode",
+    "options": {
+      "dark": {
+        "label": "Dark",
+        "description": "Current console palette",
+        "userDescription": "Easy on the eyes"
+      },
+      "light": {
+        "label": "Light",
+        "description": "Bright operations view",
+        "userDescription": "Bright and clear display"
+      }
+    }
+  },
+  "language": {
+    "title": "Language",
+    "description": "Choose the language used on this device",
+    "options": {
+      "en": {
+        "description": "Use the English interface"
+      },
+      "vi": {
+        "description": "Use the Vietnamese interface"
+      }
+    }
+  },
+  "user": {
+    "eyebrow": "Personal",
+    "title": "My Settings",
+    "description": "Customize your experience and preferences"
+  },
+  "errors": {
+    "unavailable": "Settings unavailable",
+    "frameSize": "Frame width and height must be positive integers.",
+    "gradeCutoffs": "Grade cutoffs must be between 0 and 100, with Grade A at least Grade B."
+  },
+  "runtime": {
+    "title": "Runtime controls",
+    "description": "Configure settings that can be changed while the detector is running.",
+    "cameraResolution": "Camera resolution",
+    "alarmSound": "Alarm sound",
+    "frameWidth": "Frame width",
+    "frameHeight": "Frame height",
+    "preview": "Sound preview",
+    "play": "Play sound",
+    "stop": "Stop sound",
+    "sounds": {
+      "classic": "Classic alarm",
+      "soft": "Soft chime",
+      "urgent": "Urgent pulse"
+    }
+  },
+  "thresholds": {
+    "title": "Detector thresholds",
+    "description": "Read-only values managed by the detector runtime.",
+    "ear": "EAR threshold",
+    "earFrames": "Consecutive EAR frames",
+    "cnnConfidence": "CNN confidence",
+    "detectionMethod": "Detection method",
+    "alertCooldown": "Alert cooldown",
+    "noFaceTimeout": "No-face timeout",
+    "cameraIndex": "Camera index",
+    "eyeClosureDuration": "Eye closure duration",
+    "eyeClosureFrames": "Eye closure frames",
+    "cnnClosedThreshold": "CNN closed threshold",
+    "yawnMarThreshold": "Yawn MAR threshold",
+    "marFrameThreshold": "MAR frame threshold",
+    "yawnFrames": "Yawn frames",
+    "drowsinessPairWindow": "Drowsiness pair window",
+    "drowsinessEscalationWindow": "Drowsiness escalation window",
+    "yawnPairWindow": "Yawn pair window",
+    "poseDropThreshold": "Pose drop threshold",
+    "absoluteNodLimit": "Absolute nod limit",
+    "warningPenalty": "Warning penalty",
+    "criticalPenalty": "Critical penalty",
+    "managed": "Managed by runtime"
+  },
+  "grades": {
+    "title": "Safety grades",
+    "description": "Set the minimum score required for each safety grade.",
+    "gradeA": "Grade A minimum",
+    "gradeB": "Grade B minimum",
+    "gradeC": "Grade C",
+    "range": "{{min}} to {{max}} points"
+  }
+}

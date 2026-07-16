@@ -1,0 +1,181 @@
+{
+  "header": {
+    "eyebrow": "Bảng điều khiển quản trị",
+    "title": "Trung tâm chỉ huy vận hành",
+    "description": "Tổng quan vận hành trực tiếp cho môi trường demo hiện tại.",
+    "lastRefreshed": "Cập nhật lần cuối",
+    "backendLive": "Máy chủ đang hoạt động",
+    "partialData": "Dữ liệu một phần"
+  },
+  "fleetHeader": {
+    "title": "Tổng quan đội xe",
+    "description": "Ca làm việc đang chạy ở {{regions}} khu vực, đồng bộ liên tục từ máy chủ trung tâm",
+    "live": "Trực tiếp",
+    "connecting": "Đang kết nối"
+  },
+  "kpi": {
+    "labels": {
+      "driving": "Đang lái",
+      "activeTrips": "Chuyến đang chạy",
+      "openCritical": "Cảnh báo nghiêm trọng đang mở",
+      "totalAlerts": "Tổng cảnh báo"
+    },
+    "details": {
+      "drivingSummary": "{{idle}} rảnh · {{disabled}} vô hiệu hóa",
+      "activeTripsCompleted": "{{count}} đã hoàn thành",
+      "openAlerts": "{{count}} cảnh báo đang mở",
+      "alertsAcknowledged": "{{count}} đã xác nhận"
+    },
+    "tones": {
+      "ok": "Ổn",
+      "warn": "Cảnh báo",
+      "risk": "Rủi ro"
+    }
+  },
+  "kpiGrid": {
+    "labels": {
+      "driving": "Đang lái",
+      "idle": "Đang rảnh",
+      "alerts": "Cảnh báo",
+      "avgScore": "Điểm trung bình"
+    },
+    "hints": {
+      "drivingBreakdown": "{{idle}} rảnh · {{disabled}} vô hiệu hóa · {{total}} tổng",
+      "idleBreakdown": "{{driving}} đang lái · {{disabled}} vô hiệu hóa",
+      "criticalCount": "{{count}} nghiêm trọng",
+      "avgScoreDescription": "Điểm an toàn trung bình của các chuyến đã hoàn thành"
+    }
+  },
+  "errors": {
+    "driversUnavailable": "Không thể tải danh sách tài xế",
+    "tripsUnavailable": "Không thể tải chuyến đi",
+    "alertsUnavailable": "Không thể tải cảnh báo",
+    "activeTripsUnavailable": "Chuyến đang chạy hiện không khả dụng.",
+    "driverRankingUnavailable": "Bảng xếp hạng tài xế hiện không khả dụng.",
+    "todayAlertsUnavailable": "Phân bố cảnh báo hôm nay hiện không khả dụng.",
+    "weekTrendUnavailable": "Xu hướng cảnh báo 7 ngày hiện không khả dụng.",
+    "panelFallbackNote": "Các phần còn lại của bảng điều khiển sẽ tiếp tục dùng dữ liệu khả dụng."
+  },
+  "loading": {
+    "activeTrips": "Đang tải chuyến đang chạy...",
+    "driverRanking": "Đang tải bảng xếp hạng tài xế...",
+    "todayAlerts": "Đang tải cảnh báo hôm nay...",
+    "weekTrend": "Đang tải xu hướng cảnh báo...",
+    "waitingForBackend": "Đang chờ dữ liệu từ máy chủ..."
+  },
+  "commandCenter": {
+    "eyebrow": "An toàn realtime",
+    "title": "Trung tâm giám sát an toàn",
+    "frameAlt": "Khung hình mới nhất từ detector",
+    "noFrameTitle": "Chưa có hình ảnh camera",
+    "noFrameDetail": "Hãy khởi động detector hoặc kiểm tra camera. Bảng điều khiển vẫn giữ dữ liệu máy chủ gần nhất.",
+    "error": "Mất kết nối dữ liệu giám sát. Các dữ liệu có sẵn vẫn được giữ lại.",
+    "health": {
+      "online": "Đang hoạt động",
+      "stale": "Tín hiệu cũ",
+      "offline": "Mất tín hiệu"
+    },
+    "risk": {
+      "normal": "Bình thường",
+      "warning": "Cần chú ý",
+      "critical": "Rủi ro cao",
+      "offline": "Chưa có tín hiệu"
+    },
+    "status": {
+      "online": "Detector đang gửi dữ liệu mới và nhìn thấy tài xế.",
+      "stale": "Detector chưa gửi dữ liệu mới gần đây. Hãy kiểm tra tiến trình detector hoặc mạng.",
+      "offline": "Chưa có tín hiệu detector. Hãy khởi động detector và kiểm tra camera.",
+      "noFace": "Không thấy khuôn mặt. Hãy yêu cầu tài xế nhìn thẳng camera và đảm bảo đủ sáng.",
+      "critical": "Phát hiện rủi ro buồn ngủ cao. Hãy xem cảnh báo mới nhất và liên hệ tài xế nếu cần.",
+      "apiError": "Không kết nối được API giám sát. Bảng điều khiển giữ dữ liệu cũ thay vì để trống."
+    },
+    "metrics": {
+      "trip": "Chuyến đang chạy",
+      "fps": "FPS camera",
+      "score": "Điểm rủi ro",
+      "face": "Góc nhìn tài xế",
+      "updatedAgo": "Cập nhật {{seconds}} giây trước",
+      "alarmOn": "Âm báo đang bật",
+      "alarmOff": "Chưa có âm báo",
+      "faceDetected": "Đã thấy khuôn mặt",
+      "faceMissing": "Không thấy khuôn mặt",
+      "technical": "EAR {{ear}} · MAR {{mar}} · pitch {{pitch}}"
+    },
+    "empty": {
+      "trip": "Chưa có chuyến đang chạy",
+      "noActiveTrip": "Chuyến đang chạy sẽ xuất hiện tại đây",
+      "noSignal": "Đang chờ tín hiệu",
+      "noMetrics": "Chưa có chỉ số",
+      "unassignedDriver": "Chưa gán tài xế"
+    }
+  },
+  "activeTrips": {
+    "title": "Chuyến đang chạy",
+    "actionLabel": "Mở chuyến đi",
+    "emptyTitle": "Không có chuyến đang chạy",
+    "emptyDetail": "Các chuyến đang diễn ra sẽ xuất hiện tại đây cùng tài xế, phương tiện, điểm số và cảnh báo.",
+    "columns": {
+      "trip": "Chuyến",
+      "driver": "Tài xế",
+      "vehicle": "Phương tiện",
+      "started": "Bắt đầu",
+      "alerts": "Cảnh báo",
+      "score": "Điểm"
+    },
+    "fallback": {
+      "noEmail": "Không có email",
+      "unassigned": "Chưa phân công",
+      "tripWithoutCode": "Chuyến đi chưa có mã"
+    },
+    "criticalShort": "nghiêm trọng",
+    "alertsCount": "{{count}} cảnh báo",
+    "route": "{{origin}} đến {{destination}}",
+    "routeUnavailable": "Không có thông tin lộ trình"
+  },
+  "driverRanking": {
+    "title": "Bảng xếp hạng tài xế",
+    "actionLabel": "Quản lý tài xế",
+    "emptyTitle": "Chưa có lịch sử cảnh báo của tài xế",
+    "emptyDetail": "Tài xế sẽ được xếp hạng tại đây sau khi có hoạt động cảnh báo.",
+    "rankPosition": "#{{position}}",
+    "licenseSeparator": "{{license}} - {{plate}}",
+    "alertSummary": "{{alerts}} cảnh báo",
+    "criticalSummary": "{{count}} nghiêm trọng",
+    "avgScore": "Trung bình {{score}}",
+    "avgScoreWithCount": "Trung bình {{score}} ({{count}})",
+    "noScore": "Chưa có điểm"
+  },
+  "todayDistribution": {
+    "title": "Phân bố cảnh báo hôm nay",
+    "actionLabel": "Xem cảnh báo",
+    "emptyTitle": "Hôm nay chưa có cảnh báo",
+    "emptyDetail": "Mức độ nghiêm trọng và tỉ lệ đã xác nhận hôm nay sẽ hiện sau khi có cảnh báo.",
+    "rows": {
+      "criticalOpen": "Nghiêm trọng đang mở",
+      "criticalAcknowledged": "Nghiêm trọng đã xác nhận",
+      "warningOpen": "Cảnh báo đang mở",
+      "warningAcknowledged": "Cảnh báo đã xác nhận"
+    },
+    "percent": "({{value}}%)"
+  },
+  "weekTrend": {
+    "title": "Cảnh báo 7 ngày gần nhất",
+    "emptyTitle": "Chưa có cảnh báo gần đây",
+    "emptyDetail": "Tổng cảnh báo theo ngày trong 7 ngày gần nhất sẽ hiện tại đây."
+  },
+  "driverTable": {
+    "title": "Trạng thái tài xế theo thời gian thực",
+    "columns": {
+      "id": "ID",
+      "driver": "Tài xế",
+      "plate": "Biển số",
+      "team": "Đội",
+      "ear": "EAR",
+      "status": "Trạng thái",
+      "alerts": "Cảnh báo",
+      "updated": "Cập nhật"
+    },
+    "empty": "Chưa có dữ liệu tài xế từ máy chủ.",
+    "earValue": "{{value}}"
+  }
+}

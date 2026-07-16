@@ -1,6 +1,22 @@
-import type { FleetAlertEvent } from "../types/alerts";
-import type { MonitoringAlert } from "../types/monitoring";
+import type { FleetAlertEvent, FleetEventSeverity, FleetEventType } from "../types/alerts";
+import type { MonitoringAlert, MonitoringEventKey } from "../types/monitoring";
 import { apiBaseUrl, apiHeaders, TOKEN_STORAGE_KEY } from "./backendApi.ts";
+
+/**
+ * Stable detection-method codes returned by the backend. Components render
+ * the user-facing string from `alerts.json` (e.g. `source.browserCnn`).
+ * Unknown values pass through as the raw code so the UI can show a generic
+ * `source.unknown` label without leaking the payload text.
+ */
+export type DetectionMethodCode = string;
+
+/**
+ * Stable alert-type codes recognized by the UI. Components render the
+ * user-facing string from `alerts.json` (e.g. `type.drowsiness`).
+ * Unknown backend values fall back to `distraction_alert` and the original
+ * code is preserved in `rawType` for diagnostics.
+ */
+export type BackendAlertTypeCode = string;
 
 export interface BackendAlert {
   alert_id: string;
@@ -9,18 +25,36 @@ export interface BackendAlert {
   driver_name?: string | null;
   driver_email?: string | null;
   license_number?: string | null;
-  alert_type: string;
+  alert_type: BackendAlertTypeCode;
+  raw_alert_type?: BackendAlertTypeCode | null;
   status?: string;
   acknowledged?: boolean;
   acknowledged_at?: string | null;
-  detection_method: string;
+  detection_method: DetectionMethodCode;
   severity: string;
   ear_value?: number | null;
   consecutive_frame_count?: number | null;
   cnn_confidence?: number | null;
   cnn_label?: string | null;
+  captured_frame_path?: string | null;
   alarm_triggered?: boolean | null;
   occurred_at?: string | null;
+}
+
+/**
+ * Neutral payload parts produced by the monitoring mapper. The component
+ * owning the rendered string (currently the legacy monitoring view) maps
+ * each part to a translation key. The mapper never concatenates
+ * language-specific sentences.
+ */
+export interface MonitoringAlertPayloadParts {
+  typeKey: BackendAlertTypeCode;
+  rawType: BackendAlertTypeCode | null;
+  detectionMethod: DetectionMethodCode;
+  ear: number | null;
+  frames: number | null;
+  confidencePercent: number | null;
+  alarmTriggered: boolean;
 }
 
 export type BackendAlertInput = BackendAlert | unknown[];
@@ -70,6 +104,12 @@ function isAcknowledged(alert: Pick<BackendAlert, "acknowledged" | "status">): b
   return alert.status === "acknowledged" || alert.status === "resolved";
 }
 
+function normalizeRawType(alertType: unknown): BackendAlertTypeCode {
+  return typeof alertType === "string" && alertType.trim() !== ""
+    ? alertType.trim().toLowerCase()
+    : "";
+}
+
 export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
   if (Array.isArray(input)) {
     if (input.length >= 18) {
@@ -78,13 +118,15 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
         alert_id: asString(input[0], "alert"),
         trip_id: asString(input[1]) || undefined,
         driver_id: asString(input[2]) || undefined,
-        alert_type: asString(input[3], "distraction"),
+        alert_type: normalizeRawType(input[3]) || "distraction",
+        raw_alert_type: normalizeRawType(input[3]) || null,
         severity: asString(input[4], "warning"),
         detection_method: asString(input[5], "cnn_classifier"),
         ear_value: asNumber(input[6]),
         consecutive_frame_count: asNumber(input[7]),
         cnn_confidence: asNumber(input[8]),
         cnn_label: asString(input[9]) || null,
+        captured_frame_path: asString(input[10]) || null,
         alarm_triggered: Boolean(input[13]),
         acknowledged,
         acknowledged_at: asString(input[16]) || null,
@@ -97,13 +139,15 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
 
     return {
       alert_id: asString(input[0], "alert"),
-      alert_type: asString(input[1], "distraction"),
+      alert_type: normalizeRawType(input[1]) || "distraction",
+      raw_alert_type: normalizeRawType(input[1]) || null,
       detection_method: asString(input[2], "cnn_classifier"),
       severity: asString(input[3], "warning"),
       ear_value: asNumber(input[4]),
       consecutive_frame_count: asNumber(input[5]),
       cnn_confidence: asNumber(input[6]),
       cnn_label: asString(input[7]) || null,
+      captured_frame_path: null,
       alarm_triggered: Boolean(input[8]),
       acknowledged: false,
       occurred_at: asString(input[9]) || null,
@@ -112,11 +156,13 @@ export function normalizeBackendAlert(input: BackendAlertInput): BackendAlert {
 
   return {
     ...input,
+    alert_type: normalizeRawType(input.alert_type) || (input.alert_type ?? ""),
+    raw_alert_type: normalizeRawType(input.alert_type) || null,
     acknowledged: isAcknowledged(input),
   };
 }
 
-function fleetType(alertType: string): FleetAlertEvent["type"] {
+function fleetType(alertType: BackendAlertTypeCode): FleetEventType {
   if (
     alertType === "drowsiness"
     || alertType === "drowsy_cnn"
@@ -138,7 +184,7 @@ function fleetType(alertType: string): FleetAlertEvent["type"] {
   return "distraction_alert";
 }
 
-function severity(value: string): "warn" | "critical" {
+function severity(value: string): FleetEventSeverity {
   return value === "critical" || value === "high" ? "critical" : "warn";
 }
 
@@ -147,50 +193,26 @@ function timestamp(value?: string | null): number {
   return Number.isFinite(parsed) ? parsed : Date.now();
 }
 
-function alertTitle(alertType: string): string {
-  switch (alertType) {
-    case "drowsiness":
-    case "drowsiness_detected":
-    case "drowsy_cnn":
-    case "eyes_closed":
-      return "Drowsiness / Eyes Closed";
-    case "yawning":
-    case "yawning_detected":
-      return "Yawning";
-    case "driver_inattention":
-    case "head_nod":
-    case "head_nodding_detected":
-      return "Head Nod / Loss of Head Position";
-    case "camera_issue":
-    case "no_face_detected":
-      return "No Face Detected";
-    default:
-      return "Distraction Alert";
-  }
+function detectionMethodCode(value: string | null | undefined): DetectionMethodCode {
+  if (typeof value !== "string") return "cnn_classifier";
+  const normalized = value.trim().toLowerCase();
+  return normalized === "" ? "cnn_classifier" : normalized;
 }
 
-function alertDetail(alert: BackendAlert): string {
-  const parts: string[] = [];
-  if (typeof alert.ear_value === "number") {
-    parts.push(`EAR ${alert.ear_value.toFixed(3)}`);
+function monitoringEventKey(alertType: BackendAlertTypeCode): MonitoringEventKey {
+  if (alertType === "yawning" || alertType === "yawning_detected") {
+    return "monitoring.eventTitle.yawning";
   }
-  if (typeof alert.consecutive_frame_count === "number") {
-    parts.push(`${alert.consecutive_frame_count} frames`);
+  if (
+    alertType === "head_nod"
+    || alertType === "head_nodding_detected"
+    || alertType === "driver_inattention"
+    || alertType === "camera_issue"
+    || alertType === "no_face_detected"
+  ) {
+    return "monitoring.eventTitle.headNodding";
   }
-  if (typeof alert.cnn_confidence === "number") {
-    parts.push(`CNN ${Math.round(alert.cnn_confidence * 100)}%`);
-  }
-  if (alert.alarm_triggered) parts.push("Audio alert triggered");
-  return parts.length > 0 ? parts.join(" · ") : alert.detection_method;
-}
-
-function detectionMethodLabel(value: string): string {
-  switch (value) {
-    case "browser_cnn":
-      return "Detected via AI camera";
-    default:
-      return value;
-  }
+  return "monitoring.eventTitle.drowsiness";
 }
 
 export function mapBackendAlertToFleetEvent(
@@ -207,7 +229,12 @@ export function mapBackendAlertToFleetEvent(
     timestamp: timestamp(alert.occurred_at),
     acknowledged: isAcknowledged(alert),
     severity: severity(alert.severity),
-    location: detectionMethodLabel(alert.detection_method),
+    location: detectionMethodCode(alert.detection_method),
+    cnnConfidence: alert.cnn_confidence ?? null,
+    cnnLabel: alert.cnn_label ?? null,
+    alarmTriggered: Boolean(alert.alarm_triggered),
+    capturedFramePath: alert.captured_frame_path ?? null,
+    rawType: alert.raw_alert_type ?? alert.alert_type,
   };
 }
 
@@ -219,8 +246,18 @@ export function mapBackendAlertToMonitorAlert(
     id: alert.alert_id,
     ts: timestamp(alert.occurred_at),
     severity: severity(alert.severity),
-    title: alertTitle(alert.alert_type),
-    detail: alertDetail(alert),
+    titleKey: monitoringEventKey(alert.alert_type),
+    detail: JSON.stringify({
+      typeKey: alert.alert_type,
+      rawType: alert.raw_alert_type ?? null,
+      detectionMethod: detectionMethodCode(alert.detection_method),
+      ear: alert.ear_value ?? null,
+      frames: alert.consecutive_frame_count ?? null,
+      confidencePercent: typeof alert.cnn_confidence === "number"
+        ? Math.round(alert.cnn_confidence * 100)
+        : null,
+      alarmTriggered: Boolean(alert.alarm_triggered),
+    } satisfies MonitoringAlertPayloadParts),
   };
 }
 

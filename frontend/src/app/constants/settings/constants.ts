@@ -27,22 +27,38 @@ export const DEFAULT_SETTINGS: BackendSettings = {
   extra_config: {},
 };
 
-export const READ_ONLY_SETTINGS: Array<[string, string]> = [
-  ["EAR threshold", "0.28"],
-  ["Eye closure duration", "2.0s"],
-  ["Eye closure frames", "20"],
-  ["CNN closed threshold", "0.50"],
-  ["Yawn MAR threshold", "0.80"],
-  ["MAR frame threshold", "0.55"],
-  ["Yawn frames", "8"],
-  ["Drowsiness pair window", "30s"],
-  ["Drowsiness escalation window", "60s"],
-  ["Yawn pair window", "20s"],
-  ["Pose drop threshold", "12 deg"],
-  ["Absolute nod limit", "-18 deg"],
-  ["Warning penalty", "-5"],
-  ["Critical penalty", "-10"],
+export const READ_ONLY_SETTINGS: Array<[SettingsThresholdKey, string]> = [
+  ["thresholds.ear", "0.28"],
+  ["thresholds.eyeClosureDuration", "2.0s"],
+  ["thresholds.eyeClosureFrames", "20"],
+  ["thresholds.cnnClosedThreshold", "0.50"],
+  ["thresholds.yawnMarThreshold", "0.80"],
+  ["thresholds.marFrameThreshold", "0.55"],
+  ["thresholds.yawnFrames", "8"],
+  ["thresholds.drowsinessPairWindow", "30s"],
+  ["thresholds.drowsinessEscalationWindow", "60s"],
+  ["thresholds.yawnPairWindow", "20s"],
+  ["thresholds.poseDropThreshold", "12 deg"],
+  ["thresholds.absoluteNodLimit", "-18 deg"],
+  ["thresholds.warningPenalty", "-5"],
+  ["thresholds.criticalPenalty", "-10"],
 ];
+
+type SettingsThresholdKey =
+  | "thresholds.ear"
+  | "thresholds.eyeClosureDuration"
+  | "thresholds.eyeClosureFrames"
+  | "thresholds.cnnClosedThreshold"
+  | "thresholds.yawnMarThreshold"
+  | "thresholds.marFrameThreshold"
+  | "thresholds.yawnFrames"
+  | "thresholds.drowsinessPairWindow"
+  | "thresholds.drowsinessEscalationWindow"
+  | "thresholds.yawnPairWindow"
+  | "thresholds.poseDropThreshold"
+  | "thresholds.absoluteNodLimit"
+  | "thresholds.warningPenalty"
+  | "thresholds.criticalPenalty";
 
 export function getEditableSettings(settings: BackendSettings) {
   return {

@@ -1,24 +1,37 @@
+import { useTranslation } from "react-i18next";
+
+type FieldLabelKey =
+  | "tripDialog.fields.tripCode"
+  | "tripDialog.fields.origin"
+  | "tripDialog.fields.destination";
+
+type FieldPlaceholderKey =
+  | "tripDialog.fields.tripCodePlaceholder"
+  | "tripDialog.fields.originPlaceholder"
+  | "tripDialog.fields.destinationPlaceholder";
+
 interface TextFieldProps {
-  label: string;
+  labelKey: FieldLabelKey;
   value: string;
-  placeholder: string;
+  placeholderKey: FieldPlaceholderKey;
   maxLength?: number;
   readOnly?: boolean;
   onChange: (value: string) => void;
 }
 
 export function TextField({
-  label,
+  labelKey,
   value,
-  placeholder,
+  placeholderKey,
   maxLength,
   readOnly = false,
   onChange,
 }: TextFieldProps) {
+  const { t } = useTranslation("trips");
   return (
     <label className="grid gap-1.5 text-[11px] text-text-tertiary">
       <span className="font-medium uppercase tracking-[0.14em] text-text-tertiary">
-        {label}
+        {t(labelKey)}
       </span>
       <span className="field-surface flex items-center px-3 py-2.5">
         <input
@@ -26,7 +39,7 @@ export function TextField({
           maxLength={maxLength}
           readOnly={readOnly}
           onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
+          placeholder={t(placeholderKey)}
           className="w-full bg-transparent text-[13px] text-text-primary outline-none placeholder:text-text-tertiary read-only:text-text-secondary read-only:cursor-default"
         />
       </span>
