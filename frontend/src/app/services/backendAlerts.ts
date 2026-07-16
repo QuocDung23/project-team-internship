@@ -1,5 +1,9 @@
 import type { FleetAlertEvent, FleetEventSeverity, FleetEventType } from "../types/alerts";
-import type { MonitoringAlert, MonitoringEventKey } from "../types/monitoring";
+import type {
+  MonitoringAlert,
+  MonitoringDetailKey,
+  MonitoringEventKey,
+} from "../types/monitoring";
 import { apiBaseUrl, apiHeaders, TOKEN_STORAGE_KEY } from "./backendApi.ts";
 
 /**
@@ -39,22 +43,6 @@ export interface BackendAlert {
   captured_frame_path?: string | null;
   alarm_triggered?: boolean | null;
   occurred_at?: string | null;
-}
-
-/**
- * Neutral payload parts produced by the monitoring mapper. The component
- * owning the rendered string (currently the legacy monitoring view) maps
- * each part to a translation key. The mapper never concatenates
- * language-specific sentences.
- */
-export interface MonitoringAlertPayloadParts {
-  typeKey: BackendAlertTypeCode;
-  rawType: BackendAlertTypeCode | null;
-  detectionMethod: DetectionMethodCode;
-  ear: number | null;
-  frames: number | null;
-  confidencePercent: number | null;
-  alarmTriggered: boolean;
 }
 
 export type BackendAlertInput = BackendAlert | unknown[];
@@ -215,6 +203,23 @@ function monitoringEventKey(alertType: BackendAlertTypeCode): MonitoringEventKey
   return "monitoring.eventTitle.drowsiness";
 }
 
+function monitoringDetailKey(alertType: BackendAlertTypeCode): MonitoringDetailKey {
+  if (alertType === "yawning" || alertType === "yawning_detected") {
+    return "monitoring.detail.yawning";
+  }
+  if (alertType === "no_face_detected" || alertType === "camera_issue") {
+    return "monitoring.detail.cameraIssue";
+  }
+  if (
+    alertType === "head_nod"
+    || alertType === "head_nodding_detected"
+    || alertType === "driver_inattention"
+  ) {
+    return "monitoring.detail.headNodding";
+  }
+  return "monitoring.detail.drowsiness";
+}
+
 export function mapBackendAlertToFleetEvent(
   input: BackendAlertInput,
 ): FleetAlertEvent {
@@ -247,17 +252,8 @@ export function mapBackendAlertToMonitorAlert(
     ts: timestamp(alert.occurred_at),
     severity: severity(alert.severity),
     titleKey: monitoringEventKey(alert.alert_type),
-    detail: JSON.stringify({
-      typeKey: alert.alert_type,
-      rawType: alert.raw_alert_type ?? null,
-      detectionMethod: detectionMethodCode(alert.detection_method),
-      ear: alert.ear_value ?? null,
-      frames: alert.consecutive_frame_count ?? null,
-      confidencePercent: typeof alert.cnn_confidence === "number"
-        ? Math.round(alert.cnn_confidence * 100)
-        : null,
-      alarmTriggered: Boolean(alert.alarm_triggered),
-    } satisfies MonitoringAlertPayloadParts),
+    detailKey: monitoringDetailKey(alert.alert_type),
+    detail: "",
   };
 }
 

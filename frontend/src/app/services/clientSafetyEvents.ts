@@ -1,4 +1,5 @@
 import {
+  EVENT_DETAIL_TRANSLATION_KEYS,
   EVENT_TITLE_TRANSLATION_KEYS,
   type ClientSafetyEvent,
   type MonitoringAlert,
@@ -17,24 +18,14 @@ function eventTimestamp(value: string): number {
   return Number.isFinite(parsed) ? parsed : Date.now();
 }
 
-function eventDetail(event: ClientSafetyEvent): string {
-  const parts = [`CNN ${Math.round(event.confidence * 100)}%`];
-  const { ear_value, mar_value, pitch_value } = event.details;
-
-  if (typeof ear_value === "number") parts.push(`EAR ${ear_value.toFixed(3)}`);
-  if (typeof mar_value === "number") parts.push(`MAR ${mar_value.toFixed(3)}`);
-  if (typeof pitch_value === "number") parts.push(`Pitch ${pitch_value.toFixed(1)}°`);
-
-  return parts.join(" · ");
-}
-
 export function mapClientSafetyEventToMonitorAlert(event: ClientSafetyEvent): MonitoringAlert {
   return {
     id: event.event_id,
     ts: eventTimestamp(event.occurred_at),
     severity: eventSeverity(event.severity),
     titleKey: EVENT_TITLE_TRANSLATION_KEYS[event.event_type],
-    detail: eventDetail(event),
+    detailKey: EVENT_DETAIL_TRANSLATION_KEYS[event.event_type],
+    detail: "",
   };
 }
 

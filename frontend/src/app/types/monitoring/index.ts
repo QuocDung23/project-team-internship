@@ -36,6 +36,7 @@ export interface MonitoringAlert {
   ts: number;
   severity: "warn" | "critical";
   titleKey: MonitoringEventKey;
+  detailKey: MonitoringDetailKey;
   detail: string;
 }
 
@@ -43,6 +44,18 @@ export type MonitoringEventKey =
   | "monitoring.eventTitle.drowsiness"
   | "monitoring.eventTitle.yawning"
   | "monitoring.eventTitle.headNodding";
+
+export type MonitoringDetailKey =
+  | "monitoring.detail.drowsiness"
+  | "monitoring.detail.yawning"
+  | "monitoring.detail.headNodding"
+  | "monitoring.detail.cameraIssue";
+
+export const EVENT_DETAIL_TRANSLATION_KEYS = {
+  drowsiness_detected: "monitoring.detail.drowsiness",
+  yawning_detected: "monitoring.detail.yawning",
+  head_nodding_detected: "monitoring.detail.headNodding",
+} as const satisfies Record<ClientSafetyEvent["event_type"], MonitoringDetailKey>;
 
 export const EVENT_TITLE_TRANSLATION_KEYS = {
   drowsiness_detected: "monitoring.eventTitle.drowsiness",

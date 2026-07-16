@@ -107,9 +107,8 @@ test("maps backend detector alert to monitoring alert", () => {
   assert.equal(alert.id, "alert-1");
   assert.equal(alert.severity, "warn");
   assert.equal(alert.titleKey, "monitoring.eventTitle.headNodding");
-  const detail = JSON.parse(alert.detail);
-  assert.equal(detail.confidencePercent, 93);
-  assert.equal(detail.alarmTriggered, true);
+  assert.equal(alert.detailKey, "monitoring.detail.headNodding");
+  assert.equal(alert.detail, "");
 });
 
 test("maps backend tuple alert rows from the current FastAPI response", () => {

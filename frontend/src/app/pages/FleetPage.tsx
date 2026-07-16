@@ -248,7 +248,7 @@ function TripDetails({
                 />
               </div>
               <p className="mt-1.5 truncate font-mono-num text-[10px] text-text-tertiary">
-                {formatDateTime(new Date(alert.ts))} · {alert.detail}
+                {formatDateTime(new Date(alert.ts))} · {alertDetailLabel(alert, t as (key: string) => string)}
               </p>
             </div>
           ))}
@@ -261,6 +261,13 @@ function TripDetails({
       </div>
     </section>
   );
+}
+
+function alertDetailLabel(
+  alert: MonitoringAlert,
+  translate: (key: string) => string,
+): string {
+  return alert.detailKey ? translate(alert.detailKey) : alert.detail;
 }
 
 function TripMetric({ label, value, detail }: { label: string; value: ReactNode; detail?: string }) {
