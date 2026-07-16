@@ -191,7 +191,16 @@ export default function MyTripPage() {
     try {
       const events = cnnStop();
       if (events.length > 0) {
-        await bulkIngestSafetyEvents(activeTrip.trip_id, events);
+        try {
+          await bulkIngestSafetyEvents(activeTrip.trip_id, events);
+        } catch (syncError) {
+          throw new Error(
+            syncError instanceof Error
+              ? `Safety events are not synced yet. Please try ending the trip again. ${syncError.message}`
+              : "Safety events are not synced yet. Please try ending the trip again.",
+            { cause: syncError },
+          );
+        }
         await tripAlerts.refresh();
       }
       await completeTrip(activeTrip.trip_id);

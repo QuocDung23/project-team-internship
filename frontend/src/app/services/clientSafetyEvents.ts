@@ -2,7 +2,7 @@ import {
   EVENT_TITLE_TRANSLATION_KEYS,
   type ClientSafetyEvent,
   type MonitoringAlert,
-} from "../types/monitoring";
+} from "../types/monitoring/index.ts";
 
 const DROWSINESS_PAIR_WINDOW_MS = 30_000;
 const DROWSINESS_ESCALATION_WINDOW_MS = 60_000;

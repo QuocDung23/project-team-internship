@@ -155,6 +155,20 @@
       "stayAlert": "Tỉnh táo",
       "escalationEngaged": "Đã kích hoạt quy trình cảnh báo"
     },
+    "driverGuidance": {
+      "noFace": {
+        "title": "Không thấy người trong khung hình",
+        "message": "Camera có thể đang bị che hoặc không phát hiện được người. Vui lòng kiểm tra vị trí camera và ánh sáng."
+      },
+      "cameraStopped": {
+        "title": "Không nhận được hình ảnh camera",
+        "message": "Kiểm tra quyền camera hoặc khởi động lại detector."
+      },
+      "connectionLost": {
+        "title": "Mất kết nối giám sát",
+        "message": "Chuyến đi chưa bị kết thúc, vui lòng thử lại."
+      }
+    },
     "alertsTitle": "Cảnh báo trực tiếp",
     "eventsCount_one": "{{count}} sự kiện",
     "eventsCount_other": "{{count}} sự kiện",

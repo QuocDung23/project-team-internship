@@ -62,7 +62,7 @@ test("live monitoring shows yawning notification only after two yawns within 20 
   assert.equal(alerts.length, 1);
   assert.equal(alerts[0].id, "yawning-warning-yawn-2");
   assert.equal(alerts[0].severity, "warn");
-  assert.equal(alerts[0].title, "Ng\u00e1p");
+  assert.equal(alerts[0].titleKey, "monitoring.eventTitle.yawning");
 });
 
 test("live monitoring does not show yawning notification outside 20 seconds", () => {
@@ -134,7 +134,7 @@ test("maps drowsiness client event to compact monitoring alert", () => {
   assert.equal(alert.id, "event-1");
   assert.equal(alert.ts, Date.parse("2026-07-12T08:15:30.000Z"));
   assert.equal(alert.severity, "critical");
-  assert.equal(alert.title, "Buồn ngủ / mắt nhắm");
+  assert.equal(alert.titleKey, "monitoring.eventTitle.drowsiness");
   assert.match(alert.detail, /CNN 92%/);
   assert.match(alert.detail, /EAR 0.123/);
   assert.match(alert.detail, /MAR 0.456/);
@@ -154,7 +154,7 @@ test("maps medium client event to warning severity and omits unavailable metrics
   });
 
   assert.equal(alert.severity, "warn");
-  assert.equal(alert.title, "Ngáp");
+  assert.equal(alert.titleKey, "monitoring.eventTitle.yawning");
   assert.match(alert.detail, /CNN 80%/);
   assert.match(alert.detail, /MAR 0.711/);
   assert.doesNotMatch(alert.detail, /EAR/);
@@ -168,5 +168,5 @@ test("maps head nodding client event title", () => {
     severity: "medium",
   });
 
-  assert.equal(alert.title, "Gật đầu / mất tư thế đầu");
+  assert.equal(alert.titleKey, "monitoring.eventTitle.headNodding");
 });

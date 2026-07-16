@@ -149,6 +149,20 @@
       "stayAlert": "Stay alert",
       "escalationEngaged": "Escalation protocol engaged"
     },
+    "driverGuidance": {
+      "noFace": {
+        "title": "No person visible",
+        "message": "The camera may be blocked or no person is visible. Please check camera position and lighting."
+      },
+      "cameraStopped": {
+        "title": "Camera image unavailable",
+        "message": "Check camera permission or restart the detector before continuing."
+      },
+      "connectionLost": {
+        "title": "Monitoring connection lost",
+        "message": "The trip has not ended. Please check the connection and try again."
+      }
+    },
     "alertsTitle": "Live Alerts",
     "eventsCount": "{{count}} events",
     "noLiveAlerts": "No live alerts yet."

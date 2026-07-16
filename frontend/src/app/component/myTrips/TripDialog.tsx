@@ -1,4 +1,4 @@
-import { type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { motion } from "motion/react";
 import { Play, Stop, Warning, X } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +25,7 @@ import { LiveMetric } from "./LiveMetric";
 import { AlertInfoRow, type AlertInfo } from "./AlertInfoRow";
 
 type CnnMetrics = ReturnType<typeof useBrowserCNN>["metrics"];
+const NO_FACE_GUIDANCE_DELAY_MS = 2000;
 
 interface TripDialogProps {
   activeTrip: BackendTrip | null;
@@ -69,6 +70,24 @@ export default function TripDialog({
   const localeTag = language === "vi" ? "vi-VN" : "en-US";
   const titleFallback = t("common:fallback.tripWithoutCode");
   const routeFallback = t("common:fallback.routeNotProvided");
+  const [showNoFaceGuidance, setShowNoFaceGuidance] = useState(false);
+  const shouldStartNoFaceTimer =
+    Boolean(activeTrip) && cnnRunning && cnnMetrics?.faceDetected === false;
+
+  useEffect(() => {
+    if (!shouldStartNoFaceTimer) {
+      const timeoutId = window.setTimeout(() => {
+        setShowNoFaceGuidance(false);
+      }, 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowNoFaceGuidance(true);
+    }, NO_FACE_GUIDANCE_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [shouldStartNoFaceTimer]);
 
   return (
     <div
@@ -257,6 +276,18 @@ export default function TripDialog({
                       </span>
                     </div>
                   ) : null}
+                  {showNoFaceGuidance ? (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 px-4 text-center backdrop-blur-[1px]">
+                      <div className="max-w-md rounded-2xl border border-accent-warn/40 bg-accent-warn/90 px-4 py-3 text-text-primary shadow-[0_10px_34px_rgba(217,119,6,0.35)]">
+                        <p className="text-sm font-bold uppercase tracking-[0.12em]">
+                          {t("tripDialog.driverGuidance.noFace.title")}
+                        </p>
+                        <p className="mt-1 text-xs font-medium leading-5">
+                          {t("tripDialog.driverGuidance.noFace.message")}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                   {escalationActive ? (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-accent-critical/40 backdrop-blur-[2px]">
                       <span className="animate-pulse text-center text-3xl font-black uppercase tracking-[0.08em] text-white drop-shadow-[0_4px_22px_rgba(127,29,29,0.95)] sm:text-5xl">
@@ -271,6 +302,12 @@ export default function TripDialog({
                     {t("tripDialog.metrics.waitingForLive")}
                   </div>
                 ) : null}
+
+                <DriverMonitoringBanner
+                  hasConnectionIssue={Boolean(error)}
+                  isCameraRunning={cnnRunning}
+                  showNoFaceGuidance={showNoFaceGuidance}
+                />
 
                 {cnnMetrics ? (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -355,6 +392,75 @@ export default function TripDialog({
           )}
         </div>
       </motion.section>
+    </div>
+  );
+}
+
+function DriverMonitoringBanner({
+  hasConnectionIssue,
+  isCameraRunning,
+  showNoFaceGuidance,
+}: {
+  hasConnectionIssue: boolean;
+  isCameraRunning: boolean;
+  showNoFaceGuidance: boolean;
+}) {
+  const { t } = useTranslation("trips");
+
+  if (hasConnectionIssue) {
+    return (
+      <MonitoringNotice
+        tone="critical"
+        title={t("tripDialog.driverGuidance.connectionLost.title")}
+        message={t("tripDialog.driverGuidance.connectionLost.message")}
+      />
+    );
+  }
+
+  if (!isCameraRunning) {
+    return (
+      <MonitoringNotice
+        tone="warn"
+        title={t("tripDialog.driverGuidance.cameraStopped.title")}
+        message={t("tripDialog.driverGuidance.cameraStopped.message")}
+      />
+    );
+  }
+
+  if (showNoFaceGuidance) {
+    return (
+      <MonitoringNotice
+        tone="warn"
+        title={t("tripDialog.driverGuidance.noFace.title")}
+        message={t("tripDialog.driverGuidance.noFace.message")}
+      />
+    );
+  }
+
+  return null;
+}
+
+function MonitoringNotice({
+  tone,
+  title,
+  message,
+}: {
+  tone: "warn" | "critical";
+  title: string;
+  message: string;
+}) {
+  const toneClass =
+    tone === "critical"
+      ? "border-accent-critical/30 bg-accent-critical/6 text-accent-critical"
+      : "border-accent-warn/30 bg-accent-warn/6 text-accent-warn";
+
+  return (
+    <div className={`flex gap-2 rounded-2xl border px-4 py-3 text-xs ${toneClass}`}>
+      <Warning size={16} weight="fill" className="mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <p className="font-semibold">{title}</p>
+        <p className="mt-0.5 leading-5 opacity-90">{message}</p>
+      </div>
     </div>
   );
 }
