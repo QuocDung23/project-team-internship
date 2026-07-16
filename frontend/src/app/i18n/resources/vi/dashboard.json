@@ -63,6 +63,52 @@
     "weekTrend": "Đang tải xu hướng cảnh báo...",
     "waitingForBackend": "Đang chờ dữ liệu từ máy chủ..."
   },
+  "commandCenter": {
+    "eyebrow": "An toàn realtime",
+    "title": "Trung tâm giám sát an toàn",
+    "frameAlt": "Khung hình mới nhất từ detector",
+    "noFrameTitle": "Chưa có hình ảnh camera",
+    "noFrameDetail": "Hãy khởi động detector hoặc kiểm tra camera. Bảng điều khiển vẫn giữ dữ liệu máy chủ gần nhất.",
+    "error": "Mất kết nối dữ liệu giám sát. Các dữ liệu có sẵn vẫn được giữ lại.",
+    "health": {
+      "online": "Đang hoạt động",
+      "stale": "Tín hiệu cũ",
+      "offline": "Mất tín hiệu"
+    },
+    "risk": {
+      "normal": "Bình thường",
+      "warning": "Cần chú ý",
+      "critical": "Rủi ro cao",
+      "offline": "Chưa có tín hiệu"
+    },
+    "status": {
+      "online": "Detector đang gửi dữ liệu mới và nhìn thấy tài xế.",
+      "stale": "Detector chưa gửi dữ liệu mới gần đây. Hãy kiểm tra tiến trình detector hoặc mạng.",
+      "offline": "Chưa có tín hiệu detector. Hãy khởi động detector và kiểm tra camera.",
+      "noFace": "Không thấy khuôn mặt. Hãy yêu cầu tài xế nhìn thẳng camera và đảm bảo đủ sáng.",
+      "critical": "Phát hiện rủi ro buồn ngủ cao. Hãy xem cảnh báo mới nhất và liên hệ tài xế nếu cần.",
+      "apiError": "Không kết nối được API giám sát. Bảng điều khiển giữ dữ liệu cũ thay vì để trống."
+    },
+    "metrics": {
+      "trip": "Chuyến đang chạy",
+      "fps": "FPS camera",
+      "score": "Điểm rủi ro",
+      "face": "Góc nhìn tài xế",
+      "updatedAgo": "Cập nhật {{seconds}} giây trước",
+      "alarmOn": "Âm báo đang bật",
+      "alarmOff": "Chưa có âm báo",
+      "faceDetected": "Đã thấy khuôn mặt",
+      "faceMissing": "Không thấy khuôn mặt",
+      "technical": "EAR {{ear}} · MAR {{mar}} · pitch {{pitch}}"
+    },
+    "empty": {
+      "trip": "Chưa có chuyến đang chạy",
+      "noActiveTrip": "Chuyến đang chạy sẽ xuất hiện tại đây",
+      "noSignal": "Đang chờ tín hiệu",
+      "noMetrics": "Chưa có chỉ số",
+      "unassignedDriver": "Chưa gán tài xế"
+    }
+  },
   "activeTrips": {
     "title": "Chuyến đang chạy",
     "actionLabel": "Mở chuyến đi",

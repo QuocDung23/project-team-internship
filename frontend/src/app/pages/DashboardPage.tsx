@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { ReactElement } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -16,6 +16,7 @@ import {
   AdminStatStrip,
 } from "../component/admin/AdminShell";
 import { StatusBadge } from "../component/monitoring/StatusBadge";
+import RealtimeSafetyCommandCenter from "../component/dashboards/RealtimeSafetyCommandCenter";
 import { useAppLocale } from "../i18n/useAppLocale";
 import type { Driver } from "../types";
 import type { FleetAlertEvent, FleetEventSeverity } from "../types/alerts";
@@ -144,6 +145,14 @@ function DashboardPage() {
   );
   const connected =
     backendDrivers.isLive && backendTrips.isLive && backendAlerts.isLive;
+  const refreshTrips = backendTrips.refresh;
+  const refreshAlerts = backendAlerts.refresh;
+  const refreshRealtimeAdminData = useCallback(() => {
+    void Promise.all([refreshTrips(), refreshAlerts()]);
+    window.setTimeout(() => {
+      void Promise.all([refreshTrips(), refreshAlerts()]);
+    }, 1250);
+  }, [refreshAlerts, refreshTrips]);
 
   return (
     <AdminPage>
@@ -236,6 +245,13 @@ function DashboardPage() {
           />
         </motion.div>
 
+        <motion.div variants={sectionVariants} className="mt-5">
+          <RealtimeSafetyCommandCenter
+            activeTrips={activeTrips}
+            onRealtimeRisk={refreshRealtimeAdminData}
+          />
+        </motion.div>
+
         <motion.section
           variants={sectionVariants}
           className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]"
@@ -307,12 +323,11 @@ function ActiveTripsPanel({
       ) : null}
       {!error && !isLoading && trips.length > 0 ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-[12px]">
+          <table className="w-full min-w-[620px] text-left text-[12px]">
             <thead className="text-[10px] uppercase tracking-wider text-text-tertiary">
               <tr className="border-b border-hairline">
                 <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.trip")}</th>
                 <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.driver")}</th>
-                <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.vehicle")}</th>
                 <th className="py-2 pr-4 font-medium">{t("activeTrips.columns.started")}</th>
                 <th className="py-2 pr-4 text-right font-medium">{t("activeTrips.columns.alerts")}</th>
                 <th className="py-2 text-right font-medium">{t("activeTrips.columns.score")}</th>
@@ -339,9 +354,6 @@ function ActiveTripsPanel({
                     <p className="truncate text-[11px] text-text-tertiary">
                       {trip.driver_email ?? t("activeTrips.fallback.noEmail")}
                     </p>
-                  </td>
-                  <td className="py-2.5 pr-4 font-mono-num text-text-secondary">
-                    {trip.vehicle_plate ?? t("activeTrips.fallback.unassigned")}
                   </td>
                   <td className="py-2.5 pr-4 font-mono-num text-text-tertiary">
                     {formatTripDate(
