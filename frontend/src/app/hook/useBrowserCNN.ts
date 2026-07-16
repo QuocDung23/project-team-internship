@@ -9,6 +9,11 @@ import {
   processDetectionSample,
   resetBrowserDetectionState,
 } from "./browserDetectionLogic";
+import {
+  postMonitoringFrame,
+  postMonitoringSnapshot,
+  type BrowserMonitoringSnapshotPayload,
+} from "../services/backendApi";
 
 // tf is loaded as IIFE via /tf.min.js script tag in index.html
 declare const tf: typeof TF;
@@ -18,6 +23,9 @@ import type { DriverSnapshot, ClientSafetyEvent } from "../types/monitoring";
 const LEFT_EYE_IDX = [362, 385, 387, 263, 373, 380];
 const RIGHT_EYE_IDX = [33, 160, 158, 133, 153, 144];
 const MOUTH_IDX = [61, 291, 0, 17, 39, 269, 405, 181];
+const MONITORING_PUBLISH_INTERVAL_MS = 1000;
+const MONITORING_FRAME_MAX_WIDTH = 640;
+const MONITORING_FRAME_JPEG_QUALITY = 0.72;
 
 interface Point2D {
   x: number;
@@ -50,6 +58,46 @@ function computeDwsScore(ear: number, mar: number): number {
   const earScore = Math.max(0, Math.min(100, ((EAR_THRESHOLD - ear) / EAR_THRESHOLD) * 100));
   const marScore = Math.max(0, Math.min(100, ((mar - MAR_THRESHOLD) / MAR_THRESHOLD) * 100));
   return Math.round(earScore * 0.65 + marScore * 0.35);
+}
+
+function encodeMonitoringFrame(video: HTMLVideoElement): Promise<Blob | null> {
+  if (video.videoWidth <= 0 || video.videoHeight <= 0) return Promise.resolve(null);
+  const scale = Math.min(1, MONITORING_FRAME_MAX_WIDTH / video.videoWidth);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+  canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return Promise.resolve(null);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => resolve(blob),
+      "image/jpeg",
+      MONITORING_FRAME_JPEG_QUALITY,
+    );
+  });
+}
+
+function waitForVideoMetadata(video: HTMLVideoElement): Promise<void> {
+  if (video.readyState >= 1 && video.videoWidth > 0 && video.videoHeight > 0) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      video.removeEventListener("loadedmetadata", onLoaded);
+      video.removeEventListener("error", onError);
+    };
+    const onLoaded = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("Camera video metadata could not be loaded."));
+    };
+    video.addEventListener("loadedmetadata", onLoaded, { once: true });
+    video.addEventListener("error", onError, { once: true });
+  });
 }
 
 async function runCNN(
@@ -119,6 +167,8 @@ export function useBrowserCNN(): BrowserCNNReturn {
   // FPS tracking
   const lastFrameTsRef = useRef<number>(0);
   const fpsRef = useRef<number | null>(null);
+  const lastMonitoringPublishTsRef = useRef<number>(0);
+  const monitoringPublishInFlightRef = useRef(false);
 
   // Last metrics for change detection
   const lastMetricsRef = useRef<DriverSnapshot | null>(null);
@@ -128,6 +178,23 @@ export function useBrowserCNN(): BrowserCNNReturn {
     setEventCount(eventsRef.current.length);
     setEvents(eventsRef.current.slice());
   }, []);
+
+  const publishMonitoring = useCallback(
+    async (snapshot: BrowserMonitoringSnapshotPayload, video: HTMLVideoElement) => {
+      if (monitoringPublishInFlightRef.current) return;
+      monitoringPublishInFlightRef.current = true;
+      try {
+        await postMonitoringSnapshot(snapshot);
+        const frame = await encodeMonitoringFrame(video);
+        if (frame) await postMonitoringFrame(frame);
+      } catch (err) {
+        console.warn("[useBrowserCNN] Monitoring publish failed:", err);
+      } finally {
+        monitoringPublishInFlightRef.current = false;
+      }
+    },
+    [],
+  );
 
   const stop = useCallback((): ClientSafetyEvent[] => {
     runningRef.current = false;
@@ -146,6 +213,8 @@ export function useBrowserCNN(): BrowserCNNReturn {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    monitoringPublishInFlightRef.current = false;
+    lastMonitoringPublishTsRef.current = 0;
 
     return eventsRef.current.slice();
   }, []);
@@ -173,13 +242,23 @@ export function useBrowserCNN(): BrowserCNNReturn {
 
       if (!videoRef.current) {
         stream.getTracks().forEach((t) => t.stop());
-        return;
+        throw new Error(t("monitoring.errors.cameraDeniedMessage"));
       }
       streamRef.current = stream;
       videoRef.current.srcObject = stream;
-      await videoRef.current.play().catch((err) =>
-        console.error("[useBrowserCNN] Video play error:", err),
-      );
+      runningRef.current = true;
+      setIsRunning(true);
+
+      try {
+        await waitForVideoMetadata(videoRef.current);
+        await videoRef.current.play();
+      } catch (err) {
+        console.error("[useBrowserCNN] Video play error:", err);
+        stop();
+        throw new Error(t("monitoring.errors.cameraDeniedMessage"), {
+          cause: err,
+        });
+      }
 
       // Load MediaPipe landmarker (lazy)
       if (!landmarkerRef.current) {
@@ -214,9 +293,6 @@ export function useBrowserCNN(): BrowserCNNReturn {
           // modelRef.current stays null — CNN inference skipped
         }
       }
-
-      runningRef.current = true;
-      setIsRunning(true);
 
       const loop = async () => {
         if (!runningRef.current) return;
@@ -357,6 +433,33 @@ export function useBrowserCNN(): BrowserCNNReturn {
             yawnWarningActive,
           };
 
+          if (now - lastMonitoringPublishTsRef.current >= MONITORING_PUBLISH_INTERVAL_MS) {
+            lastMonitoringPublishTsRef.current = now;
+            void publishMonitoring(
+              {
+                trip_id: tripIdRef.current || null,
+                timestamp: Date.now() / 1000,
+                fps: fpsRef.current,
+                ear,
+                mar,
+                pitch,
+                dws_score: dwsScore,
+                eyes_open: eyesOpen,
+                mouth_closed: mouthClosed,
+                face_detected: Boolean(faceDetected),
+                ear_alert: earAlert,
+                mar_alert: marAlert,
+                pose_alert: poseAlert,
+                alarm_on: alarmOn,
+                ear_counter: 0,
+                mar_counter: 0,
+                pose_counter: 0,
+                cnn_enabled: true,
+              },
+              video,
+            );
+          }
+
           // Only update state when values change meaningfully (avoid every-frame re-renders)
           const prev = lastMetricsRef.current;
           const changed =
@@ -385,7 +488,7 @@ export function useBrowserCNN(): BrowserCNNReturn {
 
       animFrameRef.current = requestAnimationFrame(loop);
     },
-    [pushEvent, stop, t],
+    [publishMonitoring, pushEvent, stop, t],
   );
 
   return { videoRef, metrics, isRunning, eventCount, events, start, stop };
