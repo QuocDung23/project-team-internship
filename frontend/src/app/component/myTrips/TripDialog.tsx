@@ -313,22 +313,38 @@ export default function TripDialog({
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                     <LiveMetric
                       labelKey="monitoring.metricLabels.ear"
-                      value={cnnMetrics.ear.toFixed(3)}
+                      value={
+                        cnnMetrics.earAlert
+                          ? t("monitoring.metricValues.eyesCheck")
+                          : t("monitoring.metricValues.eyesOk")
+                      }
                       alert={cnnMetrics.earAlert}
                     />
                     <LiveMetric
                       labelKey="monitoring.metricLabels.mar"
-                      value={cnnMetrics.mar.toFixed(3)}
+                      value={
+                        cnnMetrics.marAlert
+                          ? t("monitoring.metricValues.mouthCheck")
+                          : t("monitoring.metricValues.mouthOk")
+                      }
                       alert={cnnMetrics.marAlert}
                     />
                     <LiveMetric
                       labelKey="monitoring.metricLabels.pitch"
-                      value={cnnMetrics.pitch.toFixed(1)}
+                      value={
+                        cnnMetrics.poseAlert
+                          ? t("monitoring.metricValues.headCheck")
+                          : t("monitoring.metricValues.headOk")
+                      }
                       alert={cnnMetrics.poseAlert}
                     />
                     <LiveMetric
                       labelKey="monitoring.metricLabels.dws"
-                      value={`${cnnMetrics.dwsScore}%`}
+                      value={
+                        cnnMetrics.dwsScore >= 70
+                          ? t("monitoring.metricValues.riskHigh")
+                          : t("monitoring.metricValues.riskOk")
+                      }
                       alert={cnnMetrics.dwsScore >= 70}
                     />
                     <LiveMetric

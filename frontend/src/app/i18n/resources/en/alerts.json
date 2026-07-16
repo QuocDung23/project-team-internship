@@ -54,21 +54,12 @@
     }
   },
   "row": {
-    "ear": "EAR",
     "acknowledged": "Acknowledged",
-    "evidence": "Evidence",
+    "evidence": "Evidence image available",
     "noEvidence": "Evidence frame not captured yet",
     "alarmTriggered": "Audio alarm triggered",
-    "cnnLabel": "Label {{label}}",
-    "metric": {
-      "ear": "EAR",
-      "mar": "MAR",
-      "pitch": "Pitch",
-      "frame": "{{count}} frame",
-      "frame_other": "{{count}} frames",
-      "cnn": "CNN {{value}}%",
-      "earValue": "EAR {{value}}"
-    }
+    "confidenceHigh": "High confidence",
+    "confidenceDetected": "Confirmed by camera"
   },
   "driverFilter": {
     "label": "Driver",
@@ -104,20 +95,8 @@
   },
   "source": {
     "browser_cnn": "Detected via AI camera",
-    "cnn_classifier": "Detection classifier",
+    "cnn_classifier": "Detected by camera",
     "unknown": "Unknown source"
-  },
-  "detail": {
-    "typeUnknown": "Distraction Alert",
-    "typeDrowsiness": "Drowsiness / Eyes Closed",
-    "typeYawning": "Yawning",
-    "typeHeadNod": "Head Nod / Loss of Head Position",
-    "typeNoFace": "No Face Detected",
-    "ear": "EAR {{value}}",
-    "frames_one": "{{count}} frame",
-    "frames_other": "{{count}} frames",
-    "cnn": "CNN {{value}}%",
-    "alarmTriggered": "Audio alert triggered"
   },
   "fallback": {
     "noLicense": "No license",

@@ -1,4 +1,4 @@
-import { Activity, Camera, Eye, Gauge, Radio, ShieldAlert } from "lucide-react";
+import { Activity, Camera, Eye, Gauge, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -56,10 +56,6 @@ export default function RealtimeSafetyCommandCenter({
     <section className="rounded-xl border border-hairline bg-subtle-bg px-5 py-4">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-hairline bg-surface px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
-            <Radio size={11} />
-            {t("commandCenter.eyebrow")}
-          </div>
           <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
             {t("commandCenter.title")}
           </h2>
@@ -116,7 +112,7 @@ export default function RealtimeSafetyCommandCenter({
             icon={<Gauge size={14} />}
             label={t("commandCenter.metrics.fps")}
             value={formatMetric(availableSnapshot?.fps, 1)}
-            detail={ageLabel(snapshot, t)}
+            detail={signalLabel(snapshot, t)}
           />
           <MetricTile
             icon={<ShieldAlert size={14} />}
@@ -179,7 +175,7 @@ function healthKey(snapshot: MonitoringSnapshotState): "online" | "stale" | "off
 function riskLevel(snapshot: MonitoringSnapshotState): RiskLevel {
   if (!snapshot || snapshot.available === false || snapshot.health === "offline") return "offline";
   if (snapshot.alarm_on || snapshot.dws_score >= 80) return "critical";
-  if (snapshot.stale || !snapshot.face_detected || snapshot.dws_score >= 50) return "warning";
+  if (!snapshot.face_detected || snapshot.dws_score >= 60) return "warning";
   return "normal";
 }
 
@@ -220,15 +216,14 @@ function formatMetric(value: number | null | undefined, digits: number): string 
   return value.toFixed(digits);
 }
 
-function ageLabel(
+function signalLabel(
   snapshot: MonitoringSnapshotState,
   t: ReturnType<typeof useTranslation<"dashboard">>["t"],
 ): string {
-  const age = isAvailableSnapshot(snapshot)
-    ? snapshot.age_seconds ?? snapshot.snapshot_age_seconds
-    : snapshot?.age_seconds;
-  if (typeof age !== "number" || !Number.isFinite(age)) return t("commandCenter.empty.noSignal");
-  return t("commandCenter.metrics.updatedAgo", { seconds: Math.round(age) });
+  if (!snapshot || snapshot.available === false) return t("commandCenter.empty.noSignal");
+  return snapshot.stale
+    ? t("commandCenter.metrics.waitingSignal")
+    : t("commandCenter.metrics.receivingSignal");
 }
 
 function alarmLabel(
@@ -255,11 +250,11 @@ function technicalDetail(
   t: ReturnType<typeof useTranslation<"dashboard">>["t"],
 ): string {
   if (!snapshot || snapshot.available === false) return t("commandCenter.empty.noMetrics");
-  return t("commandCenter.metrics.technical", {
-    ear: formatMetric(snapshot.ear, 3),
-    mar: formatMetric(snapshot.mar, 2),
-    pitch: formatMetric(snapshot.pitch, 1),
-  });
+  if (!snapshot.face_detected) return t("commandCenter.metrics.driverNotVisible");
+  if (snapshot.ear_alert || snapshot.mar_alert || snapshot.pose_alert) {
+    return t("commandCenter.metrics.driverNeedsCheck");
+  }
+  return t("commandCenter.metrics.driverViewStable");
 }
 
 function driverLabel(

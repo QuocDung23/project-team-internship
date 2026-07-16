@@ -11,7 +11,7 @@ _frame_seq = 0
 _snapshot_seq = 0
 _snapshot_received_at: Optional[float] = None
 _frame_received_at: Optional[float] = None
-STALE_AFTER_SECONDS = 3.0
+STALE_AFTER_SECONDS = 8.0
 
 
 def _age_seconds(now: float, received_at: Optional[float]) -> Optional[float]:

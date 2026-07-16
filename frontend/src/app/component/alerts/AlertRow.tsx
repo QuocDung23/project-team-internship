@@ -115,19 +115,6 @@ export default function AlertRow({
               <MapPin size={11} className="text-text-tertiary" />
               {sourceLabel}
             </span>
-            {event.ear > 0 && (
-              <span className="font-mono-num rounded-full bg-subtle-bg px-2.5 py-1  ">
-                {t("row.metric.ear")}
-                :{" "}
-                <span
-                  className={
-                    event.ear < 0.17 ? "text-accent-critical" : "text-text-secondary"
-                  }
-                >
-                  {event.ear.toFixed(3)}
-                </span>
-              </span>
-            )}
             <span className="inline-flex items-center gap-1 rounded-full bg-subtle-bg px-2.5 py-1  ">
               {typeLabel}
             </span>
@@ -141,13 +128,10 @@ export default function AlertRow({
                 : t("row.noEvidence")}
             </span>
             {confidencePercent !== null ? (
-              <span className="font-mono-num text-text-tertiary">
-                {t("row.metric.cnn", { value: confidencePercent })}
-              </span>
-            ) : null}
-            {event.cnnLabel ? (
               <span className="text-text-tertiary">
-                {t("row.cnnLabel", { label: event.cnnLabel })}
+                {confidencePercent >= 80
+                  ? t("row.confidenceHigh")
+                  : t("row.confidenceDetected")}
               </span>
             ) : null}
             {event.alarmTriggered ? (

@@ -4,7 +4,11 @@ import unittest
 from unittest.mock import patch
 
 from ai_runtime.monitoring_publisher import AsyncMonitoringPublisher
-from backend.routes.monitoring_routes import read_monitoring_snapshot, stream_monitoring_frame
+from backend.routes.monitoring_routes import (
+    read_monitoring_snapshot,
+    stream_monitoring_events,
+    stream_monitoring_frame,
+)
 from backend.services import monitoring_service
 
 
@@ -22,6 +26,11 @@ class FakeFrame:
 
     def copy(self):
         return FakeFrame(self.payload)
+
+
+class DisconnectedRequest:
+    async def is_disconnected(self):
+        return True
 
 
 def fake_imencode(_ext, frame, _params):
@@ -198,11 +207,15 @@ class MonitoringStreamTest(unittest.TestCase):
                 }
             )
 
-        with patch("backend.services.monitoring_service.time.time", return_value=105.0):
+        stale_time = 100.0 + monitoring_service.STALE_AFTER_SECONDS + 1.0
+        with patch("backend.services.monitoring_service.time.time", return_value=stale_time):
             snapshot = monitoring_service.get_monitoring_snapshot()
 
         self.assertIsNotNone(snapshot)
-        self.assertEqual(snapshot["frame_age_seconds"], 5.0)
+        self.assertEqual(
+            snapshot["frame_age_seconds"],
+            monitoring_service.STALE_AFTER_SECONDS + 1.0,
+        )
         self.assertTrue(snapshot["stale"])
         self.assertEqual(snapshot["health"], "stale")
 
@@ -222,6 +235,14 @@ class MonitoringStreamTest(unittest.TestCase):
     def test_stream_response_has_no_cache_headers(self):
         response = stream_monitoring_frame()
 
+        self.assertEqual(response.headers["cache-control"], "no-store, no-cache, must-revalidate, max-age=0")
+        self.assertEqual(response.headers["pragma"], "no-cache")
+        self.assertEqual(response.headers["expires"], "0")
+
+    def test_event_stream_response_has_no_cache_headers(self):
+        response = stream_monitoring_events(DisconnectedRequest())
+
+        self.assertEqual(response.media_type, "text/event-stream")
         self.assertEqual(response.headers["cache-control"], "no-store, no-cache, must-revalidate, max-age=0")
         self.assertEqual(response.headers["pragma"], "no-cache")
         self.assertEqual(response.headers["expires"], "0")

@@ -234,17 +234,33 @@
   },
   "monitoring": {
     "metricLabels": {
-      "ear": "EAR",
-      "mar": "MAR",
-      "pitch": "Pitch",
-      "dws": "DWS",
+      "ear": "Mắt",
+      "mar": "Miệng",
+      "pitch": "Tư thế đầu",
+      "dws": "Rủi ro",
       "fps": "FPS",
       "noFace": "--"
+    },
+    "metricValues": {
+      "eyesOk": "Ổn định",
+      "eyesCheck": "Cần kiểm tra",
+      "mouthOk": "Bình thường",
+      "mouthCheck": "Có dấu hiệu ngáp",
+      "headOk": "Ổn định",
+      "headCheck": "Cần chỉnh tư thế",
+      "riskOk": "Thấp",
+      "riskHigh": "Cao"
     },
     "eventTitle": {
       "drowsiness": "Buồn ngủ / mắt nhắm",
       "yawning": "Ngáp",
       "headNodding": "Gật đầu / mất tư thế đầu"
+    },
+    "detail": {
+      "drowsiness": "Tài xế có dấu hiệu buồn ngủ hoặc nhắm mắt lâu.",
+      "yawning": "Tài xế ngáp nhiều trong thời gian ngắn.",
+      "headNodding": "Tư thế đầu của tài xế không ổn định.",
+      "cameraIssue": "Camera không nhìn rõ tài xế."
     },
     "severity": {
       "warn": "Cảnh báo",

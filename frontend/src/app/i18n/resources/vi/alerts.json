@@ -52,21 +52,12 @@
     }
   },
   "row": {
-    "ear": "EAR",
     "acknowledged": "Đã xác nhận",
-    "evidence": "Bằng chứng",
+    "evidence": "Ảnh bằng chứng có sẵn",
     "noEvidence": "Chưa có ảnh bằng chứng",
     "alarmTriggered": "Đã bật âm báo",
-    "cnnLabel": "Nhãn {{label}}",
-    "metric": {
-      "ear": "EAR",
-      "mar": "MAR",
-      "pitch": "Pitch",
-      "frame_one": "{{count}} khung hình",
-      "frame_other": "{{count}} khung hình",
-      "cnn": "CNN {{value}}%",
-      "earValue": "EAR {{value}}"
-    }
+    "confidenceHigh": "Độ tin cậy cao",
+    "confidenceDetected": "Đã xác nhận bởi camera"
   },
   "driverFilter": {
     "label": "Tài xế",
@@ -102,20 +93,8 @@
   },
   "source": {
     "browser_cnn": "Phát hiện qua camera AI",
-    "cnn_classifier": "Bộ phân loại phát hiện",
+    "cnn_classifier": "Phát hiện qua camera",
     "unknown": "Nguồn không xác định"
-  },
-  "detail": {
-    "typeUnknown": "Cảnh báo mất tập trung",
-    "typeDrowsiness": "Buồn ngủ / nhắm mắt",
-    "typeYawning": "Ngáp",
-    "typeHeadNod": "Gật đầu / mất tư thế đầu",
-    "typeNoFace": "Không phát hiện khuôn mặt",
-    "ear": "EAR {{value}}",
-    "frames_one": "{{count}} khung hình",
-    "frames_other": "{{count}} khung hình",
-    "cnn": "CNN {{value}}%",
-    "alarmTriggered": "Đã kích hoạt cảnh báo âm thanh"
   },
   "fallback": {
     "noLicense": "Không có giấy phép",

@@ -1,6 +1,9 @@
+import asyncio
+import contextlib
 import json
 import time
 
+import anyio
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from backend.models.schemas import MonitoringSnapshot
@@ -77,11 +80,27 @@ def stream_monitoring_frame():
 
 
 @router.get("/monitoring/events")
-def stream_monitoring_events():
-    def event_stream():
-        for snapshot in iter_monitoring_snapshots():
-            event_name = "keepalive" if snapshot.get("type") == "keepalive" else "snapshot"
-            yield f"event: {event_name}\ndata: {json.dumps(snapshot, default=str)}\n\n"
+def stream_monitoring_events(request: Request):
+    async def event_stream():
+        iterator = iter_monitoring_snapshots()
+        try:
+            while not await request.is_disconnected():
+                snapshot = await anyio.to_thread.run_sync(
+                    next,
+                    iterator,
+                    abandon_on_cancel=True,
+                )
+                if await request.is_disconnected():
+                    break
+                event_name = "keepalive" if snapshot.get("type") == "keepalive" else "snapshot"
+                yield f"event: {event_name}\ndata: {json.dumps(snapshot, default=str)}\n\n"
+        except asyncio.CancelledError:
+            return
+        finally:
+            close = getattr(iterator, "close", None)
+            if close is not None:
+                with contextlib.suppress(Exception):
+                    close()
 
     return StreamingResponse(
         event_stream(),

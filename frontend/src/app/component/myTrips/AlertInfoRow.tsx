@@ -7,6 +7,11 @@ export interface AlertInfo {
     | "monitoring.eventTitle.drowsiness"
     | "monitoring.eventTitle.yawning"
     | "monitoring.eventTitle.headNodding";
+  detailKey?:
+    | "monitoring.detail.drowsiness"
+    | "monitoring.detail.yawning"
+    | "monitoring.detail.headNodding"
+    | "monitoring.detail.cameraIssue";
   severity: "warn" | "critical";
   ts: number;
   detail: string;
@@ -48,7 +53,9 @@ export function AlertInfoRow({ alert }: { alert: AlertInfo }) {
       <p className="mt-1.5 font-mono-num text-[11px] text-text-tertiary tabular-nums">
         {formatDateTime(new Date(alert.ts))}
         <span className="mx-2 text-text-tertiary/50">/</span>
-        <span className="text-text-tertiary">{alert.detail}</span>
+        <span className="text-text-tertiary">
+          {alert.detailKey ? t(alert.detailKey) : alert.detail}
+        </span>
       </p>
     </div>
   );

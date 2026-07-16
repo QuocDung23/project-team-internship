@@ -135,10 +135,8 @@ test("maps drowsiness client event to compact monitoring alert", () => {
   assert.equal(alert.ts, Date.parse("2026-07-12T08:15:30.000Z"));
   assert.equal(alert.severity, "critical");
   assert.equal(alert.titleKey, "monitoring.eventTitle.drowsiness");
-  assert.match(alert.detail, /CNN 92%/);
-  assert.match(alert.detail, /EAR 0.123/);
-  assert.match(alert.detail, /MAR 0.456/);
-  assert.match(alert.detail, /Pitch 12.3°/);
+  assert.equal(alert.detailKey, "monitoring.detail.drowsiness");
+  assert.equal(alert.detail, "");
 });
 
 test("maps medium client event to warning severity and omits unavailable metrics", () => {
@@ -155,10 +153,8 @@ test("maps medium client event to warning severity and omits unavailable metrics
 
   assert.equal(alert.severity, "warn");
   assert.equal(alert.titleKey, "monitoring.eventTitle.yawning");
-  assert.match(alert.detail, /CNN 80%/);
-  assert.match(alert.detail, /MAR 0.711/);
-  assert.doesNotMatch(alert.detail, /EAR/);
-  assert.doesNotMatch(alert.detail, /Pitch/);
+  assert.equal(alert.detailKey, "monitoring.detail.yawning");
+  assert.equal(alert.detail, "");
 });
 
 test("maps head nodding client event title", () => {

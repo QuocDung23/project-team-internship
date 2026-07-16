@@ -14,6 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { ReactElement } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useMyDriverProfile } from "../../hook/useBackendData";
 
 interface NavItem {
   to: string;
@@ -76,9 +77,12 @@ const SECONDARY_NAV: ReadonlyArray<NavItem> = [
 export function Sidebar() {
   const { t } = useTranslation(["navigation", "common"]);
   const { user, logout } = useAuth();
+  const myDriver = useMyDriverProfile(user?.role === "driver");
   const primaryNav = user?.role === "driver" ? DRIVER_NAV : PRIMARY_NAV;
   const secondaryNav = user?.role === "admin" ? SECONDARY_NAV : DRIVER_SECONDARY_NAV;
-  const initials = (user?.full_name ?? user?.email ?? t("user.fallbackName"))
+  const displayName = myDriver.row?.full_name ?? user?.full_name ?? t("user.fallbackName");
+  const displayEmail = myDriver.row?.email ?? user?.email ?? t("user.signedIn");
+  const initials = (displayName ?? displayEmail)
     .split(/\s+/)
     .map((part) => part[0])
     .join("")
@@ -190,10 +194,10 @@ export function Sidebar() {
             </div>
             <div className="min-w-0 flex-1 leading-tight">
               <p className="truncate text-[12px] font-medium text-text-primary">
-                {user?.full_name ?? t("user.fallbackName")}
+                {displayName}
               </p>
               <p className="truncate text-[10px] text-text-tertiary">
-                {user?.email ?? t("user.signedIn")}
+                {displayEmail}
               </p>
             </div>
             <button

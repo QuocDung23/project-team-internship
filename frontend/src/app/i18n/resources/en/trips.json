@@ -227,17 +227,33 @@
   },
   "monitoring": {
     "metricLabels": {
-      "ear": "EAR",
-      "mar": "MAR",
-      "pitch": "Pitch",
-      "dws": "DWS",
+      "ear": "Eyes",
+      "mar": "Mouth",
+      "pitch": "Head position",
+      "dws": "Risk",
       "fps": "FPS",
       "noFace": "--"
+    },
+    "metricValues": {
+      "eyesOk": "Stable",
+      "eyesCheck": "Needs check",
+      "mouthOk": "Normal",
+      "mouthCheck": "Possible yawn",
+      "headOk": "Stable",
+      "headCheck": "Adjust posture",
+      "riskOk": "Low",
+      "riskHigh": "High"
     },
     "eventTitle": {
       "drowsiness": "Drowsiness / Eyes Closed",
       "yawning": "Yawning",
       "headNodding": "Head Nod / Loss of Head Position"
+    },
+    "detail": {
+      "drowsiness": "The driver may be drowsy or keeping their eyes closed too long.",
+      "yawning": "The driver yawned repeatedly in a short period.",
+      "headNodding": "The driver's head position is unstable.",
+      "cameraIssue": "The camera cannot clearly see the driver."
     },
     "severity": {
       "warn": "Warning",
