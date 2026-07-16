@@ -65,7 +65,7 @@
   },
   "commandCenter": {
     "eyebrow": "An toàn realtime",
-    "title": "Trung tâm giám sát an toàn",
+    "title": "Trung tâm giám sát an toàn realtime",
     "frameAlt": "Khung hình mới nhất từ detector",
     "noFrameTitle": "Chưa có hình ảnh camera",
     "noFrameDetail": "Hãy khởi động detector hoặc kiểm tra camera. Bảng điều khiển vẫn giữ dữ liệu máy chủ gần nhất.",
@@ -94,12 +94,15 @@
       "fps": "FPS camera",
       "score": "Điểm rủi ro",
       "face": "Góc nhìn tài xế",
-      "updatedAgo": "Cập nhật {{seconds}} giây trước",
+      "receivingSignal": "Đang nhận tín hiệu",
+      "waitingSignal": "Đang chờ tín hiệu",
       "alarmOn": "Âm báo đang bật",
       "alarmOff": "Chưa có âm báo",
       "faceDetected": "Đã thấy khuôn mặt",
       "faceMissing": "Không thấy khuôn mặt",
-      "technical": "EAR {{ear}} · MAR {{mar}} · pitch {{pitch}}"
+      "driverViewStable": "Góc nhìn ổn định",
+      "driverNeedsCheck": "Cần kiểm tra tài xế",
+      "driverNotVisible": "Camera chưa nhìn rõ tài xế"
     },
     "empty": {
       "trip": "Chưa có chuyến đang chạy",
@@ -127,8 +130,9 @@
       "unassigned": "Chưa phân công",
       "tripWithoutCode": "Chuyến đi chưa có mã"
     },
-    "criticalShort": "nghiêm trọng",
     "alertsCount": "{{count}} cảnh báo",
+    "alertsCriticalCount": "{{count}} cảnh báo nghiêm trọng",
+    "alertsMixedCount": "{{total}} cảnh báo · {{critical}} nghiêm trọng",
     "route": "{{origin}} đến {{destination}}",
     "routeUnavailable": "Không có thông tin lộ trình"
   },

@@ -207,11 +207,15 @@ class MonitoringStreamTest(unittest.TestCase):
                 }
             )
 
-        with patch("backend.services.monitoring_service.time.time", return_value=105.0):
+        stale_time = 100.0 + monitoring_service.STALE_AFTER_SECONDS + 1.0
+        with patch("backend.services.monitoring_service.time.time", return_value=stale_time):
             snapshot = monitoring_service.get_monitoring_snapshot()
 
         self.assertIsNotNone(snapshot)
-        self.assertEqual(snapshot["frame_age_seconds"], 5.0)
+        self.assertEqual(
+            snapshot["frame_age_seconds"],
+            monitoring_service.STALE_AFTER_SECONDS + 1.0,
+        )
         self.assertTrue(snapshot["stale"])
         self.assertEqual(snapshot["health"], "stale")
 

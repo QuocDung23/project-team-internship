@@ -52,6 +52,11 @@ def _row_to_session(row: Any) -> dict[str, Any] | None:
     return session
 
 
+def _driver_status_to_user_status(status: Any) -> str:
+    value = status.value if isinstance(status, DriverStatus) else str(status)
+    return "active" if value == DriverStatus.ACTIVE.value else "inactive"
+
+
 class DriverRepository:
     def __init__(self, engine: Engine | None = None):
         self.engine = engine or get_engine()
@@ -283,6 +288,7 @@ class DriverRepository:
                 params[column] = value
 
         with self.engine.begin() as connection:
+            original = self._find_by_id(connection, driver_id)
             row = (
                 connection.execute(
                     text(
@@ -298,7 +304,52 @@ class DriverRepository:
                 .mappings()
                 .first()
             )
+            if row is not None:
+                self._sync_linked_user_after_driver_update(
+                    connection,
+                    original_email=original["email"] if original is not None else None,
+                    updated_driver=row,
+                    changes=changes,
+                )
         return _row_to_driver(row)
+
+    def _sync_linked_user_after_driver_update(
+        self,
+        connection: Connection,
+        *,
+        original_email: str | None,
+        updated_driver: Any,
+        changes: dict[str, Any],
+    ) -> None:
+        lookup_email = original_email or updated_driver["email"]
+        if not lookup_email:
+            return
+
+        assignments = []
+        params: dict[str, Any] = {"lookup_email": lookup_email}
+        if "full_name" in changes:
+            assignments.append("full_name = :full_name")
+            params["full_name"] = updated_driver["full_name"]
+        if "email" in changes and updated_driver["email"]:
+            assignments.append("email = :email")
+            params["email"] = updated_driver["email"]
+        if "status" in changes:
+            assignments.append("status = CAST(:user_status AS user_status)")
+            params["user_status"] = _driver_status_to_user_status(changes["status"])
+        if not assignments:
+            return
+
+        connection.execute(
+            text(
+                f"""
+                UPDATE users
+                SET {", ".join(assignments)}
+                WHERE lower(email) = lower(:lookup_email)
+                  AND role = CAST(:role AS user_role)
+                """
+            ),
+            {**params, "role": UserRole.DRIVER.value},
+        )
 
     def delete_driver(self, driver_id: str) -> bool:
         with self.engine.begin() as connection:
